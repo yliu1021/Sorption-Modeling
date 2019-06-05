@@ -102,3 +102,11 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# Data
+data/
+output/
+predict_mc/
+predict_ri/
+predict_swarm/
+training/
