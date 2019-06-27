@@ -110,3 +110,9 @@ predict_mc/
 predict_ri/
 predict_swarm/
 training/
+
+# MacOS
+.DS_Store
+
+# Emacs
+*~
