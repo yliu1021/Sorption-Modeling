@@ -3,6 +3,7 @@ import math
 import pandas as pd
 import sys
 import os
+from multiprocessing import Pool
 
 from constants import *
 
@@ -33,14 +34,24 @@ def run_dft_iter(n, grid_dir=GRID_DIR, result_dir=RESULT_DIR):
     density = pd.DataFrame(density)
     density.to_csv(result_dir + '/density_%04d.csv'%n)
 
+# The multiprocessing module can only pickle objects at the global level
+pool_arg = {}
+def run_dft_pool(i):
+    run_dft_iter(i, pool_arg['grid_dir'], pool_arg['result_dir'])
+            
 def run_dft_iters(grid_base_dir=GRID_DIR, result_base_dir=RESULT_DIR):
     for dataset in DATASETS:
         grid_dir = grid_base_dir + dataset[0]
         result_dir = result_base_dir + dataset[0]
         os.makedirs(result_dir, exist_ok=True)
         n_grids = dataset[1]
-        for i in range(n_grids):
-            run_dft_iter(i, grid_dir, result_dir)
+        
+        pool_arg['grid_dir'] = grid_dir
+        pool_arg['result_dir'] = result_dir
+        p = Pool()
+        for i, _ in enumerate(p.imap_unordered(run_dft_pool, range(n_grids)), 1):
+            print("\r{}/{} {:.2f}%".format(i, n_grids, i/n_grids*100), end='')
+        print()
 
 # Run the DFT simulation for a single flattened grid
 def run_dft(grid):
