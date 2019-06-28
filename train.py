@@ -3,6 +3,8 @@ import math
 import os
 import sys
 
+os.environ["KERAS_BACKEND"] = "plaidml.keras.backend"
+
 from keras.models import Sequential
 from keras.layers import Dense, Conv2D, MaxPooling2D, Flatten, Reshape, Dropout
 from sklearn import linear_model

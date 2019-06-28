@@ -4,6 +4,8 @@ import random
 import os
 import sys
 
+os.environ["KERAS_BACKEND"] = "plaidml.keras.backend"
+
 from keras.models import Sequential, load_model
 from scipy.ndimage import measurements
 
