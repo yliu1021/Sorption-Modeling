@@ -1,4 +1,5 @@
 import os
+import argparse
 os.environ["KERAS_BACKEND"] = "plaidml.keras.backend"
 
 import numpy as np
@@ -12,6 +13,8 @@ from keras.callbacks import *
 from constants import *
 
 
+boost_dim = 30
+
 def create_target_model():
     base_dir = MODEL_BASE_DIR
     model_loc = os.path.join(base_dir, "cnn_123-70.h5")
@@ -22,7 +25,7 @@ def create_target_model():
 
 
 def create_generative_model():
-    inputs = Input(shape=(1,))
+    inputs = Input(shape=(1+boost_dim,))
     
     x = Dense(N_SQUARES)(inputs)
     x = Dense(N_SQUARES, activation='relu')(x)
@@ -36,27 +39,48 @@ def create_generative_model():
     return Model(inputs=inputs, outputs=x)
 
 
+def train_generative_model():
+    x_train = np.random.uniform(0.0, 1.0, size=(10000, 1+boost_dim))
+    y_train = x_train[:, 0]
 
-x_train = np.random.uniform(0.0, 5.0, size=(10000, 1))
-y_train = np.copy(x_train)
+    gen_model = create_generative_model()
+    target_model = create_target_model()
 
-gen_model = create_generative_model()
-target_model = create_target_model()
+    train_in = Input(shape=(1+boost_dim,))
 
-train_in = Input(shape=(1,))
+    pred_tensor = target_model(gen_model(train_in))
+    base_model = Model(inputs=train_in, outputs=pred_tensor)
+    base_model.compile(optimizer='adam',
+                       loss='mean_squared_error')
+    base_model.summary()
+    checkpoint_location = "generative_model/checkpoints/base_model.{epoch:02d}-{val_loss:.2E}.hdf5"
+    base_model.fit(x_train, y_train, batch_size=32, epochs=5, validation_split=0.3,
+                   callbacks=[EarlyStopping(patience=5),
+                              TensorBoard(log_dir='./generative_model/logs/', histogram_freq=1, batch_size=16, write_grads=True,
+                                          write_images=True, update_freq='epoch'),
+                              ReduceLROnPlateau(patience=3, factor=0.2, min_lr=10**-7),
+                              ModelCheckpoint(checkpoint_location, save_best_only=True)])
 
-pred_tensor = target_model(gen_model(train_in))
-base_model = Model(inputs=train_in, outputs=pred_tensor)
-base_model.compile(optimizer='adam',
-                   loss='mean_squared_error')
-base_model.summary()
-checkpoint_location = "generative_model/checkpoints/weights.{epoch:02d}-{val_loss:.2f}.hdf5"
-base_model.fit(x_train, y_train, batch_size=32, epochs=30, validation_split=0.3,
-               callbacks=[EarlyStopping(patience=5),
-                          TensorBoard(log_dir='./generative_model/logs/', histogram_freq=1, batch_size=16, write_grads=True,
-                                      write_images=True, update_freq='epoch'),
-                          ReduceLROnPlateau(patience=3, factor=0.2, min_lr=10**-7),
-                          ModelCheckpoint(checkpoint_location, save_best_only=True, )])
+    gen_model.save("generative_model/generative_model.hdf5")
+    target_model.save("generative_model/test_model.hdf5")
 
-gen_model.save("generative_model/generative_model.h5")
-target_model.save("generative_model/test_model.h5")
+
+def predict():
+    gen_model = load_model("generative_model/generative_model.hdf5")
+    print("generating random losses")
+    x_rand = np.random.uniform(0.0, 10.0, size=(1000, 1+boost_dim))
+    x_rand[:, 0] = np.random.uniform(0.0, 0.01, size=(1000,))
+    print("predicting...")
+    grids = gen_model.predict(x_rand)
+    grids = np.around(grids).astype('int')
+    grids = np.reshape(grids, (1000, GRID_SIZE, GRID_SIZE))
+    print("saving...")
+    for i in range(1000):
+        print('\rfinished {} / {}'.format(i, 1000), end='')
+        path = os.path.join("generative_model/artificial_grids/", "grid_%04d.csv" % i)
+        np.savetxt(path, grids[i, :, :], fmt="%i", delimiter=',')
+    print('\nDone')
+
+
+if __name__ == "__main__":
+    predict()
