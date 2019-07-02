@@ -4,6 +4,7 @@ import random
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from itertools import cycle
 
 from constants import *
 
@@ -13,12 +14,12 @@ def press(event):
         exit(0)
 
 
-v = '0'
+v = '3'
 density_files = glob.glob('predict_mc/results{}/density*.csv'.format(v))
 grid_files = glob.glob('predict_mc/grids{}/grid*.csv'.format(v))
 density_files.sort()
 grid_files.sort()
-for density_file, grid_file in zip(density_files, grid_files):
+for density_file, grid_file in cycle(zip(density_files, grid_files)):
     df = pd.read_csv(density_file, index_col=0)
     
     grid = np.genfromtxt(grid_file, delimiter=',')
