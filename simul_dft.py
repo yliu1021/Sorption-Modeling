@@ -4,6 +4,7 @@ import pandas as pd
 import sys
 import os
 from multiprocessing import Pool
+import tqdm
 
 from constants import *
 
@@ -46,12 +47,13 @@ def run_dft_iters(grid_base_dir=GRID_DIR, result_base_dir=RESULT_DIR):
         os.makedirs(result_dir, exist_ok=True)
         n_grids = dataset[1]
         
+        # we set the appropriate objects for multiprocessing to pickle
         pool_arg['grid_dir'] = grid_dir
         pool_arg['result_dir'] = result_dir
         p = Pool()
-        for i, _ in enumerate(p.imap_unordered(run_dft_pool, range(n_grids)), 1):
-            print("\r{}/{} {:.2f}%".format(i, n_grids, i/n_grids*100), end='')
-        print()
+        # then use tqdm to display a progress bar for running the dft simulation
+        # on all the grids
+        list(tqdm.tqdm(p.imap(run_dft_pool, range(n_grids)), total=n_grids))
 
 # Run the DFT simulation for a single flattened grid
 def run_dft(grid):
