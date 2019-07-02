@@ -136,13 +136,13 @@ def generate_set(grid_dir=GRID_DIR):
     os.makedirs(grid_dir, exist_ok=True)
     for i in range(1000):
         transform_grid(i, GRID_SIZE, generate_grid(
-            N_FILLED, THRESH, N_VAR, GRID_SIZE), False, grid_dir, True)
+            N_FILLED, THRESH, N_VAR, GRID_SIZE), False, grid_dir+'1', True)
     for i in range(1000):
         transform_grid(i, GRID_SIZE, alt_generate_grid(
-            N_FILLED, THRESH, N_VAR, GRID_SIZE), False, grid_dir, True)
+            N_FILLED, THRESH, N_VAR, GRID_SIZE), False, grid_dir+'2', True)
     for i in range(9):
         transform_grid(i, GRID_SIZE, square_generate_grid(
-            i + 1, GRID_SIZE), False, grid_dir, True)
+            i + 1, GRID_SIZE), False, grid_dir+'3', True)
 
 
 if __name__ == '__main__':
