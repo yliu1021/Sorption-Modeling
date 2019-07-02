@@ -13,11 +13,11 @@ from keras.callbacks import *
 from constants import *
 
 
-boost_dim = 30
+boost_dim = 0
 
 def create_target_model():
     base_dir = MODEL_BASE_DIR
-    model_loc = os.path.join(base_dir, "cnn_123-70.h5")
+    model_loc = os.path.join(base_dir, "cnn_0-70.h5")
 
     model = load_model(model_loc)
     model.trainable = False
@@ -39,8 +39,25 @@ def create_generative_model():
     return Model(inputs=inputs, outputs=x)
 
 
+def create_discriminative_model():
+    inputs = Input(shape=(N_SQUARES,))
+    
+    x = Dense(N_SQUARES)(inputs)
+    x = Reshape((GRID_SIZE, GRID_SIZE, 1))(x)
+    x = Conv2D(16, 3, strides=1, padding='same', activation='relu')(x)
+    x = Conv2D(16, 3, strides=1, padding='same', activation='relu')(x)
+    x = Conv2D(32, 3, strides=1, padding='same', activation='relu')(x)
+    x = Flatten()(x)
+    x = Dense(2048, activation='relu')(x)
+    x = Dense(1, activation='sigmoid')(x)
+    return Model(inputs=inputs, outputs=x)
+
+
 def train_generative_model():
-    x_train = np.random.uniform(0.0, 1.0, size=(10000, 1+boost_dim))
+    os.makedirs("generative_model", exist_ok=True)
+    os.makedirs("generative_model/checkpoints", exist_ok=True)
+    
+    x_train = np.random.uniform(0.0, 5.0, size=(10000, 1+boost_dim))
     y_train = x_train[:, 0]
 
     gen_model = create_generative_model()
@@ -54,7 +71,7 @@ def train_generative_model():
                        loss='mean_squared_error')
     base_model.summary()
     checkpoint_location = "generative_model/checkpoints/base_model.{epoch:02d}-{val_loss:.2E}.hdf5"
-    base_model.fit(x_train, y_train, batch_size=32, epochs=5, validation_split=0.3,
+    base_model.fit(x_train, y_train, batch_size=32, epochs=10, validation_split=0.3,
                    callbacks=[EarlyStopping(patience=5),
                               TensorBoard(log_dir='./generative_model/logs/', histogram_freq=1, batch_size=16, write_grads=True,
                                           write_images=True, update_freq='epoch'),
@@ -65,22 +82,24 @@ def train_generative_model():
     target_model.save("generative_model/test_model.hdf5")
 
 
-def predict():
+def predict(n_grids=100):
+    os.makedirs("generative_model/grids0", exist_ok=True)
     gen_model = load_model("generative_model/generative_model.hdf5")
     print("generating random losses")
-    x_rand = np.random.uniform(0.0, 10.0, size=(1000, 1+boost_dim))
-    x_rand[:, 0] = np.random.uniform(0.0, 0.01, size=(1000,))
+    x_rand = np.random.uniform(0.0, 10.0, size=(n_grids, 1+boost_dim))
+    x_rand[:, 0] = np.linspace(0.0, 5.0, num=n_grids)
     print("predicting...")
     grids = gen_model.predict(x_rand)
     grids = np.around(grids).astype('int')
-    grids = np.reshape(grids, (1000, GRID_SIZE, GRID_SIZE))
+    grids = np.reshape(grids, (n_grids, GRID_SIZE, GRID_SIZE))
     print("saving...")
-    for i in range(1000):
-        print('\rfinished {} / {}'.format(i, 1000), end='')
-        path = os.path.join("generative_model/artificial_grids/", "grid_%04d.csv" % i)
+    for i in range(n_grids):
+        print('\rfinished {} / {}'.format(i+1, n_grids), end='')
+        path = os.path.join("generative_model/grids0", "grid_%04d.csv" % i)
         np.savetxt(path, grids[i, :, :], fmt="%i", delimiter=',')
     print('\nDone')
 
 
 if __name__ == "__main__":
-    predict()
+    train_generative_model()
+    predict(n_grids=1000)
