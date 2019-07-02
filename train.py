@@ -64,7 +64,7 @@ def simple_cnn(one_layer=False):
 def train(model, x_train, y_train, x_test):
     model.compile(loss='mean_squared_error',
                   optimizer='sgd',
-                  metrics=['accuracy'])
+                  metrics=[])
     model.fit(x_train, y_train, epochs=100, batch_size=32)
     return model
 
