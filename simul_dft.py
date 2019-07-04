@@ -130,7 +130,7 @@ def run_dft(grid):
                 r[:,4] = rounew                     # convergence criteria
             if i == 100000000-1:
                 print('error')                      # cannot converge
-        density[jj] = sum(r[:,4])/(Ntotal_pores)    # normalized by the number of empty pores
+        density[jj] = sum(r[:,4])/(max(Ntotal_pores, 1))    # normalized by the number of empty pores
     return density
 
 if __name__ == '__main__':
