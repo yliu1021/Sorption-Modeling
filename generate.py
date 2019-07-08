@@ -4,12 +4,18 @@ from multiprocessing import Pool
 from random import randint
 
 import numpy as np
+np.set_printoptions(edgeitems=3)
+np.core.arrayprint._line_width = 1000
+import pandas as pd
 # os.environ["KERAS_BACKEND"] = "plaidml.keras.backend"
 import keras
 from keras.layers import *
+from keras.optimizers import *
 from keras.models import Model, Sequential
 from keras.models import load_model
 from keras.callbacks import *
+from keras import backend as K
+from keras.utils.generic_utils import get_custom_objects
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
@@ -33,9 +39,9 @@ outputs on something)
 
 base_dir = 'generative_model'
 # Hyperparameters
-categorical_boost_dim = 5
-binary_boost_dim = 5
-uniform_boost_dim = 1
+categorical_boost_dim = 2
+binary_boost_dim = 1
+uniform_boost_dim = 10
 num_boost_dim = categorical_boost_dim + binary_boost_dim + uniform_boost_dim
 loss_weights = [1, 0.05, 0.05, 0.2] # weights of losses in the metric and each latent code
 
@@ -43,10 +49,20 @@ proxy_enforcer_epochs = 200
 proxy_enforcer_batchsize = 64
 
 generator_train_size = 10000
-generator_epochs = 200
+generator_epochs = 15
 generator_batchsize = 64
 
-n_gen_grids = 1000
+n_gen_grids = 300
+
+
+def homogeneity_loss(layer):
+    def loss(y_true, y_pred):
+        return K.abs(y_pred - y_true) + 0.0025*K.sum(K.exp(-K.abs(2 * layer - 1)), axis=(1,2))
+    return loss
+    
+strong_sigmoid_factor = 50.0
+def strong_sigmoid(x):
+    return 1.0 / (1.0 + K.exp(-strong_sigmoid_factor*x))
 
 
 def make_proxy_enforcer_model():
@@ -73,7 +89,7 @@ def make_proxy_enforcer_model():
     x = Flatten()(x)
     
     hidden = Dense(1024, name='hidden_fc')(x)
-    hidden = BatchNormalization()(hidden)
+    # hidden = BatchNormalization()(hidden)
     
     # use the hidden layer for latent codes as well as output
     latent_code_cat = Dense(categorical_boost_dim, activation='softmax', name='categorical_latent_codes')(hidden)
@@ -107,23 +123,26 @@ def make_generator_model():
     H_GRID_SIZE = GRID_SIZE // 2
 
     x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 64, name='fc1', use_bias=False)(conc)
-    x = BatchNormalization()(x)
+    # x = BatchNormalization()(x) 
     x = LeakyReLU()(x)
     x = Reshape((Q_GRID_SIZE, Q_GRID_SIZE, 64))(x)
 
     x = Conv2DTranspose(64, 3, strides=1, padding='same', name='deconv1')(x)
-    x = BatchNormalization()(x)
+    # x = BatchNormalization()(x)
     x = LeakyReLU()(x)
+    x = Dropout(0.1)(x)
     
     x = Conv2DTranspose(64, 3, strides=2, padding='same', name='deconv2')(x)
-    x = BatchNormalization()(x)
+    # x = BatchNormalization()(x)
     x = LeakyReLU()(x)
+    x = Dropout(0.1)(x)
     
     x = Conv2DTranspose(128, 3, strides=2, padding='same', name='deconv3')(x)
-    x = BatchNormalization()(x)
+    # x = BatchNormalization()(x)
     x = LeakyReLU()(x)
+    x = Dropout(0.1)(x)
     
-    out = Conv2D(1, 3, strides=1, padding='valid', activation='sigmoid', name='conv1')(x)
+    out = Conv2D(1, 3, strides=1, padding='valid', activation=strong_sigmoid, name='conv1')(x)
     out = ZeroPadding2D(padding=1)(out)
     out = Reshape((GRID_SIZE, GRID_SIZE))(out)
 
@@ -147,9 +166,9 @@ def make_generator_input(n_grids=10000, use_gaussian_metric=False):
     uniform_latent_code = np.random.uniform(low=0.0, high=1.0, size=(n_grids, uniform_boost_dim))
     
     if use_gaussian_metric:
-        artificial_metrics = np.random.normal(loc=-1.0, scale=2., size=(n_grids,))
+        artificial_metrics = np.random.normal(loc=0.5, scale=0.25, size=(n_grids,))
     else:
-        artificial_metrics = np.random.uniform(low=-5.0, high=2.6, size=(n_grids,))
+        artificial_metrics = np.random.uniform(low=0.0, high=1.0, size=(n_grids,))
     
     return (artificial_metrics, categorical_latent_code, binary_latent_code, uniform_latent_code)
 
@@ -181,13 +200,22 @@ def train_step(generator_model, proxy_enforcer_model, lc_cat, lc_bin, lc_uni, st
     prev_step = step - 1
     step_dir = os.path.join(base_dir, 'step{}'.format(step))
     prev_step_dir = os.path.join(base_dir, 'step{}'.format(prev_step))
+    enforcer_log_dir = os.path.join(step_dir, 'enforcer_log')
+    generator_log_dir = os.path.join(step_dir, 'generator_log')
+    generator_model_save_loc = os.path.join(step_dir, 'generator.hdf5')
+    proxy_enforcer_model_save_loc = os.path.join(step_dir, 'enforcer.hdf5')
+    lc_cat_save_loc = os.path.join(step_dir, 'lc_cat.hdf5')
+    lc_bin_save_loc = os.path.join(step_dir, 'lc_bin.hdf5')
+    lc_uni_save_loc = os.path.join(step_dir, 'lc_uni.hdf5')
+    os.makedirs(enforcer_log_dir, exist_ok=True)
+    os.makedirs(generator_log_dir, exist_ok=True)
     os.makedirs(step_dir, exist_ok=True)
     
     # Train M
     # load the grids and densities from previous 5 steps (or less if we don't have that much)
     grids = list()
     densities = list()
-    for s in range(step - 1, max(-1, step - 5), -1):
+    for s in range(step - 1, max(-1, step - 10), -1):
         print('loading from step %d' % s)
         grids.extend(fetch_grids_from_step(s))
         densities.extend(fetch_density_from_step(s))
@@ -201,7 +229,7 @@ def train_step(generator_model, proxy_enforcer_model, lc_cat, lc_bin, lc_uni, st
     
     densities[:, :, 0] /= N_ADSORP
 
-    metric = np.log(np.sum(np.absolute(densities[:, :, 1] - densities[:, :, 0]), axis=1))
+    metric = (np.sum(np.absolute(densities[:, :, 1] - densities[:, :, 0]), axis=1) / 20.0)
     print('Metric stats: {:.2f} ± {:.2f}'.format(metric.mean(), metric.std()))    
     proxy_enforcer_model.trainable = True
     proxy_enforcer_model.compile('adam', loss='mse', metrics=['mae'])
@@ -209,15 +237,16 @@ def train_step(generator_model, proxy_enforcer_model, lc_cat, lc_bin, lc_uni, st
     proxy_enforcer_model.fit(x=grids, y=metric, batch_size=proxy_enforcer_batchsize,
                              epochs=proxy_enforcer_epochs, validation_split=0.1,
                              callbacks=[ReduceLROnPlateau(patience=10),
-                                        EarlyStopping(patience=25)])
-                             
+                                        EarlyStopping(patience=30, restore_best_weights=True)])
+    proxy_enforcer_model.save_weights(proxy_enforcer_model_save_loc)
+
     # Train G on M
     # generate artificial training data
     (artificial_metrics,
      categorical_latent_code,
      binary_latent_code,
      uniform_latent_code) = make_generator_input(n_grids=generator_train_size)
-
+     
     latent_code_cat = Input(shape=(categorical_boost_dim,))
     latent_code_bin = Input(shape=(binary_boost_dim,))
     latent_code_uni = Input(shape=(uniform_boost_dim,))
@@ -232,28 +261,27 @@ def train_step(generator_model, proxy_enforcer_model, lc_cat, lc_bin, lc_uni, st
     latent_code_uni_out = lc_uni(generator_out)
     
     training_model = Model(inputs=[inp, latent_code_cat, latent_code_bin, latent_code_uni],
-                           outputs=[proxy_enforcer_out, latent_code_cat_out, latent_code_bin_out, latent_code_uni_out])
-    training_model.compile('adam', loss=['mae', 'categorical_crossentropy', 'binary_crossentropy', 'mse'],
+                           outputs=[proxy_enforcer_out, latent_code_cat_out, latent_code_bin_out,
+                                    latent_code_uni_out])
+    optimizer = Adam(lr=0.001, clipnorm=1.0)
+    training_model.compile(optimizer, loss=['mse', 'categorical_crossentropy',
+                                         'binary_crossentropy', 'mae'],
                            metrics={
+                               'proxy_enforcer_model': 'mae',
                                'categorical_latent_code_model': 'categorical_accuracy',
                                'binary_latent_code_model': 'binary_accuracy',
-                               'uniform_latent_code_model': 'mae',
-                               'proxy_enforcer_model': 'mse'
+                               'uniform_latent_code_model': 'mae'
                            }, loss_weights=loss_weights)
     training_model.summary()
-    training_model.fit(x=[artificial_metrics, categorical_latent_code, binary_latent_code, uniform_latent_code],
-                       y=[artificial_metrics, categorical_latent_code, binary_latent_code, uniform_latent_code],
+    training_model.fit(x=[artificial_metrics, categorical_latent_code, binary_latent_code,
+                          uniform_latent_code],
+                       y=[artificial_metrics, categorical_latent_code, binary_latent_code,
+                          uniform_latent_code],
                        batch_size=generator_batchsize, epochs=generator_epochs,
-                       validation_split=0.2, callbacks=[ReduceLROnPlateau(patience=5),
-                                                        EarlyStopping(patience=10)])
+                       validation_split=0.2, callbacks=[ReduceLROnPlateau(patience=10),
+                                                        EarlyStopping(patience=30, restore_best_weights=True)])
 
-    generator_model_save_loc = os.path.join(step_dir, 'generator.hdf5')
-    proxy_enforcer_model_save_loc = os.path.join(step_dir, 'enforcer.hdf5')
-    lc_cat_save_loc = os.path.join(step_dir, 'lc_cat.hdf5')
-    lc_bin_save_loc = os.path.join(step_dir, 'lc_bin.hdf5')
-    lc_uni_save_loc = os.path.join(step_dir, 'lc_uni.hdf5')
     generator_model.save_weights(generator_model_save_loc)
-    proxy_enforcer_model.save_weights(proxy_enforcer_model_save_loc)
     lc_cat.save_weights(lc_cat_save_loc)
     lc_bin.save_weights(lc_bin_save_loc)
     lc_uni.save_weights(lc_uni_save_loc)
@@ -263,43 +291,66 @@ def train_step(generator_model, proxy_enforcer_model, lc_cat, lc_bin, lc_uni, st
      categorical_latent_code, 
      binary_latent_code,
      uniform_latent_code) = make_generator_input(n_grids=n_gen_grids)
-    artificial_metrics = np.linspace(-5.0, 2.6, num=n_gen_grids)
+    artificial_metrics = np.linspace(0.0, 1.0, num=n_gen_grids)
     
     generated_grids = generator_model.predict([artificial_metrics,
                                                categorical_latent_code, 
                                                binary_latent_code,
                                                uniform_latent_code])
-    generated_grids = np.around(generated_grids).astype('int')
+    eval_grids = np.around(generated_grids).astype('int')
 
     grid_dir = os.path.join(step_dir, 'grids')
     density_dir = os.path.join(step_dir, 'results')
     os.makedirs(grid_dir, exist_ok=True)
     os.makedirs(density_dir, exist_ok=True)
-    print('saving new grids')
+    print('saving eval (rounded) grids')
     for i in range(n_gen_grids):
         path = os.path.join(grid_dir, 'grid_%04d.csv'%i)
-        np.savetxt(path, generated_grids[i, :, :], fmt='%i', delimiter=',')
+        np.savetxt(path, eval_grids[i, :, :], fmt='%i', delimiter=',')
     
+    print('evaluating grids')
     dft.pool_arg['grid_dir'] = grid_dir
     dft.pool_arg['result_dir'] = density_dir
     p = Pool()
     list(tqdm(p.imap(dft.run_dft_pool, range(n_gen_grids)), total=n_gen_grids))
-    
+
+    print('saving generated (not rounded) grids and copying densities')
+    new_densities = fetch_density_from_step(step)
+    for i in range(n_gen_grids, 2*n_gen_grids):
+        density = new_densities[i - n_gen_grids]
+        density = pd.DataFrame(density)
+        grid_path = os.path.join(grid_dir, 'grid_%04d.csv'%i)
+        density_path = os.path.join(density_dir, 'density_%04d.csv'%i)
+        np.savetxt(grid_path, generated_grids[i - n_gen_grids, :, :], delimiter=',')
+        density.to_csv(density_path)
+
 
 def test_model(step):
     generator_model = make_generator_model()
+    enforcer_model, _ = make_proxy_enforcer_model()
     generator_model.load_weights('generative_model/step{}/generator.hdf5'.format(step), by_name=True)
+    enforcer_model.load_weights('generative_model/step{}/enforcer.hdf5'.format(step), by_name=True)
     step_dir = os.path.join(base_dir, 'step{}'.format(step))
     (_,
      categorical_latent_code, 
      binary_latent_code,
      uniform_latent_code) = make_generator_input(n_grids=n_gen_grids)
-    artificial_metrics = np.linspace(-5.0, 3.0, num=n_gen_grids)
+    artificial_metrics = np.linspace(0.0, 1.0, num=n_gen_grids)
     
     generated_grids = generator_model.predict([artificial_metrics,
                                                categorical_latent_code, 
                                                binary_latent_code,
                                                uniform_latent_code])
+    generated_grids = generated_grids - generated_grids.mean() + 0.5
+    generated_grids = generated_grids.clip(0.0, 1.0)
+
+    # predicted_metrics = enforcer_model.predict(generated_grids)
+    # for i in range(generated_grids.shape[0]):
+    #     print(predicted_metrics[i])
+    #     plt.pcolor(generated_grids[i], cmap='Greys')
+    #     plt.show()
+    # exit(0)
+    
     generated_grids = np.around(generated_grids).astype('int')
 
     grid_dir = os.path.join(step_dir, 'grids')
@@ -320,19 +371,23 @@ def test_model(step):
 
 def test_acc():
     proxy_enforcer_model, _ = make_proxy_enforcer_model()
-    proxy_enforcer_model.load_weights('generative_model/step3/enforcer.hdf5')
-    grid = np.genfromtxt('generative_model/step3/grids/grid_0000.csv', delimiter=',')
-    density = np.genfromtxt('generative_model/step3/results/density_0000.csv', delimiter=',',
-                            skip_header=1, max_rows=N_ADSORP)
+    proxy_enforcer_model.load_weights('generative_model/step11/enforcer.hdf5')
+    grid = np.array(fetch_grids_from_step(11))
+    density = np.array(fetch_density_from_step(11))
     density[:, 0] /= N_ADSORP
-    metric = np.log(np.sum(np.absolute(density[:, 1] - density[:, 0]), axis=0))
-    print(metric)
-    grid = np.reshape(grid, (1, 20, 20))
-    p = proxy_enforcer_model.predict(grid)
-    print(p)
+    metric = (np.sum(np.absolute(density[:, 1] - density[:, 0]), axis=1))
+    pred = np.squeeze(proxy_enforcer_model.predict(grid))
+    
+    plt.scatter(metric, pred[:100])
+    plt.show()
+
+    exit(0)
 
 
 if __name__ == '__main__':
+    test_model(2)
+    exit(0)
+    
     generator_model = make_generator_model()
     proxy_enforcer_model, (lc_cat, lc_bin, lc_uni) = make_proxy_enforcer_model()
 
@@ -350,6 +405,6 @@ if __name__ == '__main__':
         lc_bin.load_weights(lc_bin_save_loc)
         lc_uni.load_weights(lc_uni_save_loc)
 
-    for step in range(4, 10):
+    for step in range(11, 100):
         train_step(generator_model, proxy_enforcer_model, lc_cat, lc_bin, lc_uni, step=step)
 
