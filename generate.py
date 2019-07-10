@@ -164,7 +164,7 @@ def make_generator_model():
     x = BatchNormalization()(x)
     x = LeakyReLU()(x)
 
-    out = Conv2D(1, 2, strides=1, padding='valid', activation=binary_sigmoid, name='conv1')(x)
+    out = Conv2D(1, 3, strides=1, padding='valid', activation=binary_sigmoid, name='conv1')(x)
     out = ZeroPadding2D(padding=1)(out)
     out = Reshape((GRID_SIZE, GRID_SIZE))(out)
 
@@ -342,7 +342,7 @@ def visualize_grids(step):
     #     plt.pcolor(generated_grids[i], cmap='Greys')
     #     plt.title('Predicted metric: {:.4f}'.format(float(predicted_metrics[i])))
     #     plt.show()
-    exit(0)
+    # exit(0)
     
     generated_grids = np.around(generated_grids).astype('int')
 
