@@ -144,7 +144,6 @@ def run_dft_fast(grid):
 
     r[1:N_SQUARES + 1, 3] = grid
     Ntotal_pores = sum(r[:,3])
-    #print(Ntotal_pores)       
 
     # Record the neighbor list
     rc = 1.01
@@ -161,24 +160,21 @@ def run_dft_fast(grid):
             d12_square = r12[1,1]*r12[1,1]+r12[1,2]*r12[1,2]
             if d12_square <= rc_square:
                 NN[i] = NN[i]+1
-                NN1 = int(NN[i])
+                NN1 = NN[i]
                 NL[i,NN1] = jj
                 NN[jj] = NN[jj]+1
-                NN2 = int(NN[jj])
+                NN2 = NN[jj]
                 NL[jj,NN2]= i
     NN_max = NN[:,0].max()           
     NL = NL[:,0:NN_max+1]
-    #print('NL')
 
     # Let the pores be filled fully    
     for i in range(1, N_SQUARES + 1):   
         if r[i,3] == 1:
             r[i,4] = 1
     density = np.zeros((N_ITER + 1, 1))
-    #print('start')
 
     # Calculate the density through iteration
-    Y4 = Y * 4
     for jj in range(0, N_ITER + 1):
         #print(jj)
         if jj <= N_ADSORP:
@@ -189,19 +185,11 @@ def run_dft_fast(grid):
             muu = -90                               # a large negative potential as suggested in the paper
         else:                                      
             muu = MUSAT+KB*T*math.log(RH)
-        for i in range(1,100000000):
+        for _ in range(1,100000000):
+            r_acc = WFF*(r[:, 4] + Y*(1 - r[:, 3]))
             vi = np.zeros((N_SQUARES + 1))
             for i2 in range(1, N_SQUARES + 1):
-                acc = 0.0
-                aa = NL[i2,1]
-                acc += r[aa, 4] + Y*r[aa,3]
-                aa = NL[i2,2]
-                acc += r[aa, 4] + Y*r[aa,3]
-                aa = NL[i2,3]
-                acc += r[aa, 4] + Y*r[aa,3]
-                aa = NL[i2,4]
-                acc += r[aa, 4] + Y*r[aa,3]
-                vi[i2] += WFF*acc + Y4
+                vi[i2] += r_acc[NL[i2, 1]] + r_acc[NL[i2, 2]] + r_acc[NL[i2, 3]] + r_acc[NL[i2, 4]]
             vi += muu
             vi[0] = 0
             vi[N_SQUARES] = 0
@@ -214,7 +202,7 @@ def run_dft_fast(grid):
             drou = rounew - r[:,4]
             power_drou = np.sum(drou**2)/(N_SQUARES)           # convergence criteria
             if power_drou < 1e-10:
-                r[:,4] = rounew[:]
+                r[:,4] = rounew
                 break
             else:
                 r[:,4] = rounew                     # convergence criteria
@@ -290,23 +278,25 @@ if __name__ == '__main__':
 from __main__ import run_dft, run_dft_fast
 import numpy as np
 from constants import N_SQUARES
-grid = np.genfromtxt('generative_model/step3/grids/grid_0001.csv', delimiter=',')
+grid = np.genfromtxt('generative_model/step4/grids/grid_0001.csv', delimiter=',')
 grid = grid.reshape(N_SQUARES)
 """
     from random import randint
-    for _ in range(5):
-        i = randint(0, 299)
-        grid = np.genfromtxt('generative_model/step3/grids/grid_%04d.csv'%i, delimiter=',')
+    for i in range(5):
+        r = randint(0, 299)
+        grid = np.genfromtxt('generative_model/step4/grids/grid_%04d.csv'%r, delimiter=',')
         grid = grid.reshape(N_SQUARES)
         den1 = run_dft(grid)
         den2 = run_dft_fast(grid)
-        if np.sum(den1 - den2) < 10e-16:
-            print("Got same densities")
+        largest_diff = np.max(np.abs(den1 - den2))
+        if largest_diff < 10e-15:
+            print("Got same densities (with diff {})".format(largest_diff))
         else:
             print("Got different densities")
             print(den1)
             print(den2)
-            print(np.sum(den1 - den2))
+            print(largest_diff)
+            print(np.sum(np.abs(den1 - den2)))
             exit(0)
 
     import timeit
