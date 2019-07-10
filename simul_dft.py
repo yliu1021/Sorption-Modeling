@@ -137,44 +137,44 @@ def run_dft(grid):
 
 def run_dft_fast(grid):
     # Intialize the pore
-    r = np.zeros((N_SQUARES + 1, 5))
+    r = np.zeros((N_SQUARES + 1, 4))
     range_20 = np.arange(20, dtype='float64')
-    r[:, 1] = np.insert(np.tile(range_20, GRID_SIZE), 0, 0)
-    r[:, 2] = np.insert(np.repeat(range_20, GRID_SIZE), 0, 0)
+    r[:, 0] = np.insert(np.tile(range_20, GRID_SIZE), 0, 0)
+    r[:, 1] = np.insert(np.repeat(range_20, GRID_SIZE), 0, 0)
 
-    r[1:N_SQUARES + 1, 3] = grid
-    Ntotal_pores = sum(r[:,3])
+    r[1:N_SQUARES + 1, 2] = grid
+    Ntotal_pores = sum(r[:,2])
+    if Ntotal_pores == 0:
+        return np.zeros((N_ITER + 1, 1))
 
     # Record the neighbor list
     rc = 1.01
     rc_square = rc**2
-    NN = np.zeros((N_SQUARES + 1, 1), dtype=np.int)
+    NN = np.zeros((N_SQUARES + 1), dtype=np.int)
     NL = np.zeros((N_SQUARES + 1, N_SQUARES), dtype=np.int)
-    r12 = np.zeros((2,3))
     for i in range(1,N_SQUARES + 1-1):
-        for jj in range(i+1,N_SQUARES + 1):
-            r12[1,1] = r[jj,1]-r[i,1]
-            r12[1,2] = r[jj,2]-r[i,2]
-            r12[1,1] = r12[1,1]-round(r12[1,1]/GRID_SIZE)*GRID_SIZE
-            r12[1,2] = r12[1,2]-round(r12[1,2]/GRID_SIZE)*GRID_SIZE
-            d12_square = r12[1,1]*r12[1,1]+r12[1,2]*r12[1,2]
-            if d12_square <= rc_square:
-                NN[i] = NN[i]+1
-                NN1 = NN[i]
-                NL[i,NN1] = jj
-                NN[jj] = NN[jj]+1
-                NN2 = NN[jj]
-                NL[jj,NN2]= i
-    NN_max = NN[:,0].max()           
-    NL = NL[:,0:NN_max+1]
+        r1 = r[:, 0] - r[i, 0]
+        r2 = r[:, 1] - r[i, 1]
+        r1 = r1 - np.round(r1 / GRID_SIZE) * GRID_SIZE
+        r2 = r2 - np.round(r2 / GRID_SIZE) * GRID_SIZE
+        d12_squares = r1 * r1 + r2 * r2
+        small_enough = d12_squares <= rc_square
+        for jj in range(i+1, N_SQUARES + 1):
+            if small_enough[jj]:
+                NN[i] += 1
+                NN[jj] += 1
+                NL[i,NN[i]] = jj
+                NL[jj,NN[jj]]= i        
+    NL = NL[:,0:NN.max()+1]
 
     # Let the pores be filled fully    
     for i in range(1, N_SQUARES + 1):   
-        if r[i,3] == 1:
-            r[i,4] = 1
-    density = np.zeros((N_ITER + 1, 1))
-
+        if r[i,2] == 1:
+            r[i,3] = 1
+    
     # Calculate the density through iteration
+    start = time.time()
+    density = np.zeros((N_ITER + 1, 1))
     for jj in range(0, N_ITER + 1):
         #print(jj)
         if jj <= N_ADSORP:
@@ -186,7 +186,7 @@ def run_dft_fast(grid):
         else:                                      
             muu = MUSAT+KB*T*math.log(RH)
         for _ in range(1,100000000):
-            r_acc = WFF*(r[:, 4] + Y*(1 - r[:, 3]))
+            r_acc = WFF*(r[:, 3] + Y*(1 - r[:, 2]))
             vi = np.zeros((N_SQUARES + 1))
             for i2 in range(1, N_SQUARES + 1):
                 vi[i2] += r_acc[NL[i2, 1]] + r_acc[NL[i2, 2]] + r_acc[NL[i2, 3]] + r_acc[NL[i2, 4]]
@@ -195,78 +195,20 @@ def run_dft_fast(grid):
             vi[N_SQUARES] = 0
                 
             rounew = np.zeros((N_SQUARES + 1))
-            rounew = r[:, 3] / (1 + np.exp(-BETA*vi))
+            rounew = r[:, 2] / (1 + np.exp(-BETA*vi))
             rounew[0] = 0
             rounew[N_SQUARES] = 0
             
-            drou = rounew - r[:,4]
+            drou = rounew - r[:,3]
             power_drou = np.sum(drou**2)/(N_SQUARES)           # convergence criteria
             if power_drou < 1e-10:
-                r[:,4] = rounew
+                r[:,3] = rounew
                 break
             else:
-                r[:,4] = rounew                     # convergence criteria
+                r[:,3] = rounew                     # convergence criteria
         else:
             print('error')                      # cannot converge
-        density[jj] = sum(r[:,4])/(max(Ntotal_pores, 1))    # normalized by the number of empty pores
-    # for i in range(1,100000000):
-    #     vi = veff(r,-90,NL)
-    #     rounew = rou(vi,r)
-    #     drou = rounew - r[:,4]
-    #     power_drou = np.sum(drou**2)/(N_SQUARES)           # convergence criteria
-    #     if power_drou < 1e-10:
-    #         r[:,4] = rounew[:]
-    #         break
-    #     else:
-    #         r[:,4] = rounew                     # convergence criteria
-    #     if i == 100000000-1:
-    #         print('error')                      # cannot converge
-    # density[0] = sum(r[:,4])/(max(Ntotal_pores, 1))    # normalized by the number of empty pores
-    # for jj in range(1, N_ADSORP + 1):
-    #     RH = jj * STEP_SIZE
-    #     muu = MUSAT+KB*T*math.log(RH)
-    #     for i in range(1,100000000):
-    #         vi = veff(r,muu,NL)
-    #         rounew = rou(vi,r)
-    #         drou = rounew - r[:,4]
-    #         power_drou = np.sum(drou**2)/(N_SQUARES)           # convergence criteria
-    #         if power_drou < 1e-10:
-    #             r[:,4] = rounew[:]
-    #             break
-    #         else:
-    #             r[:,4] = rounew                     # convergence criteria
-    #         if i == 100000000-1:
-    #             print('error')                      # cannot converge
-    #     density[jj] = sum(r[:,4])/(max(Ntotal_pores, 1))    # normalized by the number of empty pores
-    # for jj in range(N_ADSORP + 1, N_ITER):
-    #     RH = N_ADSORP*STEP_SIZE - (jj-N_ADSORP)*STEP_SIZE  # decrease relative humidity
-    #     muu = MUSAT+KB*T*math.log(RH)
-    #     for i in range(1,100000000):
-    #         vi = veff(r,muu,NL)
-    #         rounew = rou(vi,r)
-    #         drou = rounew - r[:,4]
-    #         power_drou = np.sum(drou**2)/(N_SQUARES)           # convergence criteria
-    #         if power_drou < 1e-10:
-    #             r[:,4] = rounew[:]
-    #             break
-    #         else:
-    #             r[:,4] = rounew                     # convergence criteria
-    #         if i == 100000000-1:
-    #             print('error')                      # cannot converge
-    #     density[jj] = sum(r[:,4])/(max(Ntotal_pores, 1))    # normalized by the number of empty pores
-    # for i in range(1,100000000):
-    #     vi = veff(r,-90,NL)
-    #     rounew = rou(vi,r)
-    #     drou = rounew - r[:,4]
-    #     power_drou = np.sum(drou**2)/(N_SQUARES)           # convergence criteria
-    #     if power_drou < 1e-10:
-    #         r[:,4] = rounew[:]
-    #         break
-    #     else:
-    #         r[:,4] = rounew                     # convergence criteria
-    #     if i == 100000000-1:
-    #         print('error')                      # cannot converge
-    # density[N_ITER] = sum(r[:,4])/(max(Ntotal_pores, 1))    # normalized by the number of empty pores
+        density[jj] = sum(r[:,3])/(Ntotal_pores)    # normalized by the number of empty pores
 
     return density
 
@@ -278,7 +220,7 @@ if __name__ == '__main__':
 from __main__ import run_dft, run_dft_fast
 import numpy as np
 from constants import N_SQUARES
-grid = np.genfromtxt('generative_model/step4/grids/grid_0001.csv', delimiter=',')
+grid = np.genfromtxt('generative_model/step4/grids/grid_0031.csv', delimiter=',')
 grid = grid.reshape(N_SQUARES)
 """
     from random import randint
