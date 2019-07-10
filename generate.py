@@ -47,11 +47,11 @@ uniform_boost_dim = 40
 loss_weights = [1, 0.5] # weights of losses in the metric and each latent code
 
 proxy_enforcer_epochs = 100
-proxy_enforcer_batchsize = 64
+proxy_enforcer_batchsize = 32
 
 generator_train_size = 10000
-generator_epochs = 20
-generator_batchsize = 64
+generator_epochs = 100
+generator_batchsize = 32
 
 n_gen_grids = 300
 
@@ -85,6 +85,14 @@ def binary_sigmoid(x):
     - [BinaryNet: Training Deep Neural Networks with Weights and Activations Constrained to +1 or -1, Courbariaux et al. 2016](http://arxiv.org/abs/1602.02830}
     '''
     return round_through(_hard_sigmoid(x))
+
+
+def worst_abs_loss(y_true, y_pred):
+    return K.max(K.abs(y_true - y_pred))
+
+
+def worst_mse_loss(y_true, y_pred):
+    return K.max((y_true - y_pred) ** 2)
 
 
 def make_proxy_enforcer_model():
@@ -156,11 +164,15 @@ def make_generator_model():
     x = BatchNormalization()(x)
     x = LeakyReLU()(x)
     
-    x = Conv2DTranspose(64, 2, strides=2, padding='same', name='deconv3')(x)
+    x = Conv2DTranspose(32, 2, strides=1, padding='same', name='deconv3')(x)
+    x = BatchNormalization()(x)
+    x = LeakyReLU()(x)
+
+    x = Conv2DTranspose(64, 2, strides=2, padding='same', name='deconv4')(x)
     x = BatchNormalization()(x)
     x = LeakyReLU()(x)
     
-    x = Conv2DTranspose(128, 2, strides=2, padding='same', name='deconv4')(x)
+    x = Conv2DTranspose(128, 2, strides=2, padding='same', name='deconv5')(x)
     x = BatchNormalization()(x)
     x = LeakyReLU()(x)
 
@@ -174,7 +186,7 @@ def make_generator_model():
     return model
 
 
-def make_generator_input(n_grids=10000, use_gaussian_metric=False):
+def make_generator_input(n_grids=10000):
     # def one_hot(i):
     #     a = np.zeros(categorical_boost_dim, dtype='float')
     #     a[i] = 1.0
@@ -186,12 +198,9 @@ def make_generator_input(n_grids=10000, use_gaussian_metric=False):
     # binary_latent_code = np.random.randint(0, high=2, size=(n_grids, binary_boost_dim)).astype('float')
 
     # uniform_latent_code = np.random.uniform(low=0.0, high=1.0, size=(n_grids, uniform_boost_dim))
-    uniform_latent_code = np.random.gaussian(loc=0.0, scale=1.0, size=(n_grids, uniform_boost_dim))
+    uniform_latent_code = np.random.normal(loc=0.0, scale=1.0, size=(n_grids, uniform_boost_dim))
 
-    if use_gaussian_metric:
-        artificial_metrics = np.random.normal(loc=0.5, scale=0.25, size=(n_grids,))
-    else:
-        artificial_metrics = np.random.uniform(low=0.0, high=1.0, size=(n_grids,))
+    artificial_metrics = np.random.uniform(low=0.0, high=1.0, size=(n_grids,))
     
     return (artificial_metrics, uniform_latent_code)
 
@@ -236,7 +245,7 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
     # load the grids and densities from previous 5 steps (or less if we don't have that much)
     grids = list()
     densities = list()
-    for s in range(step - 1, max(-1, step - 10), -1):
+    for s in range(step - 1, max(-1, step - 20), -1):
         print('loading from step %d' % s)
         grids.extend(fetch_grids_from_step(s))
         densities.extend(fetch_density_from_step(s))
@@ -255,19 +264,19 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
     
     proxy_enforcer_model.trainable = True
     optimizer = Adam(lr=0.001, clipnorm=1.0)
-    proxy_enforcer_model.compile(optimizer, loss='mse', metrics=['mae'])
+    proxy_enforcer_model.compile(optimizer, loss='mse', metrics=['mae', worst_abs_loss])
     proxy_enforcer_model.summary()
     proxy_enforcer_model.fit(x=grids, y=metric, batch_size=proxy_enforcer_batchsize,
                              epochs=proxy_enforcer_epochs, validation_split=0.1,
-                             callbacks=[ReduceLROnPlateau(patience=10),
-                                        EarlyStopping(patience=30, restore_best_weights=True)])
+                             callbacks=[ReduceLROnPlateau(patience=30),
+                                        EarlyStopping(patience=50, restore_best_weights=True)])
     proxy_enforcer_model.save_weights(proxy_enforcer_model_save_loc)
 
     # Train G on M
     # generate artificial training data
     (artificial_metrics,
      uniform_latent_code) = make_generator_input(n_grids=generator_train_size)
-    artificial_metrics = artificial_metrics ** 2
+    artificial_metrics = artificial_metrics ** 1.5
 
     latent_code_uni = Input(shape=(uniform_boost_dim,))
 
@@ -284,23 +293,23 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
     training_model.compile(optimizer, loss=['mse', 'mse'],
                            metrics={
                                'proxy_enforcer_model': 'mae',
-                               'uniform_latent_code_model': 'mae'
+                               'proxy_enforcer_model': worst_abs_loss,
+                               'uniform_latent_code_model': 'mae',
                            }, loss_weights=loss_weights)
     training_model.summary()
     training_model.fit(x=[artificial_metrics, uniform_latent_code],
                        y=[artificial_metrics, uniform_latent_code],
                        batch_size=generator_batchsize, epochs=generator_epochs,
-                       validation_split=0.2, callbacks=[ReduceLROnPlateau(patience=10),
-                                                        EarlyStopping(patience=30, restore_best_weights=True)])
+                       validation_split=0.2, callbacks=[ReduceLROnPlateau(patience=30),
+                                                        EarlyStopping(patience=50, restore_best_weights=True)])
 
     generator_model.save_weights(generator_model_save_loc)
     lc_uni.save_weights(lc_uni_save_loc)
 
     # Generate random grids using G then evaluate them
-    (_,
+    (artificial_metrics,
      uniform_latent_code) = make_generator_input(n_grids=n_gen_grids)
-    artificial_metrics = np.linspace(0.0, 1.0, num=n_gen_grids) ** 2
-    
+
     generated_grids = generator_model.predict([artificial_metrics, uniform_latent_code])
     eval_grids = np.around(generated_grids).astype('int')
 
@@ -337,29 +346,31 @@ def visualize_grids(step):
     plt.plot([0, 1], [0, 1])
     plt.xlabel('artificial_metrics')
     plt.ylabel('predicted_metrics')
+    plt.title('step {}'.format(step))
     plt.show()
+
     # for i in range(generated_grids.shape[0]):
     #     plt.pcolor(generated_grids[i], cmap='Greys')
     #     plt.title('Predicted metric: {:.4f}'.format(float(predicted_metrics[i])))
     #     plt.show()
     # exit(0)
     
-    generated_grids = np.around(generated_grids).astype('int')
-
-    grid_dir = os.path.join(step_dir, 'grids')
-    density_dir = os.path.join(step_dir, 'results')
-    os.makedirs(grid_dir, exist_ok=True)
-    os.makedirs(density_dir, exist_ok=True)
-    print('saving new grids')
-    for i in range(n_gen_grids):
-        path = os.path.join(grid_dir, 'grid_%04d.csv'%i)
-        np.savetxt(path, generated_grids[i, :, :], fmt='%i', delimiter=',')
-    
-    print('simulating densities')
-    dft.pool_arg['grid_dir'] = grid_dir
-    dft.pool_arg['result_dir'] = density_dir
-    p = Pool()
-    list(tqdm(p.imap(dft.run_dft_pool, range(n_gen_grids)), total=n_gen_grids))
+    # generated_grids = np.around(generated_grids).astype('int')
+    #
+    # grid_dir = os.path.join(step_dir, 'grids')
+    # density_dir = os.path.join(step_dir, 'results')
+    # os.makedirs(grid_dir, exist_ok=True)
+    # os.makedirs(density_dir, exist_ok=True)
+    # print('saving new grids')
+    # for i in range(n_gen_grids):
+    #     path = os.path.join(grid_dir, 'grid_%04d.csv'%i)
+    #     np.savetxt(path, generated_grids[i, :, :], fmt='%i', delimiter=',')
+    #
+    # print('simulating densities')
+    # dft.pool_arg['grid_dir'] = grid_dir
+    # dft.pool_arg['result_dir'] = density_dir
+    # p = Pool()
+    # list(tqdm(p.imap(dft.run_dft_pool, range(n_gen_grids)), total=n_gen_grids))
 
 
 def visualize_accuracy(step, model_step=None):
@@ -376,21 +387,27 @@ def visualize_accuracy(step, model_step=None):
     
     fit = np.polyfit(metric, pred, 1)
     fit_fn = np.poly1d(fit)
-    plt.plot(metric, fit_fn(metric), color='red')
+    plt.plot(metric, fit_fn(np.linspace(0, 1, num=len(metric))), color='red')
     plt.scatter(metric, pred)
+    plt.xlim(0, 1)
+    plt.ylim(0, 1)
     plt.xlabel('Actual metric')
     plt.ylabel('Predicted metric')
     plt.title('Metric: {:.2f} +/- {:.2f}'.format(metric.mean(), metric.std()))
-    plt.legend(['y={:.2f}x + {:.2f}'.format(fit[0], fit[1]), 'actual vs pred'])
+    plt.legend(['y={:.2f}x + {:.2f}'.format(fit[0], fit[1]), 'step {}'.format(step)])
     plt.show()
-
-    exit(0)
+    # exit(0)
 
 
 if __name__ == '__main__':
-    # visualize_grids(6)
-    # visualize_accuracy(5, model_step=6)
-    for step in range(7, 100):
+    for i in range(9, 8, -1):
+        visualize_grids(i)
+    visualize_accuracy(9, model_step=9)
+    for i in range(0, 9):
+        visualize_accuracy(i, model_step=9)
+    exit(0)
+
+    for step in range(9, 100):
         generator_model = make_generator_model()
         proxy_enforcer_model, (lc_uni) = make_proxy_enforcer_model()
         train_step(generator_model, proxy_enforcer_model, lc_uni, step=step)

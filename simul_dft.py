@@ -143,7 +143,7 @@ def run_dft_fast(grid):
     r[:, 1] = np.insert(np.repeat(range_20, GRID_SIZE), 0, 0)
 
     r[1:N_SQUARES + 1, 2] = grid
-    Ntotal_pores = sum(r[:,2])
+    Ntotal_pores = np.sum(r[:,2])
     if Ntotal_pores == 0:
         return np.zeros((N_ITER + 1, 1))
 
@@ -158,7 +158,7 @@ def run_dft_fast(grid):
         r1 = r1 - np.round(r1 / GRID_SIZE) * GRID_SIZE
         r2 = r2 - np.round(r2 / GRID_SIZE) * GRID_SIZE
         d12_squares = r1 * r1 + r2 * r2
-        small_enough = d12_squares <= rc_square
+        small_enough = d12_squares <= 1.0201 # rc_square
         for jj in range(i+1, N_SQUARES + 1):
             if small_enough[jj]:
                 NN[i] += 1
@@ -167,13 +167,10 @@ def run_dft_fast(grid):
                 NL[jj,NN[jj]]= i        
     NL = NL[:,0:NN.max()+1]
 
-    # Let the pores be filled fully    
-    for i in range(1, N_SQUARES + 1):   
-        if r[i,2] == 1:
-            r[i,3] = 1
+    # Let the pores be filled fully
+    r[1:N_SQUARES+1, 3] = r[1:N_SQUARES+1, 2]
     
     # Calculate the density through iteration
-    start = time.time()
     density = np.zeros((N_ITER + 1, 1))
     for jj in range(0, N_ITER + 1):
         #print(jj)
@@ -190,9 +187,7 @@ def run_dft_fast(grid):
             vi = np.zeros((N_SQUARES + 1))
             for i2 in range(1, N_SQUARES + 1):
                 vi[i2] += r_acc[NL[i2, 1]] + r_acc[NL[i2, 2]] + r_acc[NL[i2, 3]] + r_acc[NL[i2, 4]]
-            vi += muu
-            vi[0] = 0
-            vi[N_SQUARES] = 0
+            vi[1:N_SQUARES+1] += muu
                 
             rounew = np.zeros((N_SQUARES + 1))
             rounew = r[:, 2] / (1 + np.exp(-BETA*vi))
