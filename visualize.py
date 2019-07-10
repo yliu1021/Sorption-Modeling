@@ -27,7 +27,10 @@ if __name__ == '__main__':
     grid_files.sort()
     for density_file, grid_file in cycle(zip(density_files, grid_files)):
         df = pd.read_csv(density_file, index_col=0)
-    
+        density = df['0'][0:N_ADSORP]
+        target_density = np.linspace(0.0, 1.0, num=40)
+        metric = (np.sum(np.absolute(density - target_density)) / 20.0)
+        
         grid = np.genfromtxt(grid_file, delimiter=',')
     
         fig = plt.figure(1)
@@ -42,5 +45,6 @@ if __name__ == '__main__':
         ax.title.set_text('Density {}'.format(density_file))
         ax.plot(df.index[0:N_ADSORP], df['0'][0:N_ADSORP])
         ax.plot(np.linspace(0, N_ADSORP, num=N_ADSORP), np.linspace(0, 1, num=N_ADSORP))
+        ax.legend(['Metric: {:.2f}'.format(metric), 'Target'])
         ax.set_aspect(N_ADSORP)
         plt.show()
