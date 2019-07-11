@@ -35,16 +35,16 @@ if __name__ == '__main__':
     
         fig = plt.figure(1)
         fig.canvas.mpl_connect('key_press_event', press)
+        fig.suptitle('{}, {}'.format('/'.join(grid_file.split('/')[-3:]), '/'.join(density_file.split('/')[-3:])))
 
         ax = plt.subplot(211)
-        ax.title.set_text('Grid {}'.format(grid_file))
         ax.pcolor(grid, cmap='Greys')
         ax.set_aspect('equal')
 
         ax = plt.subplot(212)
-        ax.title.set_text('Density {}'.format(density_file))
         ax.plot(df.index[0:N_ADSORP], df['0'][0:N_ADSORP])
         ax.plot(np.linspace(0, N_ADSORP, num=N_ADSORP), np.linspace(0, 1, num=N_ADSORP))
         ax.legend(['Metric: {:.2f}'.format(metric), 'Target'])
         ax.set_aspect(N_ADSORP)
+        
         plt.show()
