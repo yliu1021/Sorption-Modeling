@@ -47,11 +47,11 @@ uniform_boost_dim = 5
 # num_boost_dim = categorical_boost_dim + binary_boost_dim + uniform_boost_dim
 loss_weights = [1, 0.5] # weights of losses in the metric and each latent code
 
-proxy_enforcer_epochs = 100
+proxy_enforcer_epochs = 150
 proxy_enforcer_batchsize = 32
 
 generator_train_size = 100000
-generator_epochs = 35
+generator_epochs = 50
 generator_batchsize = 64
 
 n_gen_grids = 300
