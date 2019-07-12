@@ -50,8 +50,8 @@ loss_weights = [1, 0.5] # weights of losses in the metric and each latent code
 proxy_enforcer_epochs = 150
 proxy_enforcer_batchsize = 32
 
-generator_train_size = 100000
-generator_epochs = 50
+generator_train_size = 1000000
+generator_epochs = 10
 generator_batchsize = 64
 
 n_gen_grids = 300
@@ -164,19 +164,19 @@ def make_generator_model():
     x = BatchNormalization()(x)
     x = LeakyReLU()(x)
     
-    x = Conv2DTranspose(32, 2, strides=1, padding='same', name='deconv2')(x)
+    x = Conv2DTranspose(32, 3, strides=1, padding='same', name='deconv2')(x)
     x = BatchNormalization()(x)
     x = LeakyReLU()(x)
     
-    x = Conv2DTranspose(32, 2, strides=1, padding='same', name='deconv3')(x)
+    x = Conv2DTranspose(32, 3, strides=1, padding='same', name='deconv3')(x)
     x = BatchNormalization()(x)
     x = LeakyReLU()(x)
 
-    x = Conv2DTranspose(64, 2, strides=2, padding='same', name='deconv_expand_1')(x)
+    x = Conv2DTranspose(128, 3, strides=2, padding='same', name='deconv_expand_1')(x)
     x = BatchNormalization()(x)
     x = LeakyReLU()(x)
     
-    x = Conv2DTranspose(128, 2, strides=2, padding='same', name='deconv_expand_2')(x)
+    x = Conv2DTranspose(128, 3, strides=2, padding='same', name='deconv_expand_2')(x)
     x = BatchNormalization()(x)
     x = LeakyReLU()(x)
 
@@ -340,55 +340,95 @@ def visualize_grids(model_step=None):
     enforcer_model, _ = make_proxy_enforcer_model()
     generator_model.load_weights('generative_model/step{}/generator.hdf5'.format(model_step), by_name=True)
     enforcer_model.load_weights('generative_model/step{}/enforcer.hdf5'.format(model_step), by_name=True)
-    (_,
-     uniform_latent_code) = make_generator_input(n_grids=n_gen_grids)
-    artificial_metrics = np.linspace(0.0, 1.0, num=n_gen_grids)
+
+    for _ in range(5):
+        points = 200
+        step_points = points // 4
+        latent_range = (-0.5, 0.5)
+        uniform_latent_code_25 = np.random.uniform(*latent_range, size=(step_points, uniform_boost_dim))
+        uniform_latent_code_50 = np.random.uniform(*latent_range, size=(step_points, uniform_boost_dim))
+        uniform_latent_code_75 = np.random.uniform(*latent_range, size=(step_points, uniform_boost_dim))
+        uniform_latent_code_100 = np.random.uniform(*latent_range, size=(step_points, uniform_boost_dim))        
+        artificial_metrics_25 = np.linspace(0.0, 0.25, num=step_points)
+        artificial_metrics_50 = np.linspace(0.25, 0.5, num=step_points)
+        artificial_metrics_75 = np.linspace(0.5, 0.75, num=step_points)
+        artificial_metrics_100 = np.linspace(0.75, 1.0, num=step_points)
     
-    generated_grids = generator_model.predict([artificial_metrics, uniform_latent_code])
-    predicted_metrics = enforcer_model.predict(generated_grids)
+        generated_grids_25 = generator_model.predict([artificial_metrics_25, uniform_latent_code_25])
+        generated_grids_50 = generator_model.predict([artificial_metrics_50, uniform_latent_code_50])
+        generated_grids_75 = generator_model.predict([artificial_metrics_75, uniform_latent_code_75])
+        generated_grids_100 = generator_model.predict([artificial_metrics_100, uniform_latent_code_100])
+        predicted_metrics_25 = np.squeeze(enforcer_model.predict(generated_grids_25))
+        predicted_metrics_50 = np.squeeze(enforcer_model.predict(generated_grids_50))
+        predicted_metrics_75 = np.squeeze(enforcer_model.predict(generated_grids_75))
+        predicted_metrics_100 = np.squeeze(enforcer_model.predict(generated_grids_100))
     
-    plt.scatter(artificial_metrics, predicted_metrics)
-    plt.plot([0, 1], [0, 1])
-    plt.xlabel('artificial_metrics')
-    plt.ylabel('predicted_metrics')
-    plt.title('step {}'.format(model_step))
-    plt.show()
+        artificial_metrics = np.concatenate((artificial_metrics_25,
+                                         artificial_metrics_50,
+                                         artificial_metrics_75,
+                                         artificial_metrics_100))
+        predicted_metrics = np.concatenate((predicted_metrics_25,
+                                         predicted_metrics_50,
+                                         predicted_metrics_75,
+                                         predicted_metrics_100))
+        fit = np.polyfit(artificial_metrics, predicted_metrics, 1)
+        
+        fit_fn = np.poly1d(fit)
+    
+        plt.scatter(artificial_metrics_25, predicted_metrics_25)
+        plt.scatter(artificial_metrics_50, predicted_metrics_50)
+        plt.scatter(artificial_metrics_75, predicted_metrics_75)
+        plt.scatter(artificial_metrics_100, predicted_metrics_100)
+        
+        x = np.linspace(0.0, 1.0, num=2)
+        plt.plot(x, fit_fn(x))
+        plt.plot([0, 1], [0, 1])
+        plt.xlabel('artificial_metrics')
+        plt.ylabel('predicted_metrics')
+        plt.title('step {}'.format(model_step))
+        plt.legend(['best fit y = {:.2f}x + {:.2f}'.format(fit[0], fit[1]), 'base line',
+                    '0.0-0.25', '0.25-0.50', '0.50-0.75', '0.75-1.00'])
+        plt.show()
 
 
-def visualize_accuracy(step, model_step=None):
+def visualize_accuracy(max_steps, model_step=None):
     if model_step is None:
         model_step = step
     proxy_enforcer_model, _ = make_proxy_enforcer_model()
     proxy_enforcer_model.load_weights('generative_model/step{}/enforcer.hdf5'.format(model_step))
-    grid = np.array(fetch_grids_from_step(step))
-    density = np.array(fetch_density_from_step(step))
-    density[:, :, 0] /= N_ADSORP
-    metric = (np.sum(np.abs(density[:, :, 1] - density[:, :, 0]), axis=1) / 20.0)
-
-    pred = np.squeeze(proxy_enforcer_model.predict(grid))
     
-    fit = np.polyfit(metric, pred, 1)
-    fit_fn = np.poly1d(fit)
-    x = np.linspace(0, 1, num=10)
-    plt.plot(x, fit_fn(x), color='red')
-    plt.scatter(metric, pred)
-    plt.xlim(0, 1)
-    plt.ylim(0, 1)
-    plt.xlabel('Actual metric')
-    plt.ylabel('Predicted metric')
-    plt.title('Metric: {:.2f} +/- {:.2f}'.format(metric.mean(), metric.std()))
-    plt.legend(['y={:.2f}x + {:.2f}'.format(fit[0], fit[1]), 'step {}'.format(step)])
-    plt.show()
-    # exit(0)
+    for step in range(max_steps):
+        grid = np.array(fetch_grids_from_step(step))
+        if (grid.size == 0):
+            continue
+        density = np.array(fetch_density_from_step(step))
+        density[:, :, 0] /= N_ADSORP
+        metric = (np.sum(np.abs(density[:, :, 1] - density[:, :, 0]), axis=1) / 20.0)
+
+        pred = np.squeeze(proxy_enforcer_model.predict(grid))
+    
+        fit = np.polyfit(metric, pred, 1)
+        fit_fn = np.poly1d(fit)
+        x = np.linspace(0, 1, num=10)
+        plt.plot([0, 1], [0, 1])
+        plt.plot(x, fit_fn(x), color='red')
+        plt.scatter(metric, pred)
+        plt.xlim(0, 1)
+        plt.ylim(0, 1)
+        plt.xlabel('Actual metric')
+        plt.ylabel('Predicted metric')
+        plt.title('Metric: {:.2f} +/- {:.2f}'.format(metric.mean(), metric.std()))
+        plt.legend(['base line',
+                    'y = {:.2f}x + {:.2f}'.format(fit[0], fit[1]),
+                    'step {}'.format(step)])
+        plt.show()
 
 
 if __name__ == '__main__':
-    max_steps = 26
-    # for _ in range(5):
-    #     visualize_grids(model_step=max_steps)
-    # for i in range(26, max_steps+1):
-    #     visualize_accuracy(i, model_step=max_steps)
-    # exit(0)
+    max_steps = 31
+    visualize_grids(model_step=max_steps)
+    visualize_accuracy(max_steps, model_step=max_steps)
+    exit(0)
 
     parser = argparse.ArgumentParser()
     parser.add_argument("startfrom", help="start training from step",
