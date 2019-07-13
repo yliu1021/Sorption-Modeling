@@ -38,6 +38,11 @@ C are latent codes that seed the generative model (to make it parameterize its
 outputs on something)
 """
 
+"""
+Remove zero padding around grids
+Optimize CNN
+DFT ground truth
+"""
 
 base_dir = 'generative_model'
 # Hyperparameters
@@ -97,7 +102,6 @@ def worst_mse_loss(y_true, y_pred):
 
 
 def make_proxy_enforcer_model():
-    # shared layers
     inp = Input(shape=(GRID_SIZE, GRID_SIZE), name='proxy_enforcer_input')
     x = Reshape((GRID_SIZE, GRID_SIZE, 1), name='reshape')(inp)
     
@@ -119,30 +123,17 @@ def make_proxy_enforcer_model():
     x = Flatten()(x)
     
     hidden = Dense(2048, name='hidden_fc')(x)
-    # hidden = BatchNormalization()(hidden)
-    
-    # use the hidden layer for latent codes as well as output
-    # latent_code_cat = Dense(categorical_boost_dim, activation='softmax', name='categorical_latent_codes')(hidden)
-    # latent_code_bin = Dense(binary_boost_dim, activation='sigmoid', name='binary_latent_codes')(hidden)
+
     latent_code_uni = Dense(uniform_boost_dim, name='uniform_latent_codes')(hidden)
     out = Dense(1, name='out')(hidden)
     
     model = Model(inputs=[inp], outputs=[out], name='proxy_enforcer_model')
-    # model.compile(loss='mean_squared_error', optimizer='adam')
-    
-    # lc_cat = Model(inputs=[inp], outputs=[latent_code_cat], name='categorical_latent_code_model')
-    # lc_cat.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['categorical_accuracy'])
-    # lc_bin = Model(inputs=[inp], outputs=[latent_code_bin], name='binary_latent_code_model')
-    # lc_bin.compile(loss='binary_crossentropy', optimizer='adam', metrics=['binary_accuracy'])
     lc_uni = Model(inputs=[inp], outputs=[latent_code_uni], name='uniform_latent_code_model')
-    # lc_uni.compile(loss='mean_squared_error', optimizer='adam', metrics=['mean_absolute_error'])
 
     return model, lc_uni
 
 
 def make_generator_model():
-    # latent_code_cat = Input(shape=(categorical_boost_dim,))
-    # latent_code_bin = Input(shape=(binary_boost_dim,))
     latent_code_uni = Input(shape=(uniform_boost_dim,))
 
     inp = Input(shape=(1,))
@@ -180,8 +171,7 @@ def make_generator_model():
     x = BatchNormalization()(x)
     x = LeakyReLU()(x)
 
-    out = Conv2D(1, 3, strides=1, padding='valid', activation=binary_sigmoid, name='conv1')(x)
-    out = ZeroPadding2D(padding=1)(out)
+    out = Conv2D(1, 3, strides=1, padding='same', activation=binary_sigmoid, name='conv1')(x)
     out = Reshape((GRID_SIZE, GRID_SIZE))(out)
 
     model = Model(inputs=[inp, latent_code_uni], outputs=[out],
@@ -191,18 +181,7 @@ def make_generator_model():
 
 
 def make_generator_input(n_grids=10000):
-    # def one_hot(i):
-    #     a = np.zeros(categorical_boost_dim, dtype='float')
-    #     a[i] = 1.0
-    #     return a
-    # categorical_latent_code = [one_hot(x % categorical_boost_dim) for x in range(n_grids)]
-    # categorical_latent_code = np.array(categorical_latent_code)
-    # np.random.shuffle(categorical_latent_code)
-    #
-    # binary_latent_code = np.random.randint(0, high=2, size=(n_grids, binary_boost_dim)).astype('float')
-
-    # uniform_latent_code = np.random.uniform(low=0.0, high=1.0, size=(n_grids, uniform_boost_dim))
-    uniform_latent_code = np.random.normal(loc=0.0, scale=1.0, size=(n_grids, uniform_boost_dim))
+    uniform_latent_code = np.random.normal(loc=0.0, scale=0.33, size=(n_grids, uniform_boost_dim))
 
     artificial_metrics = np.random.uniform(low=0.0, high=1.0, size=(n_grids,))
     
@@ -333,6 +312,35 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
     list(tqdm(p.imap(dft.run_dft_pool, range(n_gen_grids)), total=n_gen_grids))
 
 
+def gen_and_eval_grids(step):
+    step_dir = os.path.join(base_dir, 'step{}'.format(step))
+    os.makedirs(step_dir, exist_ok=True)
+
+    generator_model = make_generator_model()
+    generator_model.load_weights('generative_model/step{}/generator.hdf5'.format(step), by_name=True)
+    
+    uniform_latent_code = np.random.uniform(-0.2, 0.2, size=(n_gen_grids, uniform_boost_dim))
+    artificial_metrics = np.linspace(0.0, 1.0, num=n_gen_grids)
+    
+    generated_grids = generator_model.predict([artificial_metrics, uniform_latent_code])
+    eval_grids = np.around(generated_grids).astype('int')
+
+    grid_dir = os.path.join(step_dir, 'grids')
+    density_dir = os.path.join(step_dir, 'results')
+    os.makedirs(grid_dir, exist_ok=True)
+    os.makedirs(density_dir, exist_ok=True)
+    print('saving eval grids')
+    for i in range(n_gen_grids):
+        path = os.path.join(grid_dir, 'grid_%04d.csv'%i)
+        np.savetxt(path, eval_grids[i, :, :], fmt='%i', delimiter=',')
+    
+    print('evaluating grids')
+    dft.pool_arg['grid_dir'] = grid_dir
+    dft.pool_arg['result_dir'] = density_dir
+    p = Pool()
+    list(tqdm(p.imap(dft.run_dft_pool, range(n_gen_grids)), total=n_gen_grids))
+
+
 def visualize_grids(model_step=None):
     if model_step is None:
         model_step = 1
@@ -397,7 +405,7 @@ def visualize_accuracy(max_steps, model_step=None):
     proxy_enforcer_model, _ = make_proxy_enforcer_model()
     proxy_enforcer_model.load_weights('generative_model/step{}/enforcer.hdf5'.format(model_step))
     
-    for step in range(max_steps):
+    for step in range(max_steps, -1, -1):
         grid = np.array(fetch_grids_from_step(step))
         if (grid.size == 0):
             continue
@@ -408,6 +416,10 @@ def visualize_accuracy(max_steps, model_step=None):
         pred = np.squeeze(proxy_enforcer_model.predict(grid))
     
         fit = np.polyfit(metric, pred, 1)
+        print(np.corrcoef(np.log(metric), np.log(pred))[0, 1] ** 2)
+        correlation = np.corrcoef(metric, pred)[0, 1]
+        mse = np.mean((pred - metric) ** 2)
+
         fit_fn = np.poly1d(fit)
         x = np.linspace(0, 1, num=10)
         plt.plot([0, 1], [0, 1])
@@ -417,7 +429,11 @@ def visualize_accuracy(max_steps, model_step=None):
         plt.ylim(0, 1)
         plt.xlabel('Actual metric')
         plt.ylabel('Predicted metric')
-        plt.title('Metric: {:.2f} +/- {:.2f}'.format(metric.mean(), metric.std()))
+        plt.title('Metric: {:.2f} +/- {:.2f}, R^2={:.3f}, R={:.3f}, mse={:.3f}'.format(metric.mean(),
+                                                                                       metric.std(),
+                                                                                       correlation**2,
+                                                                                       correlation,
+                                                                                       mse))
         plt.legend(['base line',
                     'y = {:.2f}x + {:.2f}'.format(fit[0], fit[1]),
                     'step {}'.format(step)])
@@ -426,7 +442,9 @@ def visualize_accuracy(max_steps, model_step=None):
 
 if __name__ == '__main__':
     max_steps = 31
-    visualize_grids(model_step=max_steps)
+    # gen_and_eval_grids(31)
+    # exit(0)
+    # visualize_grids(model_step=max_steps)
     visualize_accuracy(max_steps, model_step=max_steps)
     exit(0)
 
