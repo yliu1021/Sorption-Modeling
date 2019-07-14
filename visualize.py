@@ -75,8 +75,8 @@ def show_all_grids():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("v", help="Show the grids/results of step v",
-                        type=int)
+    parser.add_argument("v", nargs="?", help="Show the grids/results of step v",
+                        type=int, default=-1)
     args = parser.parse_args()
     v = args.v
     if v >= 0:
