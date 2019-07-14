@@ -28,7 +28,7 @@ def show_grids(v):
         
         grid = np.genfromtxt(grid_file, delimiter=',')
     
-        fig = plt.figure(1)
+        fig = plt.figure(1, figsize=(6, 8))
         fig.canvas.mpl_connect('key_press_event', press)
         fig.suptitle('{}, {}'.format('/'.join(grid_file.split('/')[-3:]), '/'.join(density_file.split('/')[-3:])))
 
@@ -39,7 +39,7 @@ def show_grids(v):
         ax = plt.subplot(212)
         ax.plot(df.index[0:N_ADSORP], df['0'][0:N_ADSORP])
         ax.plot(np.linspace(0, N_ADSORP, num=N_ADSORP), np.linspace(0, 1, num=N_ADSORP))
-        ax.legend(['Metric: {:.2f}'.format(metric), 'Target'])
+        ax.legend(['Metric: {:.4f}'.format(metric), 'Target'])
         ax.set_aspect(N_ADSORP)
         
         plt.show()
@@ -69,6 +69,7 @@ def show_all_grids():
     plt.title('Metric distribution over train steps')
     plt.xlabel('Train step')
     plt.ylabel('Metric distribution')
+    plt.ylim(0, 1)
     plt.show()
 
 
