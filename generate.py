@@ -52,13 +52,16 @@ uniform_boost_dim = 5
 loss_weights = [1, 0.5] # weights of losses in the metric and each latent code
 
 proxy_enforcer_epochs = 150
+# proxy_enforcer_epochs = 1
 proxy_enforcer_batchsize = 32
 
 generator_train_size = 100000
+# generator_train_size = 100
 generator_epochs = 10
+# generator_epochs = 1
 generator_batchsize = 64
 
-n_gen_grids = 300
+n_gen_grids = 1000
 
 generator_train_bias = 2.0
 
@@ -299,7 +302,7 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
     # Generate random grids using G then evaluate them
     (artificial_metrics,
      uniform_latent_code) = make_generator_input(n_grids=n_gen_grids)
-    uniform_latent_code = np.random.uniform(-0.25, 0.25, size=(n_gen_grids, uniform_boost_dim))
+    uniform_latent_code = np.random.uniform(-0.5, 0.5, size=(n_gen_grids, uniform_boost_dim))
     artificial_metrics = np.linspace(0.0, 1.0, num=n_gen_grids)
     
     generated_grids = generator_model.predict([artificial_metrics, uniform_latent_code])
@@ -315,10 +318,11 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
         np.savetxt(path, eval_grids[i, :, :], fmt='%i', delimiter=',')
     
     print('evaluating grids')
-    dft.pool_arg['grid_dir'] = grid_dir
-    dft.pool_arg['result_dir'] = density_dir
-    p = Pool()
-    list(tqdm(p.imap(dft.run_dft_pool, range(n_gen_grids)), total=n_gen_grids))
+    os.system('./fast_dft {}'.format(step_dir))
+    # dft.pool_arg['grid_dir'] = grid_dir
+    # dft.pool_arg['result_dir'] = density_dir
+    # p = Pool()
+    # list(tqdm(p.imap(dft.run_dft_pool, range(n_gen_grids)), total=n_gen_grids))
 
 
 def gen_and_eval_grids(step):

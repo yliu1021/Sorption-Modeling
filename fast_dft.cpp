@@ -1,4 +1,5 @@
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 #include <vector>
 #include <string>
@@ -230,6 +231,7 @@ int main(int argc, char *argv[]) {
 	string base_dir(argv[1]);
 	if (base_dir.back() != '/')
 		base_dir = base_dir + "/";
+	// base_dir = "./generative_model/step##/"
 	string grid_dir = base_dir + "grids/";
 	string density_dir = base_dir + "results/";
 	for (int i = 0; i < 300; ++i) {
