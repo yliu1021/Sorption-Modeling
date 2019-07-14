@@ -1,5 +1,6 @@
 import os
 import glob
+import sys
 from multiprocessing import Pool
 from random import randint
 import argparse
@@ -61,12 +62,13 @@ generator_batchsize = 64
 
 n_gen_grids = 300
 
+generator_train_bias = 2.0
 
-def homogeneity_loss(layer):
-    def loss(y_true, y_pred):
-        return K.abs(y_pred - y_true) + 0.0025*K.sum(K.exp(-K.abs(2 * layer - 1)), axis=(1,2))
-    return loss
-    
+
+def biased_loss(y_true, y_pred):
+    loss = ((y_pred - y_true) ** 2) * ((y_true + 0.1) ** -0.5)
+    return K.mean(loss, axis=-1)
+
     
 def round_through(x):
     '''Element-wise rounding to the closest integer with full gradient propagation.
@@ -181,7 +183,7 @@ def make_generator_model():
 
 
 def make_generator_input(n_grids=10000):
-    uniform_latent_code = np.random.normal(loc=0.0, scale=0.33, size=(n_grids, uniform_boost_dim))
+    uniform_latent_code = np.random.normal(loc=0.0, scale=0.25, size=(n_grids, uniform_boost_dim))
 
     artificial_metrics = np.random.uniform(low=0.0, high=1.0, size=(n_grids,))
     
@@ -228,7 +230,7 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
     # load the grids and densities from previous 5 steps (or less if we don't have that much)
     grids = list()
     densities = list()
-    for s in range(step - 1, max(-1, -1), -1):
+    for s in range(step - 1, max(-1, -1), -1): # for now just load all previous grids
         print('loading from step %d' % s)
         grids.extend(fetch_grids_from_step(s))
         densities.extend(fetch_density_from_step(s))
@@ -247,8 +249,12 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
     
     proxy_enforcer_model.trainable = True
     optimizer = Adam(lr=0.001, clipnorm=1.0)
-    proxy_enforcer_model.compile(optimizer, loss='mse', metrics=['mae', worst_abs_loss])
-    proxy_enforcer_model.summary()
+    proxy_enforcer_model.compile(optimizer, loss=biased_loss, metrics=['mae', worst_abs_loss])
+    trainable_count = int(np.sum([K.count_params(p) for p in set(proxy_enforcer_model.trainable_weights)]))
+    non_trainable_count = int(np.sum([K.count_params(p) for p in set(proxy_enforcer_model.non_trainable_weights)]))
+    print('Total params: {:,}'.format(trainable_count + non_trainable_count))
+    print('Trainable params: {:,}'.format(trainable_count))
+    print('Non-trainable params: {:,}'.format(non_trainable_count))
     proxy_enforcer_model.fit(x=grids, y=metric, batch_size=proxy_enforcer_batchsize,
                              epochs=proxy_enforcer_epochs, validation_split=0.1,
                              callbacks=[ReduceLROnPlateau(patience=30),
@@ -259,7 +265,7 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
     # generate artificial training data
     (artificial_metrics,
      uniform_latent_code) = make_generator_input(n_grids=generator_train_size)
-    artificial_metrics = artificial_metrics ** 2.0
+    artificial_metrics = artificial_metrics ** generator_train_bias
 
     latent_code_uni = Input(shape=(uniform_boost_dim,))
 
@@ -278,12 +284,15 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
                                'proxy_enforcer_model': ['mae', worst_abs_loss],
                                'uniform_latent_code_model': 'mae',
                            }, loss_weights=loss_weights)
-    training_model.summary()
+    trainable_count = int(np.sum([K.count_params(p) for p in set(training_model.trainable_weights)]))
+    non_trainable_count = int(np.sum([K.count_params(p) for p in set(training_model.non_trainable_weights)]))
+    print('Total params: {:,}'.format(trainable_count + non_trainable_count))
+    print('Trainable params: {:,}'.format(trainable_count))
+    print('Non-trainable params: {:,}'.format(non_trainable_count))
     training_model.fit(x=[artificial_metrics, uniform_latent_code],
                        y=[artificial_metrics, uniform_latent_code],
                        batch_size=generator_batchsize, epochs=generator_epochs,
-                       validation_split=0.2, callbacks=[ReduceLROnPlateau(patience=10),
-                                                        EarlyStopping(patience=50, restore_best_weights=True)])
+                       callbacks=[ReduceLROnPlateau(patience=10)])
 
     generator_model.save(generator_model_save_loc)
     lc_uni.save(lc_uni_save_loc)
@@ -291,6 +300,7 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
     # Generate random grids using G then evaluate them
     (artificial_metrics,
      uniform_latent_code) = make_generator_input(n_grids=n_gen_grids)
+    uniform_latent_code = np.random.uniform(-0.25, 0.25, size=(n_gen_grids, uniform_boost_dim))
     artificial_metrics = np.linspace(0.0, 1.0, num=n_gen_grids)
     
     generated_grids = generator_model.predict([artificial_metrics, uniform_latent_code])
@@ -441,21 +451,35 @@ def visualize_accuracy(max_steps, model_step=None):
 
 
 if __name__ == '__main__':
-    max_steps = 31
-    # gen_and_eval_grids(31)
-    # exit(0)
-    # visualize_grids(model_step=max_steps)
-    visualize_accuracy(max_steps, model_step=max_steps)
-    exit(0)
-
     parser = argparse.ArgumentParser()
     parser.add_argument("startfrom", help="start training from step",
-                        type=int)
+                        type=int, nargs="?", default=-1)
     args = parser.parse_args()
+    
     startfrom = args.startfrom
-
-    for step in range(startfrom, 100):
-        generator_model = make_generator_model()
-        proxy_enforcer_model, (lc_uni) = make_proxy_enforcer_model()
-        train_step(generator_model, proxy_enforcer_model, lc_uni, step=step)
+    if startfrom != -1:
+        for step in range(startfrom, 100):
+            generator_model = make_generator_model()
+            proxy_enforcer_model, (lc_uni) = make_proxy_enforcer_model()
+            train_step(generator_model, proxy_enforcer_model, lc_uni, step=step)
+    else:
+        prompt = """\
+Options:
+    1. Visualize generated grids
+    2. Visualize accuracy
+    3. Gen and eval
+Enter <option number> <step number>
+"""
+        inp = input(prompt)
+        option_num, max_steps = inp.split(' ')
+        option_num = int(option_num)
+        max_steps = int(max_steps)
+        if option_num == 1:
+            visualize_grids(model_step=max_steps)
+        elif option_num == 2:
+            visualize_accuracy(max_steps, model_step=max_steps)
+        elif option_num == 3:
+            gen_and_eval_grids(max_steps)
+        else:
+            print('Invalid option')
 
