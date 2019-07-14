@@ -40,6 +40,7 @@ outputs on something)
 """
 
 """
+Work for week 2:
 Remove zero padding around grids
 Optimize CNN
 DFT ground truth
@@ -53,7 +54,7 @@ loss_weights = [1, 0.5] # weights of losses in the metric and each latent code
 proxy_enforcer_epochs = 150
 proxy_enforcer_batchsize = 32
 
-generator_train_size = 1000000
+generator_train_size = 100000
 generator_epochs = 10
 generator_batchsize = 64
 
