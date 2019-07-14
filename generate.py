@@ -57,7 +57,7 @@ proxy_enforcer_batchsize = 32
 
 generator_train_size = 100000
 # generator_train_size = 100
-generator_epochs = 10
+generator_epochs = 15
 # generator_epochs = 1
 generator_batchsize = 64
 
