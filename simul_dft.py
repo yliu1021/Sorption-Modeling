@@ -2,6 +2,7 @@ import numpy as np
 import math
 import pandas as pd
 import sys
+np.set_printoptions(threshold=sys.maxsize)
 import os
 from multiprocessing import Pool
 import tqdm
@@ -100,7 +101,6 @@ def run_dft(grid):
                 NL[jj,NN2]= i
     NN_max = NN[:,0].max()           
     NL = NL[:,0:NN_max+1]
-    #print('NL')
 
     # Let the pores be filled fully    
     for i in range(1, N_SQUARES + 1):   
@@ -108,7 +108,7 @@ def run_dft(grid):
             r[i,4] = 1
     density = np.zeros((N_ITER + 1, 1))
     #print('start')
-
+    
     # Calculate the density through iteration
     for jj in range(0, N_ITER + 1):
         #print(jj)
@@ -121,7 +121,7 @@ def run_dft(grid):
         else:                                      
             muu = MUSAT+KB*T*math.log(RH)
         for i in range(1,100000000):
-            vi = veff(r,muu,NL)                     
+            vi = veff(r,muu,NL)
             rounew = rou(vi,r)
             drou = rounew - r[:,4]
             power_drou = np.sum(drou**2)/(N_SQUARES)           # convergence criteria
@@ -137,7 +137,7 @@ def run_dft(grid):
 
 def run_dft_fast(grid):
     # Intialize the pore
-    r = np.zeros((N_SQUARES + 1, 4))
+    r = np.zeros((N_SQUARES + 1, 4), dtype='float64')
     range_20 = np.arange(20, dtype='float64')
     r[:, 0] = np.insert(np.tile(range_20, GRID_SIZE), 0, 0)
     r[:, 1] = np.insert(np.repeat(range_20, GRID_SIZE), 0, 0)
@@ -188,12 +188,10 @@ def run_dft_fast(grid):
             for i2 in range(1, N_SQUARES + 1):
                 vi[i2] += r_acc[NL[i2, 1]] + r_acc[NL[i2, 2]] + r_acc[NL[i2, 3]] + r_acc[NL[i2, 4]]
             vi[1:N_SQUARES+1] += muu
-                
+
             rounew = np.zeros((N_SQUARES + 1))
             rounew = r[:, 2] / (1 + np.exp(-BETA*vi))
             rounew[0] = 0
-            rounew[N_SQUARES] = 0
-            
             drou = rounew - r[:,3]
             power_drou = np.sum(drou**2)/(N_SQUARES)           # convergence criteria
             if power_drou < 1e-10:
@@ -215,13 +213,14 @@ if __name__ == '__main__':
 from __main__ import run_dft, run_dft_fast
 import numpy as np
 from constants import N_SQUARES
-grid = np.genfromtxt('generative_model/step4/grids/grid_0031.csv', delimiter=',')
+grid = np.genfromtxt('generative_model/step1/grids/grid_0031.csv', delimiter=',')
 grid = grid.reshape(N_SQUARES)
 """
+
     from random import randint
     for i in range(5):
         r = randint(0, 299)
-        grid = np.genfromtxt('generative_model/step4/grids/grid_%04d.csv'%r, delimiter=',')
+        grid = np.genfromtxt('generative_model/step1/grids/grid_%04d.csv'%r, delimiter=',')
         grid = grid.reshape(N_SQUARES)
         den1 = run_dft(grid)
         den2 = run_dft_fast(grid)
@@ -230,8 +229,8 @@ grid = grid.reshape(N_SQUARES)
             print("Got same densities (with diff {})".format(largest_diff))
         else:
             print("Got different densities")
-            print(den1)
-            print(den2)
+            print("Grid: {}".format(r))
+            print(np.concatenate((den1, den2), axis=1))
             print(largest_diff)
             print(np.sum(np.abs(den1 - den2)))
             exit(0)
