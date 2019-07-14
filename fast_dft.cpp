@@ -234,7 +234,7 @@ int main(int argc, char *argv[]) {
 	// base_dir = "./generative_model/step##/"
 	string grid_dir = base_dir + "grids/";
 	string density_dir = base_dir + "results/";
-	for (int i = 0; i < 300; ++i) {
+	for (int i = 0; i < 1000; ++i) {
 		char grid_name[20];
 		sprintf(grid_name, "grid_%04d.csv", i);
 		char density_name[20];
