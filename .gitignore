@@ -123,3 +123,4 @@ generative_model (old)/
 # Misc
 *.ipynb
 *.nb
+fast_dft
