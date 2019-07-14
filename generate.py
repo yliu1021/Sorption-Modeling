@@ -183,7 +183,7 @@ def make_generator_model():
 
 
 def make_generator_input(n_grids=10000):
-    uniform_latent_code = np.random.normal(loc=0.0, scale=0.25, size=(n_grids, uniform_boost_dim))
+    uniform_latent_code = np.random.normal(loc=0.0, scale=0.5, size=(n_grids, uniform_boost_dim))
 
     artificial_metrics = np.random.uniform(low=0.0, high=1.0, size=(n_grids,))
     

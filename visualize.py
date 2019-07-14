@@ -15,12 +15,7 @@ def press(event):
         exit(0)
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument("v", help="Show the grids/results of step v",
-                        type=int)
-    args = parser.parse_args()
-    v = args.v
+def show_grids(v):
     density_files = glob.glob('generative_model/step{}/results/density*.csv'.format(v))
     grid_files = glob.glob('generative_model/step{}/grids/grid*.csv'.format(v))
     density_files.sort()
@@ -48,3 +43,42 @@ if __name__ == '__main__':
         ax.set_aspect(N_ADSORP)
         
         plt.show()
+                          
+
+def show_all_grids():
+    steps = 'generative_model'
+    step_dirs = glob.glob(os.path.join(steps, 'step*'))
+    step_dirs.sort(key=lambda x: int(x.split('/')[-1][4:]))
+    metrics = list()
+    for step_dir in step_dirs:
+        step_num = int(step_dir.split('/')[-1][4:])
+        print('loading step {}'.format(step_num))
+        density_dir = os.path.join(step_dir, 'results')
+        density_files = glob.glob(os.path.join(density_dir, 'density_*.csv'))
+        if len(density_files) == 0:
+            metrics.append([0])
+            continue
+        density_files.sort()
+        densities = [np.genfromtxt(density_file, delimiter=',', skip_header=1,
+                          max_rows=N_ADSORP) for density_file in density_files]
+        densities = np.array(densities)
+        densities[:, :, 0] /= N_ADSORP
+        metric = (np.sum(np.absolute(densities[:, :, 1] - densities[:, :, 0]), axis=1) / 20.0)
+        metrics.append(metric)
+    plt.violinplot(metrics, showmeans=True, showextrema=True)
+    plt.title('Metric distribution over train steps')
+    plt.xlabel('Train step')
+    plt.ylabel('Metric distribution')
+    plt.show()
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("v", help="Show the grids/results of step v",
+                        type=int)
+    args = parser.parse_args()
+    v = args.v
+    if v >= 0:
+        show_grids(v)
+    else:
+        show_all_grids()
