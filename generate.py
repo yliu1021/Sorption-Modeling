@@ -425,7 +425,7 @@ def visualize_accuracy(max_steps, model_step=None):
         pred = np.squeeze(proxy_enforcer_model.predict(grid))
     
         fit = np.polyfit(metric, pred, 1)
-        print(np.corrcoef(np.log(metric), np.log(pred))[0, 1] ** 2)
+        print("Log R^2: {:.6f}".format(np.corrcoef(np.log(metric), np.log(pred))[0, 1] ** 2))
         correlation = np.corrcoef(metric, pred)[0, 1]
         mse = np.mean((pred - metric) ** 2)
 
@@ -438,7 +438,7 @@ def visualize_accuracy(max_steps, model_step=None):
         plt.ylim(0, 1)
         plt.xlabel('Actual metric')
         plt.ylabel('Predicted metric')
-        plt.title('Metric: {:.2f} +/- {:.2f}, R^2={:.3f}, R={:.3f}, mse={:.3f}'.format(metric.mean(),
+        plt.title('Metric: {:.2f} +/- {:.2f}, R^2={:.3f}, R={:.3f}, mse={:.3e}'.format(metric.mean(),
                                                                                        metric.std(),
                                                                                        correlation**2,
                                                                                        correlation,
