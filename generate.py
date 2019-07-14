@@ -319,9 +319,6 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
     
     print('evaluating grids')
     os.system('./fast_dft {}'.format(step_dir))
-    
-    print('zipping files') 
-    os.system('cd {} && zip -rq step{}.zip step{}'.format(base_dir, step, step))
     # dft.pool_arg['grid_dir'] = grid_dir
     # dft.pool_arg['result_dir'] = density_dir
     # p = Pool()
