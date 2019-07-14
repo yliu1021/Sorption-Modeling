@@ -47,10 +47,7 @@ DFT ground truth
 
 base_dir = 'generative_model'
 # Hyperparameters
-# categorical_boost_dim = 2
-# binary_boost_dim = 1
 uniform_boost_dim = 5
-# num_boost_dim = categorical_boost_dim + binary_boost_dim + uniform_boost_dim
 loss_weights = [1, 0.5] # weights of losses in the metric and each latent code
 
 proxy_enforcer_epochs = 150
@@ -63,6 +60,14 @@ generator_batchsize = 64
 n_gen_grids = 300
 
 generator_train_bias = 2.0
+
+
+def summarize_model(model):
+    trainable_count = int(np.sum([K.count_params(p) for p in set(model.trainable_weights)]))
+    non_trainable_count = int(np.sum([K.count_params(p) for p in set(model.non_trainable_weights)]))
+    print('Total params: {:,}'.format(trainable_count + non_trainable_count))
+    print('Trainable params: {:,}'.format(trainable_count))
+    print('Non-trainable params: {:,}'.format(non_trainable_count))
 
 
 def biased_loss(y_true, y_pred):
@@ -182,7 +187,7 @@ def make_generator_model():
     return model
 
 
-def make_generator_input(n_grids=10000):
+def make_generator_input(n_grids):
     uniform_latent_code = np.random.normal(loc=0.0, scale=0.5, size=(n_grids, uniform_boost_dim))
 
     artificial_metrics = np.random.uniform(low=0.0, high=1.0, size=(n_grids,))
@@ -230,7 +235,7 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
     # load the grids and densities from previous 5 steps (or less if we don't have that much)
     grids = list()
     densities = list()
-    for s in range(step - 1, max(-1, -1), -1): # for now just load all previous grids
+    for s in range(step - 1, -1, -1): # for now just load all previous grids
         print('loading from step %d' % s)
         grids.extend(fetch_grids_from_step(s))
         densities.extend(fetch_density_from_step(s))
@@ -245,18 +250,14 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
     densities[:, :, 0] /= N_ADSORP
 
     metric = (np.sum(np.absolute(densities[:, :, 1] - densities[:, :, 0]), axis=1) / 20.0)
-    print('Metric stats: {:.2f} ± {:.2f}'.format(metric.mean(), metric.std()))    
+    print('Metric stats: {:.3f} ± {:.3f}'.format(metric.mean(), metric.std()))    
     
     proxy_enforcer_model.trainable = True
     optimizer = Adam(lr=0.001, clipnorm=1.0)
     proxy_enforcer_model.compile(optimizer, loss=biased_loss, metrics=['mae', worst_abs_loss])
-    trainable_count = int(np.sum([K.count_params(p) for p in set(proxy_enforcer_model.trainable_weights)]))
-    non_trainable_count = int(np.sum([K.count_params(p) for p in set(proxy_enforcer_model.non_trainable_weights)]))
-    print('Total params: {:,}'.format(trainable_count + non_trainable_count))
-    print('Trainable params: {:,}'.format(trainable_count))
-    print('Non-trainable params: {:,}'.format(non_trainable_count))
+    summarize_model(proxy_enforcer_model)
     proxy_enforcer_model.fit(x=grids, y=metric, batch_size=proxy_enforcer_batchsize,
-                             epochs=proxy_enforcer_epochs, validation_split=0.1,
+                             epochs=proxy_enforcer_epochs, validation_split=0.2,
                              callbacks=[ReduceLROnPlateau(patience=30),
                                         EarlyStopping(patience=50, restore_best_weights=True)])
     proxy_enforcer_model.save(proxy_enforcer_model_save_loc)
@@ -284,15 +285,12 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
                                'proxy_enforcer_model': ['mae', worst_abs_loss],
                                'uniform_latent_code_model': 'mae',
                            }, loss_weights=loss_weights)
-    trainable_count = int(np.sum([K.count_params(p) for p in set(training_model.trainable_weights)]))
-    non_trainable_count = int(np.sum([K.count_params(p) for p in set(training_model.non_trainable_weights)]))
-    print('Total params: {:,}'.format(trainable_count + non_trainable_count))
-    print('Trainable params: {:,}'.format(trainable_count))
-    print('Non-trainable params: {:,}'.format(non_trainable_count))
+    summarize_model(training_model)
     training_model.fit(x=[artificial_metrics, uniform_latent_code],
                        y=[artificial_metrics, uniform_latent_code],
+                       validation_split=0.2,
                        batch_size=generator_batchsize, epochs=generator_epochs,
-                       callbacks=[ReduceLROnPlateau(patience=10)])
+                       callbacks=[ReduceLROnPlateau(patience=5)])
 
     generator_model.save(generator_model_save_loc)
     lc_uni.save(lc_uni_save_loc)
