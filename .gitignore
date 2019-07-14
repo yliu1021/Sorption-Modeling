@@ -112,6 +112,7 @@ predict_ri/
 predict_swarm/
 training/
 generative_model/
+generative_model (old)/
 
 # MacOS
 .DS_Store
@@ -121,3 +122,4 @@ generative_model/
 
 # Misc
 *.ipynb
+*.nb
