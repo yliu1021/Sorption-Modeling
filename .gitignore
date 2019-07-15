@@ -113,7 +113,7 @@ predict_swarm/
 training/
 generative_model/
 generative_model (old)/
-"generative_model (old).zip"
+generative_model_*/
 test/
 
 # MacOS
