@@ -113,6 +113,8 @@ predict_swarm/
 training/
 generative_model/
 generative_model (old)/
+"generative_model (old).zip"
+test/
 
 # MacOS
 .DS_Store
