@@ -284,7 +284,7 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
     training_model = Model(inputs=[inp, latent_code_uni],
                            outputs=[proxy_enforcer_out, latent_code_uni_out])
     optimizer = Adam(lr=0.001, clipnorm=1.0)
-    training_model.compile(optimizer, loss=['mse', 'mse'],
+    training_model.compile(optimizer, loss=[biased_loss, 'mse'],
                            metrics={
                                'proxy_enforcer_model': ['mae', worst_abs_loss],
                                'uniform_latent_code_model': 'mae',
@@ -303,7 +303,7 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
     (artificial_metrics,
      uniform_latent_code) = make_generator_input(n_grids=n_gen_grids)
     uniform_latent_code = np.random.uniform(-0.5, 0.5, size=(n_gen_grids, uniform_boost_dim))
-    artificial_metrics = np.linspace(0.0, 1.0, num=n_gen_grids)
+    artificial_metrics = np.linspace(0.0, 1.0, num=n_gen_grids) ** generator_train_bias
     
     generated_grids = generator_model.predict([artificial_metrics, uniform_latent_code])
     eval_grids = np.around(generated_grids).astype('int')
