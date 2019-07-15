@@ -3,6 +3,8 @@
 #include <fstream>
 #include <vector>
 #include <string>
+#include <thread>
+
 #include <cstring>
 #include <cmath>
 #include <cstdio>
@@ -12,9 +14,7 @@
 using namespace std;
 /*
 fast_dft usage:
-	-g --grids: The directory containing all the grid_####.csv files
-	-r --results: The directory to store all the density_####.csv files
-	fast_dft -g path/to/grids -r path/to/results
+	fast_dft ...folder/containing/grid/folder/
  */
 
 #define GRID_SIZE 20
@@ -32,16 +32,14 @@ const double MUSAT = -2.0 * KB * TC;
 const double C = 4.0;
 const double WFF = -2.0 * MUSAT / C;
 
-/*
-Computes and returns the density of a grid
-	grid: a N_SQUARES long array of doubles
-	The returned pointer to an array must be freed via:
-		delete[] density
- */
-double *run_dft(double grid[]) {
-	double r[4][N_SQUARES + 1];
-	
+int NL[N_SQUARES + 1][N_SQUARES];
+
+
+// setup code for run_dft
+void setup_NL() {
+	double r[2][N_SQUARES + 1];	
 	double Lx = 0.0;
+	r[0][0] = 0.0;
 	for (int i = 1; i <= N_SQUARES; ++i) {
 		r[0][i] = Lx;
 		Lx += 1;
@@ -49,25 +47,16 @@ double *run_dft(double grid[]) {
 			Lx = 0;
 	}
 	double Ly = 0.0;
+	r[1][0] = 0.0;
 	for (int i = 1; i <= N_SQUARES; ++i) {
 		r[1][i] = Ly;
 		if (i % GRID_SIZE == 0)
 			Ly += 1;
 	}
-	
-	for (int i = 1; i <= N_SQUARES; ++i) {
-		r[2][i] = grid[i - 1];
-	}
-	
-	double Ntotal_pores = 0.0;
-	for (int i = 0; i <= N_SQUARES; ++i) {
-		Ntotal_pores += r[2][i];
-	}
-	
+
 	double rc = 1.01;
 	double rc_square = rc * rc;
 	int NN[N_SQUARES + 1];
-	int NL[N_SQUARES + 1][N_SQUARES];
 	memset(NL, 0, N_SQUARES * (N_SQUARES + 1) * sizeof(int));
 	memset(NN, 0, (N_SQUARES + 1) * sizeof(int));
 	for (int i = 1; i < N_SQUARES; ++i) {
@@ -85,23 +74,41 @@ double *run_dft(double grid[]) {
 			}
 		}
 	}
+}
+
+/*
+Computes and returns the density of a grid
+	grid: a N_SQUARES long array of doubles
+	The returned pointer to an array must be freed via:
+		delete[] density
+ */
+double *run_dft(double grid[]) {
+	double r[2][N_SQUARES + 1];
+	r[0][0] = 0.0;
+	r[1][0] = 0.0;
+	
+	double Ntotal_pores = 0.0;
+	for (int i = 1; i <= N_SQUARES; ++i) {
+		double g = grid[i - 1];
+		Ntotal_pores += g;
+		r[0][i] = g;
+	}
 	
 	for (int i = 1; i <= N_SQUARES; ++i) {
-		r[3][i] = r[2][i];
+		r[1][i] = grid[i - 1];
 	}
 	
 	double *density = new double[N_ITER + 1];
+	
 	for (int jj = 0; jj <= N_ITER; ++jj) {
 		double RH;
-		double muu;
+		double muu = -90;
 		if (jj <= N_ADSORP) {
 			RH = jj * STEP_SIZE;
 		} else {
 			RH = N_ADSORP*STEP_SIZE - (jj - N_ADSORP)*STEP_SIZE;
 		}
-		if (RH == 0.0) {
-			muu = -90;
-		} else {
+		if (RH != 0.0) {
 			muu = MUSAT + KB*T*log(RH);
 		}
 		
@@ -113,37 +120,31 @@ double *run_dft(double grid[]) {
 				int a2 = NL[i][2];
 				int a3 = NL[i][3];
 				int a4 = NL[i][4];
-				vi[i] = WFF * (r[3][a1] + Y * (1 - r[2][a1])) +
-						WFF * (r[3][a2] + Y * (1 - r[2][a2])) +
-						WFF * (r[3][a3] + Y * (1 - r[2][a3])) +
-						WFF * (r[3][a4] + Y * (1 - r[2][a4]));
-				vi[i] += muu;
+				vi[i] = WFF * (r[1][a1] + Y * (1 - r[0][a1])) +
+						WFF * (r[1][a2] + Y * (1 - r[0][a2])) +
+						WFF * (r[1][a3] + Y * (1 - r[0][a3])) +
+						WFF * (r[1][a4] + Y * (1 - r[0][a4])) +
+						muu;
 			}
 			// rounew = rou(vi,r)
-			double rounew[N_SQUARES + 1];
-			for (int i = 1; i <= N_SQUARES; ++i) {
-				rounew[i] = r[2][i] / (1 + exp(-BETA * vi[i]));
-			}
-			
 			double power_drou = 0.0;
+			double rounew[N_SQUARES + 1];
+			
 			for (int i = 0; i <= N_SQUARES; ++i) {
-				double diff = rounew[i] - r[3][i];
+				rounew[i] = r[0][i] / (1 + exp(-BETA * vi[i]));
+			}
+			for (int i = 0; i <= N_SQUARES; ++i) {
+				double diff = rounew[i] - r[1][i];
 				power_drou += diff * diff;
+				r[1][i] = rounew[i];
 			}
-			power_drou /= N_SQUARES;
-			for (int i = 0; i <= N_SQUARES; ++i) {
-				r[3][i] = rounew[i];
-			}
-			if (power_drou < 1e-10) {
+			if (power_drou < 1e-10 * N_SQUARES) {
 				break;
-			}
-			if (c == 100000000) {
-				cout << "error" << endl;
 			}
 		}
 		density[jj] = 0.0;
 		for (int i = 0; i <= N_SQUARES; ++i) {
-			density[jj] += r[3][i];
+			density[jj] += r[1][i];
 		}
 		density[jj] /= Ntotal_pores;
 	}
@@ -155,14 +156,7 @@ Loads a grid from a grid_####.csv file
 The returned array to a grid array must be freed via:
 	delete[] grid
  */
-double *load_grid(const string &path) {
-    ifstream grid_file;
-    grid_file.open(path);
-	if (!grid_file.is_open()) {
-		cerr << "File " << path << " doesn't exist" << endl;
-		return nullptr;
-	}
-	
+double *load_grid(istream &grid_file) {
 	double *grid = new double[N_SQUARES];
 	int pos = 0;
 	string line;
@@ -182,6 +176,18 @@ double *load_grid(const string &path) {
 			return nullptr;
 		}
 	}
+	return grid;
+}
+
+double *load_grid(const string &path) {
+    ifstream grid_file;
+    grid_file.open(path);
+	if (!grid_file.is_open()) {
+		cerr << "File " << path << " doesn't exist" << endl;
+		return nullptr;
+	}
+	
+	double *grid = load_grid(grid_file);
 	
 	grid_file.close();
 	return grid;
@@ -210,6 +216,13 @@ double *load_density(const string &path) {
 	return densities;
 }
 
+void write_density(const double *density, ostream &density_file) {
+	density_file << ",0" << endl;
+	for (int i = 0; i <= N_ITER; ++i) {
+		density_file << i << "," << setprecision(17) << density[i] << endl;;
+	}
+}
+
 bool write_density(const double *density, const string &path) {
 	ofstream density_file;
 	density_file.open(path);
@@ -218,39 +231,54 @@ bool write_density(const double *density, const string &path) {
 		return false;
 	}
 	
-	density_file << ",0" << endl;
-	for (int i = 0; i <= N_ITER; ++i) {
-		density_file << i << "," << setprecision(17) << density[i] << endl;;
-	}
+	write_density(density, density_file);
 	
 	density_file.close();
 	return true;
 }
 
 int main(int argc, char *argv[]) {
-	string base_dir(argv[1]);
-	if (base_dir.back() != '/')
-		base_dir = base_dir + "/";
-	// base_dir = "./generative_model/step##/"
-	string grid_dir = base_dir + "grids/";
-	string density_dir = base_dir + "results/";
-	for (int i = 0; i < 1000; ++i) {
-		char grid_name[20];
-		sprintf(grid_name, "grid_%04d.csv", i);
-		char density_name[20];
-		sprintf(density_name, "density_%04d.csv", i);
+	setup_NL();
+	if (argc == 1) {
+		double *grid = load_grid(cin);
+		double *density = run_dft(grid);
 		
-		string grid_file = grid_dir + grid_name;
-		string density_file = density_dir + density_name;
+		write_density(density, cout);
 		
-		double *grid = load_grid(grid_file);
-		if (grid == nullptr) return -1;
-		double *pred_density = run_dft(grid);
-		if (pred_density == nullptr) return -1;
-		if (!write_density(pred_density, density_file)) return -1;
-
 		delete[] grid;
-		delete[] pred_density;
+		delete[] density;
+	} else if (argc == 2) {
+		string base_dir(argv[1]);
+		if (base_dir.back() != '/')
+			base_dir = base_dir + "/";
+		// base_dir = "./generative_model/step##/"
+		string grid_dir = base_dir + "grids/";
+		string density_dir = base_dir + "results/";
+		string cmd = "mkdir -p " + density_dir;
+		system(cmd.c_str());
+
+		for (int i = 0; 300; ++i) {
+			char grid_name[20];
+			sprintf(grid_name, "grid_%04d.csv", i);
+			char density_name[20];
+			sprintf(density_name, "density_%04d.csv", i);
+		
+			string grid_file = grid_dir + grid_name;
+			string density_file = density_dir + density_name;
+		
+			double *grid = load_grid(grid_file);
+			if (grid == nullptr) break;
+			double *pred_density = run_dft(grid);
+			if (pred_density == nullptr) return -1;
+			
+			bool write_success = write_density(pred_density, density_file);
+			if (!write_success) return -1;
+
+			delete[] grid;
+			delete[] pred_density;
+		}
+	} else {
+		cerr << "Invalid cmd line arguments" << endl;
 	}
 	return 0;
 }
