@@ -257,7 +257,7 @@ int main(int argc, char *argv[]) {
 		string cmd = "mkdir -p " + density_dir;
 		system(cmd.c_str());
 
-		for (int i = 0; 300; ++i) {
+		for (int i = 0; true; ++i) {
 			char grid_name[20];
 			sprintf(grid_name, "grid_%04d.csv", i);
 			char density_name[20];
