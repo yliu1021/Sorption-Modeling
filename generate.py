@@ -49,20 +49,20 @@ os.makedirs(base_dir, exist_ok=True)
 uniform_boost_dim = 5
 loss_weights = [1, 0.5] # weights of losses in the metric and each latent code
 
-proxy_enforcer_epochs = 100
+proxy_enforcer_epochs = 120
 # proxy_enforcer_epochs = 1
-proxy_enforcer_batchsize = 32
+proxy_enforcer_batchsize = 64
 
 generator_train_size = 10000
 # generator_train_size = 10
-generator_epochs = 100
+generator_epochs = 120
 # generator_epochs = 1
 generator_batchsize = 64
 generator_train_size //= generator_batchsize
 
 n_gen_grids = 1000
 
-generator_train_bias = 2.0
+generator_train_bias = 3.0
 
 
 def summarize_model(model):
@@ -232,8 +232,8 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
     grids, metrics = get_all_data()
     proxy_enforcer_model.fit(x=grids, y=metrics, batch_size=proxy_enforcer_batchsize,
                              epochs=proxy_enforcer_epochs, validation_split=0.2,
-                             callbacks=[ReduceLROnPlateau(patience=30),
-                                        EarlyStopping(patience=50, restore_best_weights=True)])
+                             callbacks=[ReduceLROnPlateau(patience=20),
+                                        EarlyStopping(patience=40, restore_best_weights=True)])
     
     proxy_enforcer_model.save(proxy_enforcer_model_save_loc)
 
@@ -261,7 +261,9 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
     summarize_model(training_model)
     training_model.fit_generator(generator_train_generator, steps_per_epoch=generator_train_size,
                                  epochs=generator_epochs,
-                                 callbacks=[ReduceLROnPlateau(patience=5, monitor='loss')],
+                                 callbacks=[ReduceLROnPlateau(patience=10, monitor='loss'),
+                                            EarlyStopping(patience=40, restore_best_weights=True,
+                                                          monitor='loss')],
                                  max_queue_size=32, shuffle=False)
 
     generator_model.save(generator_model_save_loc)
@@ -296,7 +298,8 @@ def gen_and_eval_grids(step):
     os.makedirs(step_dir, exist_ok=True)
 
     generator_model = make_generator_model()
-    generator_model.load_weights('generative_model/step{}/generator.hdf5'.format(step), by_name=True)
+    generator_model.load_weights(os.path.join(base_dir, 'step{}/generator.hdf5'.format(step)),
+                                 by_name=True)
     
     uniform_latent_code = np.random.uniform(-0.2, 0.2, size=(n_gen_grids, uniform_boost_dim))
     artificial_metrics = np.linspace(0.0, 1.0, num=n_gen_grids)
@@ -325,8 +328,12 @@ def visualize_grids(model_step=None):
         model_step = 1
     generator_model = make_generator_model()
     enforcer_model, _ = make_proxy_enforcer_model()
-    generator_model.load_weights('generative_model/step{}/generator.hdf5'.format(model_step), by_name=True)
-    enforcer_model.load_weights('generative_model/step{}/enforcer.hdf5'.format(model_step), by_name=True)
+    generator_model.load_weights(os.path.join(base_dir,
+                                              'step{}/generator.hdf5'.format(model_step)),
+                                 by_name=True)
+    enforcer_model.load_weights(os.path.join(base_dir,
+                                             'step{}/enforcer.hdf5'.format(model_step)),
+                                by_name=True)
 
     for _ in range(5):
         points = 200
@@ -382,13 +389,15 @@ def visualize_accuracy(max_steps, model_step=None):
     if model_step is None:
         model_step = step
     proxy_enforcer_model, _ = make_proxy_enforcer_model()
-    proxy_enforcer_model.load_weights('generative_model/step{}/enforcer.hdf5'.format(model_step))
+    proxy_enforcer_model.load_weights(os.path.join(base_dir,
+                                                   'step{}/enforcer.hdf5'.format(model_step)),
+                                      by_name=True)
     
     for step in range(max_steps, -1, -1):
-        grid = np.array(fetch_grids_from_step(step))
+        grid = np.array(fetch_grids_from_step(base_dir, step))
         if (grid.size == 0):
             continue
-        density = np.array(fetch_density_from_step(step))
+        density = np.array(fetch_density_from_step(base_dir, step))
         density[:, :, 0] /= N_ADSORP
         metric = (np.sum(np.abs(density[:, :, 1] - density[:, :, 0]), axis=1) / 20.0)
 
