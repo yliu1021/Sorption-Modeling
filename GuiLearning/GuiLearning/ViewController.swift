@@ -10,7 +10,7 @@ import Cocoa
 import Charts
 
 class ViewController: NSViewController {
-    
+
     let whiteImage = NSImage(named: "white")
     let blackImage = NSImage(named: "black")
     var buttons = [NSButton]()
@@ -18,6 +18,31 @@ class ViewController: NSViewController {
     var fileTextField: NSTextField!
     
     var lineChart: LineChartView!
+    
+    @objc func chooseFile(sender: NSButton) {
+        let dialog = NSOpenPanel();
+        
+        dialog.title                   = "Choose a grid file";
+        dialog.showsResizeIndicator    = true;
+        dialog.showsHiddenFiles        = false;
+        dialog.canChooseDirectories    = false;
+        dialog.canCreateDirectories    = false;
+        dialog.allowsMultipleSelection = false;
+        dialog.allowedFileTypes        = ["csv"];
+        
+        if (dialog.runModal() == NSApplication.ModalResponse.OK) {
+            let result = dialog.url // Pathname of the file
+            
+            if (result != nil) {
+                let path = result!.path
+                loadFromFile(gridFile: path)
+                startDFT(sender: nil)
+            }
+        } else {
+            // User clicked on "Cancel"
+            return
+        }
+    }
     
     func loadFromFile(gridFile: String) {
         var csvLocation = gridFile
@@ -35,7 +60,11 @@ class ViewController: NSViewController {
             }
         }
         
-        let string = try! String(contentsOfFile: csvLocation)
+        guard let string = try? String(contentsOfFile: csvLocation) else {
+            print("Could not open file")
+            return
+        }
+
         var index = 0
         
         for char in string {
@@ -133,12 +162,24 @@ class ViewController: NSViewController {
     }
     
     override func viewWillAppear() {
+        self.view.window?.isMovableByWindowBackground = true
         startDFT(sender: nil)
     }
     
     override func viewDidLoad() {
         super.viewDidLoad()
         setupNL()
+        let visualEffect = NSVisualEffectView()
+        visualEffect.translatesAutoresizingMaskIntoConstraints = false
+        visualEffect.material = .mediumLight
+        visualEffect.state = .active
+        view.addSubview(visualEffect)
+        
+        visualEffect.leadingAnchor.constraint(equalTo: view.leadingAnchor).isActive = true
+        visualEffect.trailingAnchor.constraint(equalTo: view.trailingAnchor).isActive = true
+        visualEffect.topAnchor.constraint(equalTo: view.topAnchor).isActive = true
+        visualEffect.bottomAnchor.constraint(equalTo: view.bottomAnchor).isActive = true
+
         buttons.reserveCapacity(N_SQUARES)
         let buttonSize = 20.0
         for y in 0..<GRID_SIZE {
@@ -158,20 +199,14 @@ class ViewController: NSViewController {
                 view.addSubview(button)
             }
         }
-        let loadGridButton = NSButton(title: "Load grid", target: self, action: #selector(loadFile(sender:)))
-        loadGridButton.frame = NSRect(x: 20, y: GRID_SIZE*buttonSize + 10, width: 120, height: 30)
-        print(loadGridButton.frame)
-        view.addSubview(loadGridButton)
+        let chooseFileButton = NSButton(title: "Choose grid", target: self, action: #selector(chooseFile(sender:)))
+        chooseFileButton.frame = NSRect(x: 10, y: GRID_SIZE*buttonSize + 10, width: 100, height: 30)
+        view.addSubview(chooseFileButton)
         
         lineChart = LineChartView(frame: CGRect(x: GRID_SIZE*buttonSize, y: 0, width: 400, height: GRID_SIZE*buttonSize))
         lineChart.backgroundColor = .white
         lineChart.gridBackgroundColor = .white
         view.addSubview(lineChart)
-        
-        fileTextField = NSTextField(string: "grid.csv path")
-        fileTextField.frame = NSRect(x: 160, y: GRID_SIZE*buttonSize + 10, width: 600, height: 22)
-        print(fileTextField.frame)
-        view.addSubview(fileTextField)
         
         view.frame = NSRect(x: 0, y: 0, width: GRID_SIZE*buttonSize + 400, height: GRID_SIZE*buttonSize + 60)
     }
