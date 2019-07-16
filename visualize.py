@@ -10,7 +10,7 @@ from itertools import cycle
 from constants import *
 
 
-base_dir = 'generative_model_2'
+base_dir = 'generative_model_1'
 
 def press(event):
     if event.key != 'q':
@@ -25,7 +25,8 @@ def show_grids(v):
     for density_file, grid_file in cycle(zip(density_files, grid_files)):
         df = pd.read_csv(density_file, index_col=0)
         density = df['0'][0:N_ADSORP]
-        target_density = np.linspace(0.0, 1.0, num=40)
+        # target_density = np.linspace(0.0, 1.0, num=40)
+        target_density = np.arange(40) * STEP_SIZE
         metric = (np.sum(np.absolute(density - target_density)) / 20.0)
         
         grid = np.genfromtxt(grid_file, delimiter=',')
@@ -48,7 +49,7 @@ def show_grids(v):
                           
 
 def show_all_grids():
-    steps = 'generative_model'
+    steps = base_dir
     step_dirs = glob.glob(os.path.join(steps, 'step*'))
     step_dirs.sort(key=lambda x: int(x.split('/')[-1][4:]))
     metrics = list()
