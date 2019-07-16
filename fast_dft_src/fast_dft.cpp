@@ -93,6 +93,14 @@ double *run_dft(double grid[]) {
 		Ntotal_pores += g;
 		r[0][i] = g;
 	}
+	if (Ntotal_pores < 0.1) {
+		// no pores, return all 0's
+		double *density = new double[N_ITER + 1];
+		for (int i = 0; i <= N_ITER; ++i) {
+			density[i] = 0.0;
+		}
+		return density;
+	}
 	
 	for (int i = 1; i <= N_SQUARES; ++i) {
 		r[1][i] = grid[i - 1];
