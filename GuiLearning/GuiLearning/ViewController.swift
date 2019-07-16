@@ -20,13 +20,22 @@ class ViewController: NSViewController {
     var lineChart: LineChartView!
     
     func loadFromFile(gridFile: String) {
+        var csvLocation = gridFile
+        
         let fileManager = FileManager.default
-        guard fileManager.fileExists(atPath: gridFile) else {
-            print("File doesn't exist")
-            return
+        let baseDir = "/Users/yuhanliu/Google Drive/1st year/Research/sorption_modeling/"
+        
+        if !fileManager.fileExists(atPath: gridFile) {
+            csvLocation = baseDir + gridFile
+            if !fileManager.fileExists(atPath: csvLocation) {
+                print("File doesn't exist")
+                return
+            } else {
+                
+            }
         }
         
-        let string = try! String(contentsOfFile: gridFile)
+        let string = try! String(contentsOfFile: csvLocation)
         var index = 0
         
         for char in string {
@@ -160,7 +169,7 @@ class ViewController: NSViewController {
         view.addSubview(lineChart)
         
         fileTextField = NSTextField(string: "grid.csv path")
-        fileTextField.frame = NSRect(x: 160, y: GRID_SIZE*buttonSize + 10, width: 240, height: 22)
+        fileTextField.frame = NSRect(x: 160, y: GRID_SIZE*buttonSize + 10, width: 600, height: 22)
         print(fileTextField.frame)
         view.addSubview(fileTextField)
         

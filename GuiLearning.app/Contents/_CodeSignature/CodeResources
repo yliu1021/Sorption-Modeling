@@ -6,19 +6,19 @@
 	<dict>
 		<key>Resources/Assets.car</key>
 		<data>
-		UHur6jrZbjIhZ8ZcFg1sGyjK0a8=
+		U3rKGWWcfNiso0xS8/MYCLpUu5s=
 		</data>
 		<key>Resources/Base.lproj/Main.storyboardc/Info.plist</key>
 		<data>
-		lOlrhFoUJBkzyqsvzdR2xEA117E=
+		PfSQxLGPA1JpNVhw8pKG+sDUPEA=
 		</data>
 		<key>Resources/Base.lproj/Main.storyboardc/MainMenu.nib</key>
 		<data>
-		RxvTz/ZfFPrggoV0neqUtlWzhas=
+		PZdv/5s1wRKqGGgeIOZYr1dTiMo=
 		</data>
 		<key>Resources/Base.lproj/Main.storyboardc/NSWindowController-B8D-0N-5wS.nib</key>
 		<data>
-		UthrJyJVvyqkDs3X0XBt2w3z/6Y=
+		QZtdsaesbF7pKJo4aVDzSsANVHw=
 		</data>
 		<key>Resources/Base.lproj/Main.storyboardc/XfG-lQ-9wD-view-m2S-Jp-Qdl.nib</key>
 		<data>
@@ -31,7 +31,7 @@
 		<dict>
 			<key>cdhash</key>
 			<data>
-			YCBrIkNOlDSQVW9qPr1uNu4eoCI=
+			TbRz6Ad1ghjowqX8PQT3qcSZAT0=
 			</data>
 			<key>requirement</key>
 			<string>identifier "com.dcg.Charts" and anchor apple generic and certificate leaf[subject.CN] = "Apple Development: Yuhan Liu (A2Z6SC5EPJ)" and certificate 1[field.1.2.840.113635.100.6.2.1] /* exists */</string>
@@ -40,28 +40,28 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			QygEE9HpvtGnvNz7KD2sKrimH6TzFzNiFrBRdrZ1zFE=
+			54j1cbS4nS40UOsJCb6HlERNbhLY9jWGir/xyPpYcbY=
 			</data>
 		</dict>
 		<key>Resources/Base.lproj/Main.storyboardc/Info.plist</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			2VWBKhTzM4ax306EuiGXEfGb8doVwaKc+HqB+L2vAtk=
+			BVae34r7eAP8rqFf6Lmh2SORL7HifKs2oizLwcHfxrc=
 			</data>
 		</dict>
 		<key>Resources/Base.lproj/Main.storyboardc/MainMenu.nib</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			T6NDK/xONSeYhfFVCYDISc0oxoYLInpqQ53fsMSAE+0=
+			TXy4Ii6BUhyvQ9xYX+a/sJW0EcbmLuv9/Y8OQ3eWMHw=
 			</data>
 		</dict>
 		<key>Resources/Base.lproj/Main.storyboardc/NSWindowController-B8D-0N-5wS.nib</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			JghyYTjbExcJ0vjGSwWMYyWlw5Xz1GcMcy3lSpTjuXI=
+			GqPA0qx/5rWRNK8b/IZIOeb3ELEHq04X8a77q0jUXP8=
 			</data>
 		</dict>
 		<key>Resources/Base.lproj/Main.storyboardc/XfG-lQ-9wD-view-m2S-Jp-Qdl.nib</key>
