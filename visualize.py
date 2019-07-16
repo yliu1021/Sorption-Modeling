@@ -10,14 +10,16 @@ from itertools import cycle
 from constants import *
 
 
+base_dir = 'generative_model_2'
+
 def press(event):
     if event.key != 'q':
         exit(0)
 
 
 def show_grids(v):
-    density_files = glob.glob('generative_model/step{}/results/density*.csv'.format(v))
-    grid_files = glob.glob('generative_model/step{}/grids/grid*.csv'.format(v))
+    density_files = glob.glob(os.path.join(base_dir, 'step{}/results/density*.csv'.format(v)))
+    grid_files = glob.glob(os.path.join(base_dir, 'step{}/grids/grid*.csv'.format(v)))
     density_files.sort()
     grid_files.sort()
     for density_file, grid_file in cycle(zip(density_files, grid_files)):

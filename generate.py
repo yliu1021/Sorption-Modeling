@@ -3,6 +3,7 @@ import glob
 import sys
 from multiprocessing import Pool
 from random import randint
+from random import shuffle
 import argparse
 
 import numpy as np
@@ -22,6 +23,7 @@ from keras.utils.generic_utils import get_custom_objects
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
+from generate_data import *
 from constants import *
 import simul_dft as dft
 
@@ -39,14 +41,10 @@ C are latent codes that seed the generative model (to make it parameterize its
 outputs on something)
 """
 
-"""
-Work for week 2:
-Remove zero padding around grids
-Optimize CNN
-DFT ground truth
-"""
 
-base_dir = 'generative_model'
+base_dir = 'generative_model_2'
+os.makedirs(base_dir, exist_ok=True)
+
 # Hyperparameters
 uniform_boost_dim = 5
 loss_weights = [1, 0.5] # weights of losses in the metric and each latent code
@@ -55,9 +53,9 @@ proxy_enforcer_epochs = 150
 # proxy_enforcer_epochs = 1
 proxy_enforcer_batchsize = 32
 
-generator_train_size = 100000
-# generator_train_size = 100
-generator_epochs = 15
+generator_train_size = 10000
+# generator_train_size = 10
+generator_epochs = 100
 # generator_epochs = 1
 generator_batchsize = 64
 
@@ -80,27 +78,16 @@ def biased_loss(y_true, y_pred):
 
     
 def round_through(x):
-    '''Element-wise rounding to the closest integer with full gradient propagation.
-    A trick from [Sergey Ioffe](http://stackoverflow.com/a/36480182)
-    '''
     rounded = K.round(x)
     return x + K.stop_gradient(rounded - x)
 
 
 def _hard_sigmoid(x):
-    '''Hard sigmoid different from the more conventional form (see definition of K.hard_sigmoid).
-    # Reference:
-    - [BinaryNet: Training Deep Neural Networks with Weights and Activations Constrained to +1 or -1, Courbariaux et al. 2016](http://arxiv.org/abs/1602.02830}
-    '''
     x = (0.5 * x) + 0.5 # Gradient is steeper than regular sigmoid activation
     return K.clip(x, 0, 1)
 
 
 def binary_sigmoid(x):
-    '''Binary hard sigmoid for training binarized neural network.
-    # Reference:
-    - [BinaryNet: Training Deep Neural Networks with Weights and Activations Constrained to +1 or -1, Courbariaux et al. 2016](http://arxiv.org/abs/1602.02830}
-    '''
     return round_through(_hard_sigmoid(x))
 
 
@@ -112,28 +99,34 @@ def worst_mse_loss(y_true, y_pred):
     return K.max((y_true - y_pred) ** 2)
 
 
+# Enforcer model
 def make_proxy_enforcer_model():
     inp = Input(shape=(GRID_SIZE, GRID_SIZE), name='proxy_enforcer_input')
     x = Reshape((GRID_SIZE, GRID_SIZE, 1), name='reshape')(inp)
     
-    x = Conv2D(16, 2, padding='same', name='conv1')(x)
+    x = Conv2D(16, 2, padding='same', name='conv0')(x)
     x = LeakyReLU()(x)
     
+    x = Conv2D(32, 2, padding='same', name='conv1')(x)
+    x = LeakyReLU()(x)
+
     x = Conv2D(64, 2, padding='same', name='conv2')(x)
     x = LeakyReLU()(x)
 
-    x = Conv2D(128, 2, padding='same', name='conv3')(x)
+    x = Conv2D(128, 3, padding='same', strides=2, name='conv3')(x)
     x = LeakyReLU()(x)
     
-    x = Conv2D(256, 2, padding='same', strides=2, name='conv4')(x)   
+    x = Conv2D(256, 3, padding='same', strides=2, name='conv4')(x)   
     x = LeakyReLU()(x)
     
-    x = Conv2D(516, 2, padding='same', strides=2, name='conv5')(x)
+    x = Conv2D(516, 3, padding='same', strides=2, name='conv5')(x)
     x = LeakyReLU()(x)
     
     x = Flatten()(x)
-    
-    hidden = Dense(2048, name='hidden_fc')(x)
+
+    x = Dense(2048, name='hidden_fc_1', activation='relu')(x)
+    x = Dense(2048, name='hidden_fc_2', activation='relu')(x)
+    hidden = Dense(2048, name='hidden_fc_final', activation='relu')(x)
 
     latent_code_uni = Dense(uniform_boost_dim, name='uniform_latent_codes')(hidden)
     out = Dense(1, name='out')(hidden)
@@ -144,6 +137,7 @@ def make_proxy_enforcer_model():
     return model, lc_uni
 
 
+# Generator model
 def make_generator_model():
     latent_code_uni = Input(shape=(uniform_boost_dim,))
 
@@ -154,19 +148,22 @@ def make_generator_model():
     Q_GRID_SIZE = GRID_SIZE // 4
     H_GRID_SIZE = GRID_SIZE // 2
 
-    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 4, name='fc1', use_bias=False)(conc)
-    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 8, name='fc2', activation='relu')(x)
+    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 4, name='fc1')(conc)
+    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 8, name='fc2')(x)
     x = BatchNormalization()(x)
-    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 16, name='fc3', activation='relu')(x)
-    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 16, name='fc4', activation='relu')(x)
+    x = ReLU()(x)
+
+    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 16, name='fc3')(x)
     x = BatchNormalization()(x)
+    x = ReLU()(x)
+
     x = Reshape((Q_GRID_SIZE, Q_GRID_SIZE, 16))(x)
 
     x = Conv2DTranspose(16, 2, strides=1, padding='same', name='deconv1')(x)
     x = BatchNormalization()(x)
     x = LeakyReLU()(x)
     
-    x = Conv2DTranspose(32, 3, strides=1, padding='same', name='deconv2')(x)
+    x = Conv2DTranspose(32, 2, strides=1, padding='same', name='deconv2')(x)
     x = BatchNormalization()(x)
     x = LeakyReLU()(x)
     
@@ -182,7 +179,7 @@ def make_generator_model():
     x = BatchNormalization()(x)
     x = LeakyReLU()(x)
 
-    out = Conv2D(1, 3, strides=1, padding='same', activation=binary_sigmoid, name='conv1')(x)
+    out = Conv2D(1, 5, strides=1, padding='same', activation=binary_sigmoid, name='conv1')(x)
     out = Reshape((GRID_SIZE, GRID_SIZE))(out)
 
     model = Model(inputs=[inp, latent_code_uni], outputs=[out],
@@ -191,29 +188,18 @@ def make_generator_model():
     return model
 
 
-def make_generator_input(n_grids):
-    uniform_latent_code = np.random.normal(loc=0.0, scale=0.5, size=(n_grids, uniform_boost_dim))
-
-    artificial_metrics = np.random.uniform(low=0.0, high=1.0, size=(n_grids,))
-    
-    return (artificial_metrics, uniform_latent_code)
-
-
-def fetch_grids_from_step(step):
-    step_dir = os.path.join(base_dir, 'step{}'.format(step))
-    grid_dir = os.path.join(step_dir, 'grids')
-    grid_files = glob.glob(os.path.join(grid_dir, 'grid_*.csv'))
-    grid_files.sort()
-    return [np.genfromtxt(grid_file, delimiter=',') for grid_file in grid_files]
-
-
-def fetch_density_from_step(step):
-    step_dir = os.path.join(base_dir, 'step{}'.format(step))
-    density_dir = os.path.join(step_dir, 'results')
-    density_files = glob.glob(os.path.join(density_dir, 'density_*.csv'))
-    density_files.sort()
-    return [np.genfromtxt(density_file, delimiter=',', skip_header=1,
-                          max_rows=N_ADSORP) for density_file in density_files]
+def make_generator_input(n_grids, use_generator=False, batchsize=generator_batchsize):
+    if use_generator:
+        while True:
+            uniform_latent_code = np.random.normal(loc=0.0, scale=0.5, size=(batchsize,
+                                                                             uniform_boost_dim))
+            artificial_metrics = np.random.uniform(low=0.0, high=1.0, size=(batchsize,))
+            out = [artificial_metrics ** generator_train_bias, uniform_latent_code]
+            yield out, out
+    else:
+        uniform_latent_code = np.random.normal(loc=0.0, scale=0.5, size=(n_grids, uniform_boost_dim))
+        artificial_metrics = np.random.uniform(low=0.0, high=1.0, size=(n_grids,))
+        return (artificial_metrics ** generator_train_bias, uniform_latent_code)
 
 
 def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
@@ -237,52 +223,34 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
     
     # Train M
     # load the grids and densities from previous 5 steps (or less if we don't have that much)
-    grids = list()
-    densities = list()
-    for s in range(step - 1, -1, -1): # for now just load all previous grids
-        print('loading from step %d' % s)
-        grids.extend(fetch_grids_from_step(s))
-        densities.extend(fetch_density_from_step(s))
-    for i in range(len(grids) - 1):
-        s = randint(i+1, len(grids) - 1)
-        grids[i], grids[s] = grids[s], grids[i]
-        densities[i], densities[s] = densities[s], densities[i]
-
-    grids = np.array(grids)
-    densities = np.array(densities)
-    
-    densities[:, :, 0] /= N_ADSORP
-
-    metric = (np.sum(np.absolute(densities[:, :, 1] - densities[:, :, 0]), axis=1) / 20.0)
-    print('Metric stats: {:.3f} ± {:.3f}'.format(metric.mean(), metric.std()))    
-    
     proxy_enforcer_model.trainable = True
     optimizer = Adam(lr=0.001, clipnorm=1.0)
     proxy_enforcer_model.compile(optimizer, loss=biased_loss, metrics=['mae', worst_abs_loss])
     summarize_model(proxy_enforcer_model)
-    proxy_enforcer_model.fit(x=grids, y=metric, batch_size=proxy_enforcer_batchsize,
+    
+    grids, metrics = get_all_data()
+    proxy_enforcer_model.fit(x=grids, y=metrics, batch_size=proxy_enforcer_batchsize,
                              epochs=proxy_enforcer_epochs, validation_split=0.2,
                              callbacks=[ReduceLROnPlateau(patience=30),
                                         EarlyStopping(patience=50, restore_best_weights=True)])
+    
     proxy_enforcer_model.save(proxy_enforcer_model_save_loc)
 
     # Train G on M
     # generate artificial training data
-    (artificial_metrics,
-     uniform_latent_code) = make_generator_input(n_grids=generator_train_size)
-    artificial_metrics = artificial_metrics ** generator_train_bias
+    generator_train_generator = make_generator_input(n_grids=generator_train_size,
+                                                     use_generator=True,
+                                                     batchsize=generator_batchsize)
 
-    latent_code_uni = Input(shape=(uniform_boost_dim,))
-
-    inp = Input(shape=(1,))
-    
+    latent_code_uni = Input(shape=(uniform_boost_dim,), name='latent_code')
+    inp = Input(shape=(1,), name='target_metric')
     generator_out = generator_model([inp, latent_code_uni])
     proxy_enforcer_model.trainable = False
     proxy_enforcer_out = proxy_enforcer_model(generator_out)
     latent_code_uni_out = lc_uni(generator_out)
-    
     training_model = Model(inputs=[inp, latent_code_uni],
                            outputs=[proxy_enforcer_out, latent_code_uni_out])
+
     optimizer = Adam(lr=0.001, clipnorm=1.0)
     training_model.compile(optimizer, loss=[biased_loss, 'mse'],
                            metrics={
@@ -290,18 +258,15 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
                                'uniform_latent_code_model': 'mae',
                            }, loss_weights=loss_weights)
     summarize_model(training_model)
-    training_model.fit(x=[artificial_metrics, uniform_latent_code],
-                       y=[artificial_metrics, uniform_latent_code],
-                       validation_split=0.2,
-                       batch_size=generator_batchsize, epochs=generator_epochs,
-                       callbacks=[ReduceLROnPlateau(patience=5)])
+    training_model.fit_generator(generator_train_generator, steps_per_epoch=generator_train_size,
+                                 epochs=generator_epochs,
+                                 callbacks=[ReduceLROnPlateau(patience=5, monitor='loss')],
+                                 max_queue_size=32, shuffle=False)
 
     generator_model.save(generator_model_save_loc)
     lc_uni.save(lc_uni_save_loc)
 
     # Generate random grids using G then evaluate them
-    (artificial_metrics,
-     uniform_latent_code) = make_generator_input(n_grids=n_gen_grids)
     uniform_latent_code = np.random.uniform(-0.5, 0.5, size=(n_gen_grids, uniform_boost_dim))
     artificial_metrics = np.linspace(0.0, 1.0, num=n_gen_grids) ** generator_train_bias
     
@@ -463,8 +428,14 @@ if __name__ == '__main__':
     if startfrom != -1:
         for step in range(startfrom, 100):
             generator_model = make_generator_model()
-            proxy_enforcer_model, (lc_uni) = make_proxy_enforcer_model()
+            proxy_enforcer_model, lc_uni = make_proxy_enforcer_model()
+            
             train_step(generator_model, proxy_enforcer_model, lc_uni, step=step)
+            
+            K.clear_session()
+            del generator_model
+            del proxy_enforcer_model
+            del lc_uni
     else:
         prompt = """\
 Options:
