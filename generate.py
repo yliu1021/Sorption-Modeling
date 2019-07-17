@@ -230,7 +230,7 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
     
     grids, metrics = get_all_data()
     proxy_enforcer_model.fit(x=grids, y=metrics, batch_size=proxy_enforcer_batchsize,
-                             epochs=proxy_enforcer_epochs, validation_split=0.2,
+                             epochs=proxy_enforcer_epochs, validation_split=0.3,
                              callbacks=[ReduceLROnPlateau(patience=20),
                                         EarlyStopping(patience=40, restore_best_weights=True)])
     
