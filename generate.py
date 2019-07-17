@@ -41,7 +41,7 @@ outputs on something)
 """
 
 
-base_dir = 'generative_model_2'
+base_dir = 'generative_model_3'
 os.makedirs(base_dir, exist_ok=True)
 
 # Hyperparameters
@@ -53,13 +53,14 @@ proxy_enforcer_epochs = 120
 proxy_enforcer_batchsize = 64
 
 generator_train_size = 10000
-# generator_train_size = 10
+# generator_train_size = 128
 generator_epochs = 120
 # generator_epochs = 1
 generator_batchsize = 64
 generator_train_size //= generator_batchsize
 
 n_gen_grids = 1000
+max_var = 6
 
 generator_train_bias = 3.0
 
@@ -129,7 +130,7 @@ def make_proxy_enforcer_model():
     hidden = Dense(2048, name='hidden_fc_final', activation='relu')(x)
 
     latent_code_uni = Dense(uniform_boost_dim, name='uniform_latent_codes')(hidden)
-    out = Dense(40, name='out', activaiton='softmax')(hidden)
+    out = Dense(N_ADSORP, name='out', activation='softmax')(hidden)
     
     model = Model(inputs=[inp], outputs=[out], name='proxy_enforcer_model')
     lc_uni = Model(inputs=[inp], outputs=[latent_code_uni], name='uniform_latent_code_model')
@@ -141,7 +142,7 @@ def make_proxy_enforcer_model():
 def make_generator_model():
     latent_code_uni = Input(shape=(uniform_boost_dim,))
 
-    inp = Input(shape=(40,))
+    inp = Input(shape=(N_ADSORP,))
 
     conc = Concatenate(axis=-1)([inp, latent_code_uni])
 
@@ -190,16 +191,29 @@ def make_generator_model():
 
 def make_generator_input(n_grids, use_generator=False, batchsize=generator_batchsize):
     if use_generator:
-        while True:
-            uniform_latent_code = np.random.normal(loc=0.0, scale=0.5, size=(batchsize,
-                                                                             uniform_boost_dim))
-            artificial_metrics = np.random.uniform(low=0.0, high=1.0, size=(batchsize,))
-            out = [artificial_metrics ** generator_train_bias, uniform_latent_code]
-            yield out, out
+        def gen():
+            while True:
+                uniform_latent_code = np.random.normal(loc=0.0, scale=0.5, size=(batchsize,
+                                                                                 uniform_boost_dim))
+                artificial_metrics = list()
+                for i in range(batchsize):
+                    mean = np.random.uniform(-np.log(2+1/40), np.log(2+1/40))
+                    diffs = np.exp(np.random.normal(mean, np.sqrt(i/batchsize * max_var), N_ADSORP))
+                    diffs /= np.sum(diffs, axis=0)
+                    artificial_metrics.append(diffs)
+                artificial_metrics = np.array(artificial_metrics)
+                out = [artificial_metrics, uniform_latent_code]
+                yield out, out
+        return gen()
     else:
+        print('Generating')
         uniform_latent_code = np.random.normal(loc=0.0, scale=0.5, size=(n_grids, uniform_boost_dim))
-        artificial_metrics = np.random.uniform(low=0.0, high=1.0, size=(n_grids,))
-        return (artificial_metrics ** generator_train_bias, uniform_latent_code)
+        artificial_metrics = list()
+        for i in range(n_grids):
+            mean = np.random.uniform(-np.log(2+1/N_ADSORP), np.log(2+1/N_ADSORP)) # centralize mean at 1/40
+            artificial_metrics.append(np.exp(np.random.normal(mean, i/n_grids * max_var, N_ADSORP)))
+        artificial_metrics = np.array(artificial_metrics)
+        return artificial_metrics, uniform_latent_code
 
 
 def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
@@ -222,18 +236,18 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
     os.makedirs(step_dir, exist_ok=True)
     
     # Train M
-    # load the grids and densities from previous 5 steps (or less if we don't have that much)
+    # load the grids and density diffs
     proxy_enforcer_model.trainable = True
     optimizer = Adam(lr=0.001, clipnorm=1.0)
-    proxy_enforcer_model.compile(optimizer, loss=biased_loss, metrics=['mae', worst_abs_loss])
+    proxy_enforcer_model.compile(optimizer, loss='mse', metrics=['mae', worst_abs_loss])
     summarize_model(proxy_enforcer_model)
-    
+
     grids, metrics = get_all_data()
     proxy_enforcer_model.fit(x=grids, y=metrics, batch_size=proxy_enforcer_batchsize,
                              epochs=proxy_enforcer_epochs, validation_split=0.3,
                              callbacks=[ReduceLROnPlateau(patience=20),
                                         EarlyStopping(patience=40, restore_best_weights=True)])
-    
+
     proxy_enforcer_model.save(proxy_enforcer_model_save_loc)
 
     # Train G on M
@@ -243,7 +257,7 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
                                                      batchsize=generator_batchsize)
 
     latent_code_uni = Input(shape=(uniform_boost_dim,), name='latent_code')
-    inp = Input(shape=(1,), name='target_metric')
+    inp = Input(shape=(N_ADSORP,), name='target_metric')
     generator_out = generator_model([inp, latent_code_uni])
     proxy_enforcer_model.trainable = False
     proxy_enforcer_out = proxy_enforcer_model(generator_out)
@@ -252,7 +266,7 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
                            outputs=[proxy_enforcer_out, latent_code_uni_out])
 
     optimizer = Adam(lr=0.001, clipnorm=1.0)
-    training_model.compile(optimizer, loss=[biased_loss, 'mse'],
+    training_model.compile(optimizer, loss=['mse', 'mse'],
                            metrics={
                                'proxy_enforcer_model': ['mae', worst_abs_loss],
                                'uniform_latent_code_model': 'mae',
@@ -269,8 +283,7 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
     lc_uni.save(lc_uni_save_loc)
 
     # Generate random grids using G then evaluate them
-    uniform_latent_code = np.random.uniform(-0.5, 0.5, size=(n_gen_grids, uniform_boost_dim))
-    artificial_metrics = np.linspace(0.0, 1.0, num=n_gen_grids) ** generator_train_bias
+    artificial_metrics, uniform_latent_code = make_generator_input(n_grids=n_gen_grids, use_generator=False)
     
     generated_grids = generator_model.predict([artificial_metrics, uniform_latent_code])
     eval_grids = np.around(generated_grids).astype('int')

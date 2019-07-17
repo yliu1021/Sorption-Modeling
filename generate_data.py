@@ -91,7 +91,7 @@ def get_all_data():
     for base_dir in base_dirs:
         data_files = list()
         step_dirs = glob.glob(os.path.join(base_dir, 'step*'))
-        for step_dir in step_dirs:
+        for step_dir in step_dirs[:1]:
             grid_dir = os.path.join(step_dir, 'grids')
             density_dir = os.path.join(step_dir, 'results')
             grid_files = glob.glob(os.path.join(grid_dir, 'grid_*.csv'))
@@ -113,9 +113,8 @@ def get_all_data():
     all_grids, all_densities = zip(*data)
     all_grids = np.array(all_grids)
     all_densities = np.array(all_densities)
-    all_densities[:, :, 0] /= N_ADSORP
-    abs_diffs = np.abs(all_densities[:, :, 1] - all_densities[:, :, 0])
-    all_metrics = (np.sum(abs_diffs, axis=1) / 20.0)
+    all_diffs = np.diff(all_densities, axis=1, append=1.0)
+    all_metrics = all_diffs[:, :, 1]
     return (all_grids, all_metrics)
 
 
