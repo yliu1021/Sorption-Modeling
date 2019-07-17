@@ -26,8 +26,7 @@ from tqdm import tqdm
 from generate_data import *
 from constants import *
 import simul_dft as dft
-
-
+#  ssh yliu1021@hoffman2.idre.ucla.edu                         
 """
 We have a function T: S -> F that is the ground truth (i.e. the dft simulation),
 which can take a grid in S and map it to some metric on the adsorption curve
@@ -130,7 +129,7 @@ def make_proxy_enforcer_model():
     hidden = Dense(2048, name='hidden_fc_final', activation='relu')(x)
 
     latent_code_uni = Dense(uniform_boost_dim, name='uniform_latent_codes')(hidden)
-    out = Dense(1, name='out')(hidden)
+    out = Dense(40, name='out', activaiton='softmax')(hidden)
     
     model = Model(inputs=[inp], outputs=[out], name='proxy_enforcer_model')
     lc_uni = Model(inputs=[inp], outputs=[latent_code_uni], name='uniform_latent_code_model')
@@ -142,7 +141,7 @@ def make_proxy_enforcer_model():
 def make_generator_model():
     latent_code_uni = Input(shape=(uniform_boost_dim,))
 
-    inp = Input(shape=(1,))
+    inp = Input(shape=(40,))
 
     conc = Concatenate(axis=-1)([inp, latent_code_uni])
 

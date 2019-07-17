@@ -10,7 +10,7 @@ from itertools import cycle
 from constants import *
 
 
-base_dir = 'generative_model_1'
+base_dir = 'generative_model_2'
 
 def press(event):
     if event.key != 'q':
