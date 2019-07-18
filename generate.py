@@ -299,10 +299,6 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
     
     print('evaluating grids')
     os.system('./fast_dft {}'.format(step_dir))
-    # dft.pool_arg['grid_dir'] = grid_dir
-    # dft.pool_arg['result_dir'] = density_dir
-    # p = Pool()
-    # list(tqdm(p.imap(dft.run_dft_pool, range(n_gen_grids)), total=n_gen_grids))
 
 
 def gen_and_eval_grids(step):
