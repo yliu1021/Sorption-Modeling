@@ -103,8 +103,9 @@ def get_all_data_files():
 def get_all_data():
     data = list()
     all_files = get_all_data_files()
-    
-    num_files = len(all_files)
+    shuffle(all_files)
+
+    num_files = len(all_files[:30])
     for i, (grid_files, density_files) in enumerate(all_files):
         print('\rLoading {}/{}'.format(i+1, num_files), end='')
         grids = [np.genfromtxt(grid_file, delimiter=',') for grid_file in grid_files]
@@ -113,7 +114,7 @@ def get_all_data():
         data.extend(zip(grids, densities))
     print()
 
-    shuffle(data)
+    # shuffle(data)
     all_grids, all_densities = zip(*data)
     all_grids = np.array(all_grids)
     all_densities = np.array(all_densities)
