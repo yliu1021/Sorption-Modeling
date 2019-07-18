@@ -223,7 +223,7 @@ def make_generator_input(n_grids, use_generator=False, batchsize=generator_batch
                     artificial_metrics.append(diffs)
                 artificial_metrics = np.array(artificial_metrics)
                 out = [artificial_metrics, uniform_latent_code]
-                yield out, out
+                yield [np.cumsum(artificial_metrics), uniform_latent_code]
         return gen()
     else:
         print('Generating')
