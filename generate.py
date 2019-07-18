@@ -59,7 +59,7 @@ proxy_enforcer_batchsize = 64
 
 generator_train_size = 10000
 # generator_train_size = 128
-generator_epochs = 2
+generator_epochs = 10
 # generator_epochs = 1
 generator_batchsize = 64
 generator_train_size //= generator_batchsize
@@ -273,9 +273,12 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
     latent_code_uni = Input(shape=(uniform_boost_dim,), name='latent_code')
     inp = Input(shape=(N_ADSORP,), name='target_metric')
     generator_out = generator_model([inp, latent_code_uni])
+    
     proxy_enforcer_model.trainable = False
     proxy_enforcer_out = proxy_enforcer_model(generator_out)
+    
     latent_code_uni_out = lc_uni(generator_out)
+    
     training_model = Model(inputs=[inp, latent_code_uni],
                            outputs=[proxy_enforcer_out, latent_code_uni_out])
 
@@ -298,18 +301,19 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
 
     # Generate random grids using G then evaluate them
     artificial_metrics, uniform_latent_code = make_generator_input(n_grids=n_gen_grids, use_generator=False)
+    uniform_latent_code = np.random.uniform(-0.5, 0.5, size=(n_gen_grids, uniform_boost_dim)) # 'normalize' randomness
     
     generated_grids = generator_model.predict([artificial_metrics, uniform_latent_code])
-    eval_grids = np.around(generated_grids).astype('int')
+    generated_grids = generated_grids.astype('int')
 
     grid_dir = os.path.join(step_dir, 'grids')
     density_dir = os.path.join(step_dir, 'results')
     os.makedirs(grid_dir, exist_ok=True)
     os.makedirs(density_dir, exist_ok=True)
-    print('saving eval grids')
+    print('saving generated grids')
     for i in range(n_gen_grids):
         path = os.path.join(grid_dir, 'grid_%04d.csv'%i)
-        np.savetxt(path, eval_grids[i, :, :], fmt='%i', delimiter=',')
+        np.savetxt(path, generated_grids[i, :, :], fmt='%i', delimiter=',')
     
     print('evaluating grids')
     os.system('./fast_dft {}'.format(step_dir))
@@ -325,14 +329,13 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
 def visualize_enforcer(model_step=None):
     if model_step is None:
         model_step = 1
-    generator_model = make_generator_model()
     enforcer_model, _ = make_proxy_enforcer_model()
-    enforcer_model.load_weights(os.path.join(base_dir, 'step{}/enforcer.hdf5'.format(model_step)),
-                                by_name=True)
+    enforcer_model.load_weights(os.path.join(base_dir, 'step{}/enforcer.hdf5'.format(model_step)))
 
     all_data_files = get_all_data_files()
     all_data_files = [item for sublist in all_data_files for item in zip(*sublist)]
     shuffle(all_data_files)
+    # all_data_files = filter(lambda x: 'generative_model_3/step16' in x[0], all_data_files)
     
     extreme_grid = None
     extreme_density = None
@@ -371,6 +374,7 @@ def visualize_enforcer(model_step=None):
         
         fig.text(0.5, 0.05, 'Mean absolute difference: {:.4f}'.format(metric), ha='center')
 
+        plt.title('{} {}'.format(grid_file, density_file))
         plt.show()
 
     fig = plt.figure(1, figsize=(6, 8))
@@ -396,8 +400,7 @@ def visualize_generator(step, model_step=None):
     if model_step is None:
         model_step = step
     enforcer_model, _ = make_proxy_enforcer_model()
-    enforcer_model.load_weights(os.path.join(base_dir, 'step{}/enforcer.hdf5'.format(model_step)),
-                                by_name=True)
+    enforcer_model.load_weights(os.path.join(base_dir, 'step{}/enforcer.hdf5'.format(model_step)))
     step_dir = os.path.join(base_dir, 'step{}'.format(step))
     grid_dir = os.path.join(step_dir, 'grids')
     density_dir = os.path.join(step_dir, 'results')
