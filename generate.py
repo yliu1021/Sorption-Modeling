@@ -50,8 +50,8 @@ base_dir = 'generative_model_3'
 os.makedirs(base_dir, exist_ok=True)
 
 # Hyperparameters
-uniform_boost_dim = 5
-loss_weights = [1, 0.1] # weights of losses in the metric and each latent code
+uniform_boost_dim = 1
+loss_weights = [1, 0.05] # weights of losses in the metric and each latent code
 
 proxy_enforcer_epochs = 20
 # proxy_enforcer_epochs = 1
@@ -59,13 +59,13 @@ proxy_enforcer_batchsize = 64
 
 generator_train_size = 10000
 # generator_train_size = 128
-generator_epochs = 20
+generator_epochs = 40
 # generator_epochs = 1
 generator_batchsize = 64
 generator_train_size //= generator_batchsize
 
 n_gen_grids = 1000
-max_var = 7
+max_var = 12
 
 
 def summarize_model(model):
