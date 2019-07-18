@@ -192,7 +192,7 @@ def make_generator_model():
     x = BatchNormalization()(x)
     x = LeakyReLU()(x)
 
-    out = Conv2D(1, 5, strides=1, padding='same', activation=binary_sigmoid, name='conv1')(x)
+    out = Conv2D(1, 5, strides=1, padding='same', activation=binary_sigmoid, name='generator_conv')(x)
     out = Reshape((GRID_SIZE, GRID_SIZE))(out)
 
     model = Model(inputs=[inp, latent_code_uni], outputs=[out],
@@ -232,10 +232,10 @@ def make_generator_input(n_grids, use_generator=False, batchsize=generator_batch
 
 def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
     """
-    1) Train M on the grids in our predict_mc directory.
+    1) Train M on the grids in generative_models_*
     2) Train G on M
     3) Generate random grids using G
-    4) Replace metrics with new grids in predict_mc
+    4) Add new grids to generative_models_*
     """
     prev_step = step - 1
     step_dir = os.path.join(base_dir, 'step{}'.format(step))
