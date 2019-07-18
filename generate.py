@@ -166,11 +166,15 @@ def make_generator_model():
     x = BatchNormalization()(x)
     x = LeakyReLU()(x)
 
-    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 16, name='fc3')(x)
+    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 8, name='fc3')(x)
     x = BatchNormalization()(x)
     x = LeakyReLU()(x)
 
-    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 16, name='fc4')(x)
+    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 8, name='fc4')(x)
+    x = BatchNormalization()(x)
+    x = LeakyReLU()(x)
+
+    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 16, name='fc5')(x)
     x = BatchNormalization()(x)
     x = LeakyReLU()(x)
 
@@ -180,11 +184,11 @@ def make_generator_model():
     x = BatchNormalization()(x)
     x = LeakyReLU()(x)
     
-    x = Conv2DTranspose(32, 2, strides=1, padding='same', name='deconv2')(x)
+    x = Conv2DTranspose(32, 3, strides=1, padding='same', name='deconv2')(x)
     x = BatchNormalization()(x)
     x = LeakyReLU()(x)
     
-    x = Conv2DTranspose(32, 3, strides=1, padding='same', name='deconv3')(x)
+    x = Conv2DTranspose(32, 3, strides=2, padding='same', name='deconv3')(x)
     x = BatchNormalization()(x)
     x = LeakyReLU()(x)
 
@@ -192,7 +196,7 @@ def make_generator_model():
     x = BatchNormalization()(x)
     x = LeakyReLU()(x)
     
-    x = Conv2DTranspose(128, 3, strides=2, padding='same', name='deconv_expand_2')(x)
+    x = Conv2DTranspose(128, 3, strides=1, padding='same', name='deconv_expand_2')(x)
     x = BatchNormalization()(x)
     x = LeakyReLU()(x)
 
