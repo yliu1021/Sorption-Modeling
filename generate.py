@@ -48,7 +48,7 @@ os.makedirs(base_dir, exist_ok=True)
 uniform_boost_dim = 5
 loss_weights = [1, 0.5] # weights of losses in the metric and each latent code
 
-proxy_enforcer_epochs = 120
+proxy_enforcer_epochs = 2
 # proxy_enforcer_epochs = 1
 proxy_enforcer_batchsize = 64
 
@@ -71,6 +71,10 @@ def summarize_model(model):
     print('Total params: {:,}'.format(trainable_count + non_trainable_count))
     print('Trainable params: {:,}'.format(trainable_count))
     print('Non-trainable params: {:,}'.format(non_trainable_count))
+
+
+def log_diff_loss(y_true, y_pred):
+    return -K.mean(K.log(1 - K.abs(y_true - y_pred) + K.epsilon()))
 
 
 def biased_loss(y_true, y_pred):
@@ -121,17 +125,11 @@ def make_proxy_enforcer_model():
     x = BatchNormalization()(x)
     x = LeakyReLU()(x)
 
-    x = Conv2D(128, 3, padding='same', strides=2, name='conv3')(x)
+    x = Conv2D(128, 3, padding='valid', strides=2, name='conv3')(x)
     x = BatchNormalization()(x)
     x = LeakyReLU()(x)
     
-    x = Conv2D(256, 3, padding='same', strides=2, name='conv4')(x)   
-    x = LeakyReLU()(x)
-    
-    x = Conv2D(256, 3, padding='same', strides=2, name='conv5')(x)
-    x = LeakyReLU()(x)
-    
-    x = Conv2D(256, 3, padding='same', strides=2, name='conv6')(x)
+    x = Conv2D(256, 3, padding='valid', strides=2, name='conv4')(x)   
     x = LeakyReLU()(x)
 
     x = Flatten()(x)
@@ -250,7 +248,7 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
     # load the grids and density diffs
     proxy_enforcer_model.trainable = True
     optimizer = Adam(lr=0.001, clipnorm=1.0)
-    proxy_enforcer_model.compile(optimizer, loss='mse', metrics=['mae', worst_abs_loss])
+    proxy_enforcer_model.compile(optimizer, loss='kullback_leibler_divergence', metrics=['mae', worst_abs_loss])
     summarize_model(proxy_enforcer_model)
 
     grids, metrics = get_all_data()
@@ -342,21 +340,44 @@ def gen_and_eval_grids(step):
     list(tqdm(p.imap(dft.run_dft_pool, range(n_gen_grids)), total=n_gen_grids))
 
 
-def visualize_grids(model_step=None):
+def visualize_enforcer(model_step=None):
     if model_step is None:
         model_step = 1
     generator_model = make_generator_model()
     enforcer_model, _ = make_proxy_enforcer_model()
-    generator_model.load_weights(os.path.join(base_dir,
-                                              'step{}/generator.hdf5'.format(model_step)),
-                                 by_name=True)
-    enforcer_model.load_weights(os.path.join(base_dir,
-                                             'step{}/enforcer.hdf5'.format(model_step)),
+    enforcer_model.load_weights(os.path.join(base_dir, 'step{}/enforcer.hdf5'.format(model_step)),
                                 by_name=True)
+    
+    all_data_files = get_all_data_files()
+    for grid_file, density_file in all_data_files:
+        grids = np.array([np.genfromtxt(grid_file, delimiter=',') for grid_file in grid_files])
+        densities = np.array([np.genfromtxt(density_file, delimiter=',', skip_header=1,
+                                            max_rows=N_ADSORP) for density_file in density_files])
+        densities = densities[:, :, 1]
+        pred_diffs = enforcer_model.predict(np.array(grids))
+        for grid, density, pred_diff in zip(grids, densities, pred_diffs):
+            pred_density = np.insert(np.cumsum(pred_diff), 0, 0)
+            metric = np.mean(np.abs(density - pred_density))
+
+            fig = plt.figure(1, figsize=(6, 8))
+            fig.canvas.mpl_connect('key_press_event', press)
+            fig.suptitle('{}, {}'.format('/'.join(grid_file.split('/')[-3:]), '/'.join(density_file.split('/')[-3:])))
+
+            ax = plt.subplot(211)
+            ax.pcolor(grid, cmap='Greys')
+            ax.set_aspect('equal')
+
+            ax = plt.subplot(212)
+            x = np.linspace(0, 1, N_ADSORP)
+            ax.plot(x, density)
+            ax.plot(x, pred_density)
+            ax.legend(['Mean absolute difference: {:.4f}'.format(metric), 'Target'])
+            ax.set_aspect(N_ADSORP)
+        
+            plt.show()
 
 
-
-def visualize_accuracy(max_steps, model_step=None):
+def visualize_generator(max_steps, model_step=None):
     if model_step is None:
         model_step = step
     proxy_enforcer_model, _ = make_proxy_enforcer_model()
@@ -393,8 +414,8 @@ if __name__ == '__main__':
     else:
         prompt = """\
 Options:
-    1. Visualize generated grids
-    2. Visualize accuracy
+    1. Visualize enforcer (model M)
+    2. Visualize generator (model M^-1)
     3. Gen and eval
 Enter <option number> <step number>
 """
@@ -403,9 +424,9 @@ Enter <option number> <step number>
         option_num = int(option_num)
         max_steps = int(max_steps)
         if option_num == 1:
-            visualize_grids(model_step=max_steps)
+            visualize_enforcer(model_step=max_steps)
         elif option_num == 2:
-            visualize_accuracy(max_steps, model_step=max_steps)
+            visualize_generator(max_steps, model_step=max_steps)
         elif option_num == 3:
             gen_and_eval_grids(max_steps)
         else:

@@ -82,10 +82,8 @@ def get_generator(batch_size=64, val_split=0.3):
     return ((train_generator, len(data_files)), (val_generator, len(val_data_files)))
 
 
-def get_all_data():
-    data = list()
+def get_all_data_files():
     all_files = list()
-    
     base_dirs = glob.glob('generative_model_*')
     print('Indexing files')
     for base_dir in base_dirs:
@@ -99,6 +97,12 @@ def get_all_data():
             density_files = glob.glob(os.path.join(density_dir, 'density_*.csv'))
             density_files.sort()
             all_files.append((grid_files, density_files))
+    return all_files
+
+
+def get_all_data():
+    data = list()
+    all_files = get_all_data_files()
     
     num_files = len(all_files)
     for i, (grid_files, density_files) in enumerate(all_files):
