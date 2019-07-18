@@ -53,13 +53,13 @@ os.makedirs(base_dir, exist_ok=True)
 uniform_boost_dim = 20
 loss_weights = [1, 0.5] # weights of losses in the metric and each latent code
 
-proxy_enforcer_epochs = 2
+proxy_enforcer_epochs = 20
 # proxy_enforcer_epochs = 1
 proxy_enforcer_batchsize = 64
 
 generator_train_size = 10000
 # generator_train_size = 128
-generator_epochs = 2
+generator_epochs = 20
 # generator_epochs = 1
 generator_batchsize = 64
 generator_train_size //= generator_batchsize
