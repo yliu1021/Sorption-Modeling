@@ -51,7 +51,7 @@ os.makedirs(base_dir, exist_ok=True)
 
 # Hyperparameters
 uniform_boost_dim = 5
-loss_weights = [1, 0.5] # weights of losses in the metric and each latent code
+loss_weights = [1, 0.1] # weights of losses in the metric and each latent code
 
 proxy_enforcer_epochs = 20
 # proxy_enforcer_epochs = 1
