@@ -50,7 +50,7 @@ base_dir = 'generative_model_3'
 os.makedirs(base_dir, exist_ok=True)
 
 # Hyperparameters
-uniform_boost_dim = 20
+uniform_boost_dim = 5
 loss_weights = [1, 0.5] # weights of losses in the metric and each latent code
 
 proxy_enforcer_epochs = 20
@@ -205,7 +205,7 @@ def make_generator_input(n_grids, use_generator=False, batchsize=generator_batch
     if use_generator:
         def gen():
             while True:
-                uniform_latent_code = np.random.normal(loc=0.0, scale=0.5, size=(batchsize,
+                uniform_latent_code = np.random.normal(loc=0.0, scale=0.2, size=(batchsize,
                                                                                  uniform_boost_dim))
                 artificial_metrics = list()
                 for i in range(batchsize):
@@ -301,7 +301,7 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
 
     # Generate random grids using G then evaluate them
     artificial_metrics, uniform_latent_code = make_generator_input(n_grids=n_gen_grids, use_generator=False)
-    uniform_latent_code = np.random.uniform(-0.5, 0.5, size=(n_gen_grids, uniform_boost_dim)) # 'normalize' randomness
+    uniform_latent_code = np.random.uniform(-0.1, 0.1, size=(n_gen_grids, uniform_boost_dim)) # 'normalize' randomness
     
     generated_grids = generator_model.predict([artificial_metrics, uniform_latent_code])
     generated_grids = generated_grids.astype('int')
@@ -438,7 +438,8 @@ def visualize_generator(step, model_step=None):
         ax.legend(['Actual', 'Target for M^-1', 'Predicted by M'], loc='best')
         # ax.set_aspect('equal')
 
-        # fig.text(0.5, 0.05, 'Mean absolute difference: {:.4f}'.format(metric), ha='center')
+        metric = np.mean(np.abs(artificial_density - pred_density))
+        fig.text(0.5, 0.05, 'Mean absolute difference: {:.4f}'.format(metric), ha='center')
 
         plt.show()
 
