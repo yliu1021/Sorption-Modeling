@@ -54,7 +54,7 @@ uniform_boost_dim = 1
 loss_weights = [1, 0.05] # weights of losses in the metric and each latent code
 
 proxy_enforcer_epochs = 20
-# proxy_enforcer_epochs = 1
+proxy_enforcer_epochs = 1
 proxy_enforcer_batchsize = 64
 
 generator_train_size = 10000
@@ -222,8 +222,9 @@ def make_generator_input(n_grids, use_generator=False, batchsize=generator_batch
                     diffs /= np.sum(diffs, axis=0)
                     artificial_metrics.append(diffs)
                 artificial_metrics = np.array(artificial_metrics)
-                out = [artificial_metrics, uniform_latent_code]
-                yield [np.cumsum(artificial_metrics, axis=1), uniform_latent_code]
+                # print(artificial_metrics.shape)
+                # out = [artificial_metrics, uniform_latent_code]
+                yield [np.cumsum(artificial_metrics, axis=1), uniform_latent_code], [artificial_metrics, uniform_latent_code]
         return gen()
     else:
         print('Generating')
