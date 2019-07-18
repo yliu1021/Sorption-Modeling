@@ -102,27 +102,38 @@ def worst_mse_loss(y_true, y_pred):
 
 # Enforcer model
 def make_proxy_enforcer_model():
-    inp = Input(shape=(GRID_SIZE, GRID_SIZE), name='proxy_enforcer_input')
-    x = Reshape((GRID_SIZE, GRID_SIZE, 1), name='reshape')(inp)
+    first_filter_size = 3
     
-    x = Conv2D(16, 2, padding='same', name='conv0')(x)
+    inp = Input(shape=(GRID_SIZE, GRID_SIZE), name='proxy_enforcer_input')
+    x = Lambda(lambda x: K.tile(x, [1, 3, 3]))(inp)
+    x = Reshape((GRID_SIZE * 3, GRID_SIZE * 3, 1))(x)
+    x = Cropping2D(cropping=(GRID_SIZE - (first_filter_size - 1), GRID_SIZE - (first_filter_size - 1)))(x)
+
+    x = Conv2D(16, first_filter_size, padding='valid', name='conv0')(x)
+    x = BatchNormalization()(x)
     x = LeakyReLU()(x)
     
-    x = Conv2D(32, 2, padding='same', name='conv1')(x)
+    x = Conv2D(32, 3, padding='valid', name='conv1')(x)
+    x = BatchNormalization()(x)
     x = LeakyReLU()(x)
 
-    x = Conv2D(64, 2, padding='same', name='conv2')(x)
+    x = Conv2D(64, 3, padding='valid', name='conv2')(x)
+    x = BatchNormalization()(x)
     x = LeakyReLU()(x)
 
     x = Conv2D(128, 3, padding='same', strides=2, name='conv3')(x)
+    x = BatchNormalization()(x)
     x = LeakyReLU()(x)
     
     x = Conv2D(256, 3, padding='same', strides=2, name='conv4')(x)   
     x = LeakyReLU()(x)
     
-    x = Conv2D(516, 3, padding='same', strides=2, name='conv5')(x)
+    x = Conv2D(256, 3, padding='same', strides=2, name='conv5')(x)
     x = LeakyReLU()(x)
     
+    x = Conv2D(256, 3, padding='same', strides=2, name='conv6')(x)
+    x = LeakyReLU()(x)
+
     x = Flatten()(x)
 
     x = Dense(2048, name='hidden_fc_1', activation='relu')(x)
@@ -343,54 +354,6 @@ def visualize_grids(model_step=None):
                                              'step{}/enforcer.hdf5'.format(model_step)),
                                 by_name=True)
 
-    for _ in range(5):
-        points = 200
-        step_points = points // 4
-        latent_range = (-0.5, 0.5)
-        uniform_latent_code_25 = np.random.uniform(*latent_range, size=(step_points, uniform_boost_dim))
-        uniform_latent_code_50 = np.random.uniform(*latent_range, size=(step_points, uniform_boost_dim))
-        uniform_latent_code_75 = np.random.uniform(*latent_range, size=(step_points, uniform_boost_dim))
-        uniform_latent_code_100 = np.random.uniform(*latent_range, size=(step_points, uniform_boost_dim))        
-        artificial_metrics_25 = np.linspace(0.0, 0.25, num=step_points)
-        artificial_metrics_50 = np.linspace(0.25, 0.5, num=step_points)
-        artificial_metrics_75 = np.linspace(0.5, 0.75, num=step_points)
-        artificial_metrics_100 = np.linspace(0.75, 1.0, num=step_points)
-    
-        generated_grids_25 = generator_model.predict([artificial_metrics_25, uniform_latent_code_25])
-        generated_grids_50 = generator_model.predict([artificial_metrics_50, uniform_latent_code_50])
-        generated_grids_75 = generator_model.predict([artificial_metrics_75, uniform_latent_code_75])
-        generated_grids_100 = generator_model.predict([artificial_metrics_100, uniform_latent_code_100])
-        predicted_metrics_25 = np.squeeze(enforcer_model.predict(generated_grids_25))
-        predicted_metrics_50 = np.squeeze(enforcer_model.predict(generated_grids_50))
-        predicted_metrics_75 = np.squeeze(enforcer_model.predict(generated_grids_75))
-        predicted_metrics_100 = np.squeeze(enforcer_model.predict(generated_grids_100))
-    
-        artificial_metrics = np.concatenate((artificial_metrics_25,
-                                         artificial_metrics_50,
-                                         artificial_metrics_75,
-                                         artificial_metrics_100))
-        predicted_metrics = np.concatenate((predicted_metrics_25,
-                                         predicted_metrics_50,
-                                         predicted_metrics_75,
-                                         predicted_metrics_100))
-        fit = np.polyfit(artificial_metrics, predicted_metrics, 1)
-        
-        fit_fn = np.poly1d(fit)
-    
-        plt.scatter(artificial_metrics_25, predicted_metrics_25)
-        plt.scatter(artificial_metrics_50, predicted_metrics_50)
-        plt.scatter(artificial_metrics_75, predicted_metrics_75)
-        plt.scatter(artificial_metrics_100, predicted_metrics_100)
-        
-        x = np.linspace(0.0, 1.0, num=2)
-        plt.plot(x, fit_fn(x))
-        plt.plot([0, 1], [0, 1])
-        plt.xlabel('artificial_metrics')
-        plt.ylabel('predicted_metrics')
-        plt.title('step {}'.format(model_step))
-        plt.legend(['best fit y = {:.2f}x + {:.2f}'.format(fit[0], fit[1]), 'base line',
-                    '0.0-0.25', '0.25-0.50', '0.50-0.75', '0.75-1.00'])
-        plt.show()
 
 
 def visualize_accuracy(max_steps, model_step=None):
@@ -406,34 +369,7 @@ def visualize_accuracy(max_steps, model_step=None):
         if (grid.size == 0):
             continue
         density = np.array(fetch_density_from_step(base_dir, step))
-        density[:, :, 0] /= N_ADSORP
-        metric = (np.sum(np.abs(density[:, :, 1] - density[:, :, 0]), axis=1) / 20.0)
 
-        pred = np.squeeze(proxy_enforcer_model.predict(grid))
-    
-        fit = np.polyfit(metric, pred, 1)
-        print("Log R^2: {:.6f}".format(np.corrcoef(np.log(metric), np.log(pred))[0, 1] ** 2))
-        correlation = np.corrcoef(metric, pred)[0, 1]
-        mse = np.mean((pred - metric) ** 2)
-
-        fit_fn = np.poly1d(fit)
-        x = np.linspace(0, 1, num=10)
-        plt.plot([0, 1], [0, 1])
-        plt.plot(x, fit_fn(x), color='red')
-        plt.scatter(metric, pred)
-        plt.xlim(0, 1)
-        plt.ylim(0, 1)
-        plt.xlabel('Actual metric')
-        plt.ylabel('Predicted metric')
-        plt.title('Metric: {:.2f} +/- {:.2f}, R^2={:.3f}, R={:.3f}, mse={:.3e}'.format(metric.mean(),
-                                                                                       metric.std(),
-                                                                                       correlation**2,
-                                                                                       correlation,
-                                                                                       mse))
-        plt.legend(['base line',
-                    'y = {:.2f}x + {:.2f}'.format(fit[0], fit[1]),
-                    'step {}'.format(step)])
-        plt.show()
 
 
 if __name__ == '__main__':
