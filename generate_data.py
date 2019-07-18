@@ -105,8 +105,8 @@ def get_all_data():
     all_files = get_all_data_files()
     shuffle(all_files)
 
-    num_files = len(all_files[:30])
-    for i, (grid_files, density_files) in enumerate(all_files[:30]):
+    num_files = len(all_files)
+    for i, (grid_files, density_files) in enumerate(all_files):
         print('\rLoading {}/{}'.format(i+1, num_files), end='')
         grids = [np.genfromtxt(grid_file, delimiter=',') for grid_file in grid_files]
         densities = [np.genfromtxt(density_file, delimiter=',', skip_header=1,

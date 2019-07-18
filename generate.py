@@ -54,12 +54,12 @@ uniform_boost_dim = 1
 loss_weights = [1, 0.05] # weights of losses in the metric and each latent code
 
 proxy_enforcer_epochs = 20
-proxy_enforcer_epochs = 1
+# proxy_enforcer_epochs = 2
 proxy_enforcer_batchsize = 64
 
 generator_train_size = 10000
 # generator_train_size = 128
-generator_epochs = 40
+generator_epochs = 20
 # generator_epochs = 1
 generator_batchsize = 64
 generator_train_size //= generator_batchsize
@@ -162,7 +162,6 @@ def make_generator_model():
     H_GRID_SIZE = GRID_SIZE // 2
 
     x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 8, name='fc1')(conc)
-    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 8, name='fc2')(x)
     x = BatchNormalization()(x)
     x = LeakyReLU()(x)
 
@@ -188,19 +187,19 @@ def make_generator_model():
     x = BatchNormalization()(x)
     x = LeakyReLU()(x)
     
-    x = Conv2DTranspose(32, 3, strides=2, padding='same', name='deconv3')(x)
+    x = Conv2DTranspose(32, 3, strides=2, padding='same', name='deconv_expand_1')(x)
     x = BatchNormalization()(x)
     x = LeakyReLU()(x)
 
-    x = Conv2DTranspose(128, 3, strides=2, padding='same', name='deconv_expand_1')(x)
+    x = Conv2DTranspose(128, 3, strides=2, padding='same', name='deconv_expand_2')(x)
     x = BatchNormalization()(x)
     x = LeakyReLU()(x)
     
-    x = Conv2DTranspose(128, 3, strides=1, padding='same', name='deconv_expand_2')(x)
+    x = Conv2DTranspose(128, 3, strides=1, padding='same', name='deconv_3')(x)
     x = BatchNormalization()(x)
     x = LeakyReLU()(x)
 
-    out = Conv2D(1, 5, strides=1, padding='same', activation=binary_sigmoid, name='generator_conv')(x)
+    out = Conv2D(1, 1, strides=1, padding='same', activation=binary_sigmoid, name='generator_conv')(x)
     out = Reshape((GRID_SIZE, GRID_SIZE))(out)
 
     model = Model(inputs=[inp, latent_code_uni], outputs=[out],
@@ -222,13 +221,12 @@ def make_generator_input(n_grids, use_generator=False, batchsize=generator_batch
                     diffs /= np.sum(diffs, axis=0)
                     artificial_metrics.append(diffs)
                 artificial_metrics = np.array(artificial_metrics)
-                # print(artificial_metrics.shape)
-                # out = [artificial_metrics, uniform_latent_code]
-                yield [np.cumsum(artificial_metrics, axis=1), uniform_latent_code], [artificial_metrics, uniform_latent_code]
+                out = [artificial_metrics, uniform_latent_code]
+                yield out, out
         return gen()
     else:
         print('Generating')
-        uniform_latent_code = np.random.normal(loc=0.0, scale=0.5, size=(n_grids, uniform_boost_dim))
+        uniform_latent_code = np.random.normal(loc=0.0, scale=0.2, size=(n_grids, uniform_boost_dim))
         artificial_metrics = list()
         for i in range(n_grids):
             mean = np.random.uniform(-np.log(2+1/N_ADSORP), np.log(2+1/N_ADSORP)) # centralize mean at 1/40
@@ -268,7 +266,7 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
     grids, metrics = get_all_data()
     proxy_enforcer_model.fit(x=grids, y=metrics, batch_size=proxy_enforcer_batchsize,
                              epochs=proxy_enforcer_epochs, validation_split=0.3,
-                             callbacks=[ReduceLROnPlateau(patience=20),
+                             callbacks=[ReduceLROnPlateau(patience=15),
                                         EarlyStopping(patience=40, restore_best_weights=True)])
 
     proxy_enforcer_model.save(proxy_enforcer_model_save_loc)
@@ -292,7 +290,7 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
                            outputs=[proxy_enforcer_out, latent_code_uni_out])
 
     optimizer = Adam(lr=0.001, clipnorm=1.0)
-    training_model.compile(optimizer, loss=['kullback_leibler_divergence', 'mse'],
+    training_model.compile(optimizer, loss=['poisson', 'mse'],
                            metrics={
                                'proxy_enforcer_model': ['mae', worst_abs_loss],
                                'uniform_latent_code_model': 'mae',
@@ -300,7 +298,7 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
     summarize_model(training_model)
     training_model.fit_generator(generator_train_generator, steps_per_epoch=generator_train_size,
                                  epochs=generator_epochs,
-                                 callbacks=[ReduceLROnPlateau(patience=10, monitor='loss'),
+                                 callbacks=[ReduceLROnPlateau(patience=15, monitor='loss'),
                                             EarlyStopping(patience=40, restore_best_weights=True,
                                                           monitor='loss')],
                                  max_queue_size=32, shuffle=False)
@@ -338,8 +336,8 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
 def visualize_enforcer(model_step=None):
     if model_step is None:
         model_step = 1
-    enforcer_model, _ = make_proxy_enforcer_model()
-    enforcer_model.load_weights(os.path.join(base_dir, 'step{}/enforcer.hdf5'.format(model_step)))
+    enforcer_model = load_model(os.path.join(base_dir, 'step{}/enforcer.hdf5'.format(model_step)),
+                                custom_objects={'worst_abs_loss': worst_abs_loss})
 
     all_data_files = get_all_data_files()
     all_data_files = [item for sublist in all_data_files for item in zip(*sublist)]
@@ -408,8 +406,8 @@ def visualize_enforcer(model_step=None):
 def visualize_generator(step, model_step=None):
     if model_step is None:
         model_step = step
-    enforcer_model, _ = make_proxy_enforcer_model()
-    enforcer_model.load_weights(os.path.join(base_dir, 'step{}/enforcer.hdf5'.format(model_step)))
+    enforcer_model = load_model(os.path.join(base_dir, 'step{}/enforcer.hdf5'.format(model_step)),
+                                custom_objects={'worst_abs_loss': worst_abs_loss})
     step_dir = os.path.join(base_dir, 'step{}'.format(step))
     grid_dir = os.path.join(step_dir, 'grids')
     density_dir = os.path.join(step_dir, 'results')
