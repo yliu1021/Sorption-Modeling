@@ -161,14 +161,18 @@ def make_generator_model():
     Q_GRID_SIZE = GRID_SIZE // 4
     H_GRID_SIZE = GRID_SIZE // 2
 
-    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 4, name='fc1')(conc)
+    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 8, name='fc1')(conc)
     x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 8, name='fc2')(x)
     x = BatchNormalization()(x)
-    x = ReLU()(x)
+    x = LeakyReLU()(x)
 
     x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 16, name='fc3')(x)
     x = BatchNormalization()(x)
-    x = ReLU()(x)
+    x = LeakyReLU()(x)
+
+    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 16, name='fc4')(x)
+    x = BatchNormalization()(x)
+    x = LeakyReLU()(x)
 
     x = Reshape((Q_GRID_SIZE, Q_GRID_SIZE, 16))(x)
 
