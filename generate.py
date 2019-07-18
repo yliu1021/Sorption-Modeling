@@ -40,6 +40,11 @@ C are latent codes that seed the generative model (to make it parameterize its
 outputs on something)
 """
 
+def press(event):
+    if event.key != 'q':
+        exit(0)
+
+
 
 base_dir = 'generative_model_3'
 os.makedirs(base_dir, exist_ok=True)
@@ -54,15 +59,13 @@ proxy_enforcer_batchsize = 64
 
 generator_train_size = 10000
 # generator_train_size = 128
-generator_epochs = 120
+generator_epochs = 2
 # generator_epochs = 1
 generator_batchsize = 64
 generator_train_size //= generator_batchsize
 
 n_gen_grids = 1000
-max_var = 6
-
-generator_train_bias = 3.0
+max_var = 7
 
 
 def summarize_model(model):
@@ -206,7 +209,7 @@ def make_generator_input(n_grids, use_generator=False, batchsize=generator_batch
                                                                                  uniform_boost_dim))
                 artificial_metrics = list()
                 for i in range(batchsize):
-                    mean = np.random.uniform(-np.log(2+1/40), np.log(2+1/40))
+                    mean = np.random.uniform(-np.log(2+1/N_ADSORP), np.log(2+1/N_ADSORP))
                     diffs = np.exp(np.random.normal(mean, np.sqrt(i/batchsize * max_var), N_ADSORP))
                     diffs /= np.sum(diffs, axis=0)
                     artificial_metrics.append(diffs)
@@ -220,7 +223,9 @@ def make_generator_input(n_grids, use_generator=False, batchsize=generator_batch
         artificial_metrics = list()
         for i in range(n_grids):
             mean = np.random.uniform(-np.log(2+1/N_ADSORP), np.log(2+1/N_ADSORP)) # centralize mean at 1/40
-            artificial_metrics.append(np.exp(np.random.normal(mean, i/n_grids * max_var, N_ADSORP)))
+            diffs = np.exp(np.random.normal(mean, np.sqrt(i/batchsize * max_var), N_ADSORP))
+            diffs /= np.sum(diffs, axis=0)
+            artificial_metrics.append(diffs)
         artificial_metrics = np.array(artificial_metrics)
         return artificial_metrics, uniform_latent_code
 
@@ -275,7 +280,7 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
                            outputs=[proxy_enforcer_out, latent_code_uni_out])
 
     optimizer = Adam(lr=0.001, clipnorm=1.0)
-    training_model.compile(optimizer, loss=['mse', 'mse'],
+    training_model.compile(optimizer, loss=['kullback_leibler_divergence', 'mse'],
                            metrics={
                                'proxy_enforcer_model': ['mae', worst_abs_loss],
                                'uniform_latent_code_model': 'mae',
@@ -308,36 +313,13 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
     
     print('evaluating grids')
     os.system('./fast_dft {}'.format(step_dir))
-
-
-def gen_and_eval_grids(step):
-    step_dir = os.path.join(base_dir, 'step{}'.format(step))
-    os.makedirs(step_dir, exist_ok=True)
-
-    generator_model = make_generator_model()
-    generator_model.load_weights(os.path.join(base_dir, 'step{}/generator.hdf5'.format(step)),
-                                 by_name=True)
     
-    uniform_latent_code = np.random.uniform(-0.2, 0.2, size=(n_gen_grids, uniform_boost_dim))
-    artificial_metrics = np.linspace(0.0, 1.0, num=n_gen_grids)
-    
-    generated_grids = generator_model.predict([artificial_metrics, uniform_latent_code])
-    eval_grids = np.around(generated_grids).astype('int')
-
-    grid_dir = os.path.join(step_dir, 'grids')
-    density_dir = os.path.join(step_dir, 'results')
-    os.makedirs(grid_dir, exist_ok=True)
-    os.makedirs(density_dir, exist_ok=True)
-    print('saving eval grids')
-    for i in range(n_gen_grids):
-        path = os.path.join(grid_dir, 'grid_%04d.csv'%i)
-        np.savetxt(path, eval_grids[i, :, :], fmt='%i', delimiter=',')
-    
-    print('evaluating grids')
-    dft.pool_arg['grid_dir'] = grid_dir
-    dft.pool_arg['result_dir'] = density_dir
-    p = Pool()
-    list(tqdm(p.imap(dft.run_dft_pool, range(n_gen_grids)), total=n_gen_grids))
+    print('saving artificial metrics')
+    artificial_metrics_dir = os.path.join(step_dir, 'artificial_metrics')
+    os.makedirs(artificial_metrics_dir, exist_ok=True)
+    for i, artificial_metric in enumerate(artificial_metrics):
+        path = os.path.join(artificial_metrics_dir, 'artificial_metric_%04d.csv'%i)
+        np.savetxt(path, artificial_metric, fmt='%f', delimiter=',')
 
 
 def visualize_enforcer(model_step=None):
@@ -347,50 +329,115 @@ def visualize_enforcer(model_step=None):
     enforcer_model, _ = make_proxy_enforcer_model()
     enforcer_model.load_weights(os.path.join(base_dir, 'step{}/enforcer.hdf5'.format(model_step)),
                                 by_name=True)
-    
+
     all_data_files = get_all_data_files()
+    all_data_files = [item for sublist in all_data_files for item in zip(*sublist)]
+    shuffle(all_data_files)
+    
+    extreme_grid = None
+    extreme_density = None
+    extreme_pred_density = None
+    extreme_metric = 1
+
     for grid_file, density_file in all_data_files:
-        grids = np.array([np.genfromtxt(grid_file, delimiter=',') for grid_file in grid_files])
-        densities = np.array([np.genfromtxt(density_file, delimiter=',', skip_header=1,
-                                            max_rows=N_ADSORP) for density_file in density_files])
-        densities = densities[:, :, 1]
-        pred_diffs = enforcer_model.predict(np.array(grids))
-        for grid, density, pred_diff in zip(grids, densities, pred_diffs):
-            pred_density = np.insert(np.cumsum(pred_diff), 0, 0)
-            metric = np.mean(np.abs(density - pred_density))
+        grid = np.genfromtxt(grid_file, delimiter=',')
+        density = np.genfromtxt(density_file, delimiter=',', skip_header=1, max_rows=N_ADSORP)
+        density = density[:, 1]
 
-            fig = plt.figure(1, figsize=(6, 8))
-            fig.canvas.mpl_connect('key_press_event', press)
-            fig.suptitle('{}, {}'.format('/'.join(grid_file.split('/')[-3:]), '/'.join(density_file.split('/')[-3:])))
+        pred_diff = enforcer_model.predict(np.array([grid]))[0]
 
-            ax = plt.subplot(211)
-            ax.pcolor(grid, cmap='Greys')
-            ax.set_aspect('equal')
-
-            ax = plt.subplot(212)
-            x = np.linspace(0, 1, N_ADSORP)
-            ax.plot(x, density)
-            ax.plot(x, pred_density)
-            ax.legend(['Mean absolute difference: {:.4f}'.format(metric), 'Target'])
-            ax.set_aspect(N_ADSORP)
+        pred_density = np.cumsum(pred_diff)
+        metric = np.mean(np.abs(density - pred_density))
         
-            plt.show()
+        if metric < extreme_metric:
+            extreme_grid = grid
+            extreme_density = density
+            extreme_pred_density = pred_density
+            extreme_metric = metric
+        
+        fig = plt.figure(1, figsize=(6, 8))
+        fig.canvas.mpl_connect('key_press_event', press)
+
+        ax = plt.subplot(211)
+        ax.pcolor(grid, cmap='Greys')
+        ax.set_aspect('equal')
+
+        ax = plt.subplot(212)
+        x = np.linspace(0, 1, N_ADSORP+1)
+        ax.plot(x, np.insert(density, N_ADSORP, 1))
+        ax.plot(x, np.insert(pred_density, 0, 0))
+        ax.legend(['Target', 'Predicted'], loc='best')
+        ax.set_aspect('equal')
+        
+        fig.text(0.5, 0.05, 'Mean absolute difference: {:.4f}'.format(metric), ha='center')
+
+        plt.show()
+
+    fig = plt.figure(1, figsize=(6, 8))
+    fig.canvas.mpl_connect('key_press_event', press)
+
+    ax = plt.subplot(211)
+    ax.pcolor(extreme_grid, cmap='Greys')
+    ax.set_aspect('equal')
+
+    ax = plt.subplot(212)
+    x = np.linspace(0, 1, N_ADSORP+1)
+    ax.plot(x, np.insert(extreme_density, N_ADSORP, 1))
+    ax.plot(x, np.insert(extreme_pred_density, 0, 0))
+    ax.legend(['Target', 'Predicted'], loc='upper left')
+    ax.set_aspect('equal')
+
+    fig.text(0.5, 0.05, 'Mean absolute difference: {:.4f}'.format(extreme_metric), ha='center')
+
+    plt.show()
 
 
-def visualize_generator(max_steps, model_step=None):
+def visualize_generator(step, model_step=None):
     if model_step is None:
         model_step = step
-    proxy_enforcer_model, _ = make_proxy_enforcer_model()
-    proxy_enforcer_model.load_weights(os.path.join(base_dir,
-                                                   'step{}/enforcer.hdf5'.format(model_step)),
-                                      by_name=True)
+    enforcer_model, _ = make_proxy_enforcer_model()
+    enforcer_model.load_weights(os.path.join(base_dir, 'step{}/enforcer.hdf5'.format(model_step)),
+                                by_name=True)
+    step_dir = os.path.join(base_dir, 'step{}'.format(step))
+    grid_dir = os.path.join(step_dir, 'grids')
+    density_dir = os.path.join(step_dir, 'results')
+    artificial_metrics_dir = os.path.join(step_dir, 'artificial_metrics')
     
-    for step in range(max_steps, -1, -1):
-        grid = np.array(fetch_grids_from_step(base_dir, step))
-        if (grid.size == 0):
-            continue
-        density = np.array(fetch_density_from_step(base_dir, step))
+    grid_files = glob.glob(os.path.join(grid_dir, 'grid_*'))
+    grid_files.sort()
+    density_files = glob.glob(os.path.join(density_dir, 'density_*'))
+    density_files.sort()
+    artificial_metrics_files = glob.glob(os.path.join(artificial_metrics_dir, 'artificial_metric_*'))
+    artificial_metrics_files.sort()
+    
+    for grid_file, density_file, artificial_metric_file in zip(grid_files, density_files, artificial_metrics_files):
+        grid = np.genfromtxt(grid_file, delimiter=',')
+        density = np.genfromtxt(density_file, delimiter=',', skip_header=1, max_rows=N_ADSORP)
+        density = density[:, 1]
+        artificial_metrics = np.genfromtxt(artificial_metric_file, delimiter=',')
+        
+        pred_diff = enforcer_model.predict(np.array([grid]))[0]
+        pred_density = np.cumsum(pred_diff)
+        artificial_density = np.cumsum(artificial_metrics)
+        
+        fig = plt.figure(1, figsize=(6, 8))
+        fig.canvas.mpl_connect('key_press_event', press)
 
+        ax = plt.subplot(211)
+        ax.pcolor(grid, cmap='Greys')
+        ax.set_aspect('equal')
+
+        ax = plt.subplot(212)
+        x = np.linspace(0, 1, N_ADSORP+1)
+        ax.plot(x, np.insert(density, N_ADSORP, 1))
+        ax.plot(x, np.insert(artificial_density, 0, 0))
+        ax.plot(x, np.insert(pred_density, 0, 0))
+        ax.legend(['Actual', 'Target for M^-1', 'Predicted by M'], loc='best')
+        # ax.set_aspect('equal')
+
+        # fig.text(0.5, 0.05, 'Mean absolute difference: {:.4f}'.format(metric), ha='center')
+
+        plt.show()
 
 
 if __name__ == '__main__':
@@ -416,7 +463,6 @@ if __name__ == '__main__':
 Options:
     1. Visualize enforcer (model M)
     2. Visualize generator (model M^-1)
-    3. Gen and eval
 Enter <option number> <step number>
 """
         inp = input(prompt)
@@ -427,8 +473,6 @@ Enter <option number> <step number>
             visualize_enforcer(model_step=max_steps)
         elif option_num == 2:
             visualize_generator(max_steps, model_step=max_steps)
-        elif option_num == 3:
-            gen_and_eval_grids(max_steps)
         else:
             print('Invalid option')
 
