@@ -50,7 +50,7 @@ base_dir = 'generative_model_3'
 os.makedirs(base_dir, exist_ok=True)
 
 # Hyperparameters
-uniform_boost_dim = 5
+uniform_boost_dim = 20
 loss_weights = [1, 0.5] # weights of losses in the metric and each latent code
 
 proxy_enforcer_epochs = 2
