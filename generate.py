@@ -179,27 +179,31 @@ def make_generator_model():
 
     x = Reshape((Q_GRID_SIZE, Q_GRID_SIZE, 16))(x)
 
-    x = Conv2DTranspose(16, 3, strides=1, padding='same', name='deconv1')(x)
+    x = Conv2DTranspose(16, 5, strides=1, padding='same', name='pre_deconv1')(x)
     # x = BatchNormalization()(x)
     x = LeakyReLU()(x)
     
-    x = Conv2DTranspose(32, 3, strides=1, padding='same', name='deconv2')(x)
+    x = Conv2DTranspose(32, 3, strides=1, padding='same', name='pre_deconv2')(x)
     # x = BatchNormalization()(x)
     x = LeakyReLU()(x)
     
-    x = Conv2DTranspose(64, 3, strides=2, padding='same', name='deconv_expand_1')(x)
+    x = Conv2DTranspose(32, 3, strides=1, padding='same', name='pre_deconv3')(x)
     # x = BatchNormalization()(x)
     x = LeakyReLU()(x)
 
-    x = Conv2DTranspose(128, 3, strides=2, padding='same', name='deconv_expand_2')(x)
-    # x = BatchNormalization()(x)
-    x = LeakyReLU()(x)
-    
-    x = Conv2DTranspose(256, 3, strides=1, padding='same', name='deconv_3')(x)
+    x = Conv2DTranspose(64, 3, strides=2, padding='same', name='deconv_expand1')(x)
     # x = BatchNormalization()(x)
     x = LeakyReLU()(x)
 
-    x = Conv2DTranspose(516, 3, strides=1, padding='same', name='deconv_4')(x)
+    x = Conv2DTranspose(128, 3, strides=2, padding='same', name='deconv_expand2')(x)
+    # x = BatchNormalization()(x)
+    x = LeakyReLU()(x)
+    
+    x = Conv2DTranspose(256, 3, strides=1, padding='same', name='post_deconv1')(x)
+    # x = BatchNormalization()(x)
+    x = LeakyReLU()(x)
+
+    x = Conv2DTranspose(516, 3, strides=1, padding='same', name='post_deconv2')(x)
     # x = BatchNormalization()(x)
     x = LeakyReLU()(x)
 
