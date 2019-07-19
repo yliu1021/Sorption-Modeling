@@ -84,7 +84,8 @@ def get_generator(batch_size=64, val_split=0.3):
 
 def get_all_data_files():
     all_files = list()
-    base_dirs = glob.glob('generative_model_*')
+    # base_dirs = glob.glob('generative_model_*')
+    base_dirs = glob.glob('generative_model_3')
     print('Indexing files')
     for base_dir in base_dirs:
         data_files = list()

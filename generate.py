@@ -187,19 +187,19 @@ def make_generator_model():
     # x = BatchNormalization()(x)
     x = LeakyReLU()(x)
     
-    x = Conv2DTranspose(32, 3, strides=1, padding='same', name='pre_deconv3')(x)
+    x = Conv2DTranspose(64, 3, strides=1, padding='same', name='pre_deconv3')(x)
     # x = BatchNormalization()(x)
     x = LeakyReLU()(x)
 
-    x = Conv2DTranspose(64, 3, strides=2, padding='same', name='deconv_expand1')(x)
+    x = Conv2DTranspose(128, 3, strides=1, padding='same', name='pre_deconv4')(x)
     # x = BatchNormalization()(x)
     x = LeakyReLU()(x)
 
-    x = Conv2DTranspose(128, 3, strides=2, padding='same', name='deconv_expand2')(x)
+    x = Conv2DTranspose(128, 3, strides=2, padding='same', name='deconv_expand1')(x)
     # x = BatchNormalization()(x)
     x = LeakyReLU()(x)
     
-    x = Conv2DTranspose(256, 3, strides=1, padding='same', name='post_deconv1')(x)
+    x = Conv2DTranspose(256, 3, strides=2, padding='same', name='deconv_expand2')(x)
     # x = BatchNormalization()(x)
     x = LeakyReLU()(x)
 
