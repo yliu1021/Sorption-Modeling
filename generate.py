@@ -173,11 +173,11 @@ def make_generator_model():
     # x = BatchNormalization()(x)
     x = LeakyReLU()(x)
 
-    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 16, name='fc5')(x)
+    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 8, name='fc5')(x)
     # x = BatchNormalization()(x)
     x = LeakyReLU()(x)
 
-    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 16, name='fc5')(x)
+    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 16, name='fc6')(x)
     # x = BatchNormalization()(x)
     x = LeakyReLU()(x)
 
