@@ -285,8 +285,11 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
     prev_enforcer_save_loc = os.path.join(prev_step_dir, 'enforcer.hdf5')
     if os.path.exists(prev_enforcer_save_loc):
         print('Found enforcer previous model. Loading from there')
-        proxy_enforcer_model.load_weights(prev_enforcer_save_loc)
-        lr *= 0.5
+        try:
+            proxy_enforcer_model.load_weights(prev_enforcer_save_loc)
+            lr *= 0.5
+        except:
+            print('Incompatible save')
 
     unfreeze_model(proxy_enforcer_model)
     optimizer = Adam(lr=lr, clipnorm=1.0)
@@ -310,8 +313,11 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
     prev_generator_save_loc = os.path.join(prev_step_dir, 'generator.hdf5')
     if os.path.exists(prev_generator_save_loc):
         print('Found generator previous model. Loading from there')
-        generator_model.load_weights(prev_generator_save_loc)
-        lr *= 0.5
+        try:
+            generator_model.load_weights(prev_generator_save_loc)
+            lr *= 0.5
+        except:
+            print('Incompatible save')
 
     latent_code_uni = Input(shape=(uniform_boost_dim,), name='latent_code')
     inp = Input(shape=(N_ADSORP,), name='target_metric')
