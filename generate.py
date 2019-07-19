@@ -238,7 +238,7 @@ def make_generator_input(n_grids, use_generator=False, batchsize=generator_batch
         artificial_metrics = list()
         for i in range(n_grids):
             mean = np.random.uniform(-np.log(2+1/N_ADSORP), np.log(2+1/N_ADSORP)) # centralize mean at 1/40
-            diffs = np.exp(np.random.normal(mean, np.sqrt(i/batchsize * max_var), N_ADSORP))
+            diffs = np.exp(np.random.normal(mean, np.sqrt(i/n_grids * max_var), N_ADSORP))
             diffs /= np.sum(diffs, axis=0)
             artificial_metrics.append(diffs)
         artificial_metrics = np.array(artificial_metrics)
@@ -363,6 +363,48 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
     os.makedirs(density_dir, exist_ok=True)
     print('saving generated grids')
     for i in range(n_gen_grids):
+        path = os.path.join(grid_dir, 'grid_%04d.csv'%i)
+        np.savetxt(path, generated_grids[i, :, :], fmt='%i', delimiter=',')
+    
+    print('evaluating grids')
+    os.system('./fast_dft {}'.format(step_dir))
+    
+    print('saving artificial metrics')
+    artificial_metrics_dir = os.path.join(step_dir, 'artificial_metrics')
+    os.makedirs(artificial_metrics_dir, exist_ok=True)
+    for i, artificial_metric in enumerate(artificial_metrics):
+        path = os.path.join(artificial_metrics_dir, 'artificial_metric_%04d.csv'%i)
+        np.savetxt(path, artificial_metric, fmt='%f', delimiter=',')
+
+
+def generate_custom_curves(model_step):
+    step_dir = os.path.join(base_dir, 'step_custom')
+    os.makedirs(step_dir, exist_ok=True)
+
+    generator_model = make_generator_model()
+    proxy_enforcer_model, lc_uni = make_proxy_enforcer_model()
+    generator_model.load_weights(os.path.join(base_dir, 'step{}/generator.hdf5'.format(model_step)))
+    proxy_enforcer_model.load_weights(os.path.join(base_dir, 'step{}/enforcer.hdf5'.format(model_step)))
+    
+    n_generate = 10
+    artificial_metrics = list()
+    for i in range(n_generate):
+        diffs = np.zeros(N_ADSORP)
+        ind = int(i / n_generate * N_ADSORP)
+        diffs[ind] = 1.0
+        artificial_metrics.append(diffs)
+    artificial_metrics = np.array(artificial_metrics)
+    uniform_latent_code = np.random.uniform(-0.1, 0.1, size=(n_generate, uniform_boost_dim))
+    
+    generated_grids = generator_model.predict([artificial_metrics, uniform_latent_code])
+    generated_grids = generated_grids.astype('int')
+
+    grid_dir = os.path.join(step_dir, 'grids')
+    density_dir = os.path.join(step_dir, 'results')
+    os.makedirs(grid_dir, exist_ok=True)
+    os.makedirs(density_dir, exist_ok=True)
+    print('saving generated grids')
+    for i in range(n_generate):
         path = os.path.join(grid_dir, 'grid_%04d.csv'%i)
         np.savetxt(path, generated_grids[i, :, :], fmt='%i', delimiter=',')
     
@@ -524,6 +566,7 @@ if __name__ == '__main__':
 Options:
     1. Visualize enforcer (model M)
     2. Visualize generator (model M^-1)
+    3. Generate custom curves
 Enter <option number> <step number>
 """
         inp = input(prompt)
@@ -534,6 +577,8 @@ Enter <option number> <step number>
             visualize_enforcer(model_step=max_steps)
         elif option_num == 2:
             visualize_generator(max_steps, model_step=max_steps)
+        elif option_num == 3:
+            generate_custom_curves(max_steps)
         else:
             print('Invalid option')
 
