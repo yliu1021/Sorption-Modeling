@@ -50,8 +50,8 @@ base_dir = 'generative_model_3'
 os.makedirs(base_dir, exist_ok=True)
 
 # Hyperparameters
-uniform_boost_dim = 1
-loss_weights = [1, 0.05] # weights of losses in the metric and each latent code
+uniform_boost_dim = 5
+loss_weights = [1, 0.2] # weights of losses in the metric and each latent code
 
 proxy_enforcer_epochs = 20
 # proxy_enforcer_epochs = 5
@@ -59,7 +59,7 @@ proxy_enforcer_batchsize = 64
 
 generator_train_size = 10000
 # generator_train_size = 128
-generator_epochs = 20
+generator_epochs = 50
 # generator_epochs = 2
 generator_batchsize = 64
 generator_train_size //= generator_batchsize
@@ -177,9 +177,13 @@ def make_generator_model():
     # x = BatchNormalization()(x)
     x = LeakyReLU()(x)
 
+    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 16, name='fc5')(x)
+    # x = BatchNormalization()(x)
+    x = LeakyReLU()(x)
+
     x = Reshape((Q_GRID_SIZE, Q_GRID_SIZE, 16))(x)
 
-    x = Conv2DTranspose(16, 2, strides=1, padding='same', name='deconv1')(x)
+    x = Conv2DTranspose(16, 3, strides=1, padding='same', name='deconv1')(x)
     # x = BatchNormalization()(x)
     x = LeakyReLU()(x)
     
@@ -196,6 +200,10 @@ def make_generator_model():
     x = LeakyReLU()(x)
     
     x = Conv2DTranspose(128, 3, strides=1, padding='same', name='deconv_3')(x)
+    # x = BatchNormalization()(x)
+    x = LeakyReLU()(x)
+
+    x = Conv2DTranspose(256, 3, strides=1, padding='same', name='deconv_4')(x)
     # x = BatchNormalization()(x)
     x = LeakyReLU()(x)
 
@@ -237,10 +245,10 @@ def make_generator_input(n_grids, use_generator=False, batchsize=generator_batch
         return artificial_metrics, uniform_latent_code
 
 
-# def print_weight(model):
-#     layer = model.layers[4]
-#     weights = layer.get_weights()
-#     print(weights)
+def print_weight(model):
+    layer = model.layers[4]
+    weights = layer.get_weights()
+    print(weights)
 
 
 def freeze_model(model):
@@ -278,7 +286,7 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
     if os.path.exists(prev_enforcer_save_loc):
         print('Found enforcer previous model. Loading from there')
         proxy_enforcer_model.load_weights(prev_enforcer_save_loc)
-        lr *= 0.1
+        lr *= 0.5
 
     unfreeze_model(proxy_enforcer_model)
     optimizer = Adam(lr=lr, clipnorm=1.0)
@@ -303,7 +311,7 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
     if os.path.exists(prev_generator_save_loc):
         print('Found generator previous model. Loading from there')
         generator_model.load_weights(prev_generator_save_loc)
-        lr *= 0.1
+        lr *= 0.5
 
     latent_code_uni = Input(shape=(uniform_boost_dim,), name='latent_code')
     inp = Input(shape=(N_ADSORP,), name='target_metric')
@@ -328,7 +336,7 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
     summarize_model(training_model)
     training_model.fit_generator(generator_train_generator, steps_per_epoch=generator_train_size,
                                  epochs=generator_epochs,
-                                 callbacks=[ReduceLROnPlateau(patience=15, monitor='loss'),
+                                 callbacks=[ReduceLROnPlateau(patience=25, monitor='loss'),
                                             EarlyStopping(patience=40, restore_best_weights=True,
                                                           monitor='loss')],
                                  max_queue_size=32, shuffle=False)
@@ -362,59 +370,16 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
         path = os.path.join(artificial_metrics_dir, 'artificial_metric_%04d.csv'%i)
         np.savetxt(path, artificial_metric, fmt='%f', delimiter=',')
 
-    # Visualize
-    step_dir = os.path.join(base_dir, 'step{}'.format(step))
-    grid_dir = os.path.join(step_dir, 'grids')
-    density_dir = os.path.join(step_dir, 'results')
-    artificial_metrics_dir = os.path.join(step_dir, 'artificial_metrics')
-    
-    grid_files = glob.glob(os.path.join(grid_dir, 'grid_*'))
-    grid_files.sort()
-    density_files = glob.glob(os.path.join(density_dir, 'density_*'))
-    density_files.sort()
-    artificial_metrics_files = glob.glob(os.path.join(artificial_metrics_dir, 'artificial_metric_*'))
-    artificial_metrics_files.sort()
-    
-    for grid_file, density_file, artificial_metric_file in zip(grid_files, density_files, artificial_metrics_files):
-        grid = np.genfromtxt(grid_file, delimiter=',')
-        density = np.genfromtxt(density_file, delimiter=',', skip_header=1, max_rows=N_ADSORP)
-        density = density[:, 1]
-        artificial_metrics = np.genfromtxt(artificial_metric_file, delimiter=',')
-        
-        pred_diff = proxy_enforcer_model.predict(np.array([grid]))[0]
-        pred_density = np.cumsum(pred_diff)
-        artificial_density = np.cumsum(artificial_metrics)
-        
-        fig = plt.figure(1, figsize=(6, 8))
-        fig.canvas.mpl_connect('key_press_event', press)
-
-        ax = plt.subplot(211)
-        ax.pcolor(grid, cmap='Greys')
-        ax.set_aspect('equal')
-
-        ax = plt.subplot(212)
-        x = np.linspace(0, 1, N_ADSORP+1)
-        ax.plot(x, np.insert(density, N_ADSORP, 1))
-        ax.plot(x, np.insert(artificial_density, 0, 0))
-        ax.plot(x, np.insert(pred_density, 0, 0))
-        ax.legend(['Actual', 'Target for M^-1', 'Predicted by M'], loc='best')
-        # ax.set_aspect('equal')
-
-        metric = np.mean(np.abs(artificial_density - pred_density))
-        fig.text(0.5, 0.05, 'Mean absolute difference: {:.4f}'.format(metric), ha='center')
-
-        plt.show()
 
 def visualize_enforcer(model_step=None):
     if model_step is None:
         model_step = 1
-    enforcer_model = load_model(os.path.join(base_dir, 'step{}/enforcer.hdf5'.format(model_step)),
-                                custom_objects={'worst_abs_loss': worst_abs_loss})
+    enforcer_model, _ = make_proxy_enforcer_model()
+    enforcer_model.load_weights(os.path.join(base_dir, 'step{}/enforcer.hdf5'.format(model_step)))
 
     all_data_files = get_all_data_files()
     all_data_files = [item for sublist in all_data_files for item in zip(*sublist)]
-    # shuffle(all_data_files)
-    # all_data_files = filter(lambda x: 'generative_model_3/step16' in x[0], all_data_files)
+    shuffle(all_data_files)
     
     extreme_grid = None
     extreme_density = None
@@ -422,8 +387,8 @@ def visualize_enforcer(model_step=None):
     extreme_metric = 1
 
     for grid_file, density_file in all_data_files:
-        if 'generative_model_3' not in grid_file:
-            continue
+        # if 'generative_model_3/step5' not in grid_file:
+        #     continue
         grid = np.genfromtxt(grid_file, delimiter=',')
         density = np.genfromtxt(density_file, delimiter=',', skip_header=1, max_rows=N_ADSORP)
         density = density[:, 1]
@@ -482,8 +447,11 @@ def visualize_generator(step, model_step=None):
         model_step = step
     enforcer_model, _ = make_proxy_enforcer_model()
     enforcer_model.load_weights(os.path.join(base_dir, 'step{}/enforcer.hdf5'.format(model_step)))
-    # enforcer_model = load_model(os.path.join(base_dir, 'step{}/enforcer.hdf5'.format(model_step)),
-    #                             custom_objects={'worst_abs_loss': worst_abs_loss})
+    
+    visualize_curr_step_generator(step, enforcer_model)
+
+
+def visualize_curr_step_generator(step, enforcer_model):
     step_dir = os.path.join(base_dir, 'step{}'.format(step))
     grid_dir = os.path.join(step_dir, 'grids')
     density_dir = os.path.join(step_dir, 'results')
