@@ -50,22 +50,22 @@ base_dir = 'generative_model_3'
 os.makedirs(base_dir, exist_ok=True)
 
 # Hyperparameters
-uniform_boost_dim = 5
-loss_weights = [1, 0.2] # weights of losses in the metric and each latent code
+uniform_boost_dim = 1
+loss_weights = [1, 0.01] # weights of losses in the metric and each latent code
 
 proxy_enforcer_epochs = 20
-# proxy_enforcer_epochs = 5
+proxy_enforcer_epochs = 1
 proxy_enforcer_batchsize = 64
 
 generator_train_size = 10000
 # generator_train_size = 128
 generator_epochs = 50
-# generator_epochs = 2
+generator_epochs = 1
 generator_batchsize = 64
 generator_train_size //= generator_batchsize
 
 n_gen_grids = 1000
-max_var = 12
+max_var = 6 ** 2
 
 
 def summarize_model(model):
@@ -238,7 +238,7 @@ def make_generator_input(n_grids, use_generator=False, batchsize=generator_batch
         artificial_metrics = list()
         for i in range(n_grids):
             mean = np.random.uniform(-np.log(2+1/N_ADSORP), np.log(2+1/N_ADSORP)) # centralize mean at 1/40
-            diffs = np.exp(np.random.normal(mean, np.sqrt(i/n_grids * max_var), N_ADSORP))
+            diffs = np.exp(np.random.normal(mean, np.sqrt(i/batchsize * max_var), N_ADSORP))
             diffs /= np.sum(diffs, axis=0)
             artificial_metrics.append(diffs)
         artificial_metrics = np.array(artificial_metrics)
@@ -352,7 +352,7 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
 
     # Generate random grids using G then evaluate them
     artificial_metrics, uniform_latent_code = make_generator_input(n_grids=n_gen_grids, use_generator=False)
-    uniform_latent_code = np.random.uniform(-0.1, 0.1, size=(n_gen_grids, uniform_boost_dim)) # 'normalize' randomness
+    uniform_latent_code = np.random.uniform(-0.2, 0.2, size=(n_gen_grids, uniform_boost_dim)) # 'normalize' randomness
     
     generated_grids = generator_model.predict([artificial_metrics, uniform_latent_code])
     generated_grids = generated_grids.astype('int')
@@ -381,9 +381,12 @@ def generate_custom_curves(model_step):
     step_dir = os.path.join(base_dir, 'step_custom')
     os.makedirs(step_dir, exist_ok=True)
 
-    generator_model = make_generator_model()
+    # generator_model = make_generator_model()
     proxy_enforcer_model, lc_uni = make_proxy_enforcer_model()
-    generator_model.load_weights(os.path.join(base_dir, 'step{}/generator.hdf5'.format(model_step)))
+    generator_model = load_model(os.path.join(base_dir, 'step{}/generator.hdf5'.format(model_step)),
+                                 custom_objects={'binary_sigmoid': binary_sigmoid})
+    # proxy_enforcer_model = load_model()
+    # generator_model.load_weights(os.path.join(base_dir, 'step{}/generator.hdf5'.format(model_step)))
     proxy_enforcer_model.load_weights(os.path.join(base_dir, 'step{}/enforcer.hdf5'.format(model_step)))
     
     n_generate = 30
@@ -435,7 +438,7 @@ def visualize_enforcer(model_step=None):
     extreme_metric = 1
 
     for grid_file, density_file in all_data_files:
-        # if 'generative_model_3/step5' not in grid_file:
+        # if 'generative_model_3/step7' not in grid_file:
         #     continue
         grid = np.genfromtxt(grid_file, delimiter=',')
         density = np.genfromtxt(density_file, delimiter=',', skip_header=1, max_rows=N_ADSORP)
@@ -499,7 +502,7 @@ def visualize_generator(step, model_step=None):
     visualize_curr_step_generator(step, enforcer_model)
 
 
-def visualize_curr_step_generator(step, enforcer_model):
+def visualize_curr_step_generator(step, enforcer_model=None):
     step_dir = os.path.join(base_dir, 'step{}'.format(step))
     grid_dir = os.path.join(step_dir, 'grids')
     density_dir = os.path.join(step_dir, 'results')
@@ -518,9 +521,10 @@ def visualize_curr_step_generator(step, enforcer_model):
         density = density[:, 1]
         artificial_metrics = np.genfromtxt(artificial_metric_file, delimiter=',')
         
-        pred_diff = enforcer_model.predict(np.array([grid]))[0]
-        pred_density = np.cumsum(pred_diff)
-        artificial_density = np.cumsum(artificial_metrics)
+        if enforcer_model:
+            pred_diff = enforcer_model.predict(np.array([grid]))[0]
+            pred_density = np.cumsum(pred_diff)
+            artificial_density = np.cumsum(artificial_metrics)
         
         fig = plt.figure(1, figsize=(6, 8))
         fig.canvas.mpl_connect('key_press_event', press)
@@ -533,8 +537,12 @@ def visualize_curr_step_generator(step, enforcer_model):
         x = np.linspace(0, 1, N_ADSORP+1)
         ax.plot(x, np.insert(density, N_ADSORP, 1))
         ax.plot(x, np.insert(artificial_density, 0, 0))
-        ax.plot(x, np.insert(pred_density, 0, 0))
-        ax.legend(['Actual', 'Target for M^-1', 'Predicted by M'], loc='best')
+        if enforcer_model:
+            ax.plot(x, np.insert(pred_density, 0, 0))
+            ax.legend(['Actual', 'Target for M^-1', 'Predicted by M'], loc='best')
+        else:
+            ax.legend(['Actual', 'Target for M^-1'], loc='best')
+
         ax.set_aspect('equal')
 
         metric = np.mean(np.abs(artificial_density - pred_density))

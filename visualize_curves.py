@@ -21,7 +21,7 @@ for _ in range(20):
     wrong_f = np.insert(np.cumsum(wrong_diffs), 0, 0)
 
     plt.plot(x, correct_f)
-    plt.plot(x, wrong_f)
+    # plt.plot(x, wrong_f)
     plt.show()
 
 exit(0)
