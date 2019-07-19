@@ -273,9 +273,15 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
     os.makedirs(step_dir, exist_ok=True)
     
     # Train M
-    # load the grids and density diffs
+    lr = 0.001
+    prev_enforcer_save_loc = os.path.join(prev_step_dir, 'enforcer.hdf5')
+    if os.path.exists(prev_enforcer_save_loc):
+        print('Found enforcer previous model. Loading from there')
+        proxy_enforcer_model.load_weights(prev_enforcer_save_loc)
+        lr *= 0.1
+
     unfreeze_model(proxy_enforcer_model)
-    optimizer = Adam(lr=0.001, clipnorm=1.0)
+    optimizer = Adam(lr=lr, clipnorm=1.0)
     proxy_enforcer_model.compile(optimizer, loss='kullback_leibler_divergence', metrics=['mae', worst_abs_loss])
     summarize_model(proxy_enforcer_model)
 
@@ -288,10 +294,16 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
     proxy_enforcer_model.save(proxy_enforcer_model_save_loc)
 
     # Train G on M
-    # generate artificial training data
+    lr = 0.001
     generator_train_generator = make_generator_input(n_grids=generator_train_size,
                                                      use_generator=True,
                                                      batchsize=generator_batchsize)
+
+    prev_generator_save_loc = os.path.join(prev_step_dir, 'generator.hdf5')
+    if os.path.exists(prev_generator_save_loc):
+        print('Found generator previous model. Loading from there')
+        generator_model.load_weights(prev_generator_save_loc)
+        lr *= 0.1
 
     latent_code_uni = Input(shape=(uniform_boost_dim,), name='latent_code')
     inp = Input(shape=(N_ADSORP,), name='target_metric')
@@ -307,7 +319,7 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
     training_model = Model(inputs=[inp, latent_code_uni],
                            outputs=[proxy_enforcer_out, latent_code_uni_out])
 
-    optimizer = Adam(lr=0.001, clipnorm=1.0)
+    optimizer = Adam(lr=lr, clipnorm=1.0)
     training_model.compile(optimizer, loss=['kullback_leibler_divergence', 'mse'],
                            metrics={
                                'proxy_enforcer_model': ['mae', worst_abs_loss],
@@ -401,7 +413,7 @@ def visualize_enforcer(model_step=None):
 
     all_data_files = get_all_data_files()
     all_data_files = [item for sublist in all_data_files for item in zip(*sublist)]
-    shuffle(all_data_files)
+    # shuffle(all_data_files)
     # all_data_files = filter(lambda x: 'generative_model_3/step16' in x[0], all_data_files)
     
     extreme_grid = None
@@ -410,6 +422,8 @@ def visualize_enforcer(model_step=None):
     extreme_metric = 1
 
     for grid_file, density_file in all_data_files:
+        if 'generative_model_3' not in grid_file:
+            continue
         grid = np.genfromtxt(grid_file, delimiter=',')
         density = np.genfromtxt(density_file, delimiter=',', skip_header=1, max_rows=N_ADSORP)
         density = density[:, 1]
@@ -505,7 +519,7 @@ def visualize_generator(step, model_step=None):
         ax.plot(x, np.insert(artificial_density, 0, 0))
         ax.plot(x, np.insert(pred_density, 0, 0))
         ax.legend(['Actual', 'Target for M^-1', 'Predicted by M'], loc='best')
-        # ax.set_aspect('equal')
+        ax.set_aspect('equal')
 
         metric = np.mean(np.abs(artificial_density - pred_density))
         fig.text(0.5, 0.05, 'Mean absolute difference: {:.4f}'.format(metric), ha='center')
