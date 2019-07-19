@@ -18,12 +18,12 @@ using namespace std;
 #include "fast_dft_std.cpp"
 #include "helpers.cpp"
 
-#define WORKERS 100
+#define WORKERS 1000
 
 int main(int argc, char *argv[]) {
 	setup_NL(); // for fast_dft
 
-    int ITERS = 50;
+    int ITERS = 10;
 
     std::vector<std::array<double,N_SQUARES>> grids;
 
@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
         }
 
         std::array<double, N_ADSORP+1> linear = linear_curve();
-        std::array<double, WORKERS> costs;
+        std::vector<double> costs;
 
         srand(time(NULL));
 
@@ -43,48 +43,52 @@ int main(int argc, char *argv[]) {
             // Calculate survival rates
             for (int j = 0; j < WORKERS; ++j) {
                 toggle_random(grids[j]);
-                costs[j] = mean_abs_error(linear, run_dft(grids[j]));
+                costs.push_back(mean_abs_error(linear, run_dft(grids[j])));
                 // cout << costs[j] << "\t";
             }
-            cout << "MIN COST FOR THIS ITER: " << *std::min_element(costs.begin(), costs.end()) << endl;
-            normalizeArr(costs.begin(), costs.end(), *std::min_element(costs.begin(), costs.end()), *std::max_element(costs.begin(), costs.end()));
+            if (i == (ITERS - 1)) { break; }
+            cout << "MIN COST FOR ITER " << i << ": " << *std::min_element(costs.begin(), costs.end()) << endl;
+            std::vector<double> norm_costs(costs);
+            normalizeArr(norm_costs.begin(), norm_costs.end(), *std::min_element(norm_costs.begin(), norm_costs.end()), *std::max_element(norm_costs.begin(), norm_costs.end()));
 
             // Reproduce suitable grids
             for (int j = 0; j < WORKERS; ++j) {
-                 if (((double)rand()/(RAND_MAX)) < (1-costs[j])) {
-                    std::array<double,N_SQUARES> copy = grids[j];
-                    grids.push_back(copy);
+                 if (((double)rand()/(RAND_MAX)) < (1-norm_costs[j])) {
+                    std::array<double,N_SQUARES> copy_grid = grids[j];
+                    grids.push_back(copy_grid);
+                    costs.push_back(costs[j]);
                 }
             }
 
-            // cout << "AFTER REPRODUCION: " << grids.size() << endl;
+            cout << "AFTER REPRODUCTION: " << grids.size() << " grids alive" << endl;
+            // for (int j = 0; j < WORKERS; j++) { cout << costs[j] << "\t"; }
 
             // Kill unsuitable grids
             while (grids.size() > WORKERS) {
                 int rand_grid = rand() % grids.size();
-                if (((double)rand()/(RAND_MAX)) < costs[rand_grid]) {
+                if (((double)rand()/(RAND_MAX)) < norm_costs[rand_grid]) {
+                    costs.erase(costs.begin()+rand_grid);
                     grids.erase(grids.begin()+rand_grid);
                 }
             }
-            // cout << "AFTER NATURAL SELECTION: " << grids.size() << endl;
-            // for (int j = WORKERS-1; j >= 0; j--) {
-            //     cout << costs[j] << "\t";
-            //     if (((double)rand()/(RAND_MAX)) < costs[j]) {
-            //         grids.erase(grids.begin()+j);
-            //     }
-            // }
 
-            // // Reproduce suitable grids
-            // while (grids.size() < WORKERS) {
-            //     int rand_grid = rand() % grids.size();
-            //     if (((double)rand()/(RAND_MAX)) < (1-costs[rand_grid])) {
-            //         std::array<double,N_SQUARES> copy = grids[rand_grid];
-            //         grids.push_back(copy);
-            //     }
-            // }
+            cout << "AFTER NATURAL SELECTION: " << grids.size() << " grids alive" << endl;
 
-            // Return best grid
+            // string grid_file = grid_path + "optimized.csv"
+
+			// bool write_success = write_density(pred_density, density_file);
+			// if (!write_success) return -1;
         }
+
+        // Return best grid
+        // std::array<double,N_SQUARES> best_grid = grids[std::min_element(costs.begin(), costs.end()) - costs.begin()];
+        // for (int i = 0; i < N_SQUARES; ++i) {
+        //     if (i % 20 == 0) { cout << endl; }
+        //     cout << best_grid[i] << ",";
+        // }
+        cout << "BEST COST: " << *std::min_element(costs.begin(), costs.end());
+        
+
     } else {
         cerr << "Invalid cmd line arguments" << endl;
     }

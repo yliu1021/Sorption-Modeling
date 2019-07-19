@@ -1,6 +1,7 @@
 #include <array>
 #include <math.h>
 #include <stdlib.h>
+#include<iterator>
 
 #include "constants.h"
 
@@ -9,6 +10,20 @@
 void toggle_random(std::array<double, N_SQUARES> &grid) {
     int sq = rand() % N_SQUARES;
     grid[sq] = (grid[sq] == 0) ? 1 : 0;
+}
+
+// Normalize the values in an array to between 0 and 1
+void normalizeArr(std::vector<double>::iterator begin, std::vector<double>::iterator end, double min, double max) {
+    // TODO: Make normalized STDDEV
+     double diff = max - min;
+     if (diff == 0) { diff = 1; } // If all grids have same cost
+
+     // print each value held in the array
+     while (begin != end) {
+          *(begin) -= min;
+          *(begin) /= diff;
+          begin++;
+     }
 }
 
 // Normalize the values in an array to between 0 and 1
