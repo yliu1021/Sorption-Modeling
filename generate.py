@@ -386,7 +386,7 @@ def generate_custom_curves(model_step):
     generator_model.load_weights(os.path.join(base_dir, 'step{}/generator.hdf5'.format(model_step)))
     proxy_enforcer_model.load_weights(os.path.join(base_dir, 'step{}/enforcer.hdf5'.format(model_step)))
     
-    n_generate = 10
+    n_generate = 30
     artificial_metrics = list()
     for i in range(n_generate):
         diffs = np.zeros(N_ADSORP)
@@ -394,7 +394,7 @@ def generate_custom_curves(model_step):
         diffs[ind] = 1.0
         artificial_metrics.append(diffs)
     artificial_metrics = np.array(artificial_metrics)
-    uniform_latent_code = np.random.uniform(-0.1, 0.1, size=(n_generate, uniform_boost_dim))
+    uniform_latent_code = np.random.uniform(-0.2, 0.2, size=(n_generate, uniform_boost_dim))
     
     generated_grids = generator_model.predict([artificial_metrics, uniform_latent_code])
     generated_grids = generated_grids.astype('int')
@@ -572,7 +572,6 @@ Enter <option number> <step number>
         inp = input(prompt)
         option_num, max_steps = inp.split(' ')
         option_num = int(option_num)
-        max_steps = int(max_steps)
         if option_num == 1:
             visualize_enforcer(model_step=max_steps)
         elif option_num == 2:
