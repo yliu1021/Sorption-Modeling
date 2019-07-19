@@ -17,5 +17,10 @@ run.sh
 # MacOS
 .DS_Store
 
+# VSCode
+.vscode/
+
 # Local executables
 fast_dft
+naive_random
+evolution
