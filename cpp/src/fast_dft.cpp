@@ -1,5 +1,19 @@
-#include "fast_dft_std.cpp"
+#include <iostream>
+#include <iomanip>
+#include <fstream>
+#include <array>
+#include <string>
+#include <thread>
 
+#include <cstring>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+
+#include "constants.h"
+#include "helpers.h"
+
+using namespace std;
 /*
 fast_dft usage:
 	fast_dft ...folder/containing/grid/folder/
