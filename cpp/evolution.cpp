@@ -15,12 +15,11 @@
 using namespace std;
 
 #include "constants.h"
-#include "fast_dft_std.cpp"
-#include "helpers.cpp"
+#include "helpers.h"
 
-#define WORKERS 100
-#define MUT_RATE 0.7 // Mutation rate
-#define ITERS 25
+#define WORKERS 200
+#define MUT_RATE 0.6 // Mutation rate
+#define ITERS 10
 
 int main(int argc, char *argv[]) {
 	setup_NL(); // for fast_dft
@@ -55,16 +54,16 @@ int main(int argc, char *argv[]) {
             double min_cost_iter = *std::min_element(costs.begin(), costs.end());
             cout << "Minimum cost for iteration " << i << ": " << min_cost_iter << endl;
             // if (*std::min_element(costs.begin(), costs.end()) < 0.01945) { break; } // 0.0193528 from 78, 
-            // if (min_cost_iter < min_cost) {
-            //     min_cost = min_cost_iter;
-            //     cout << "FOUND NEW BEST GRID WITH COST: " << min_cost_iter;
-            //     std::array<double,N_SQUARES> best_grid = grids[std::min_element(costs.begin(), costs.end()) - costs.begin()];
-            //     for (int i = 0; i < N_SQUARES; ++i) {
-            //         if (i % 20 == 0) { cout << endl; }
-            //         cout << best_grid[i] << ",";
-            //     }
-            //     cout << endl;
-            // }
+            if (min_cost_iter < min_cost) {
+                min_cost = min_cost_iter;
+                cout << "FOUND NEW BEST GRID WITH COST: " << min_cost_iter;
+                std::array<double,N_SQUARES> best_grid = grids[std::min_element(costs.begin(), costs.end()) - costs.begin()];
+                for (int i = 0; i < N_SQUARES; ++i) {
+                    if (i % 20 == 0) { cout << endl; }
+                    cout << best_grid[i] << ",";
+                }
+                cout << endl;
+            }
             std::vector<double> norm_costs(costs);
             normalizeArr(norm_costs.begin(), norm_costs.end(), *std::min_element(norm_costs.begin(), norm_costs.end()), *std::max_element(norm_costs.begin(), norm_costs.end()));
 

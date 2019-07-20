@@ -1,5 +1,19 @@
-#include "fast_dft.cpp"
+#include <iostream>
+#include <iomanip>
+#include <fstream>
+#include <array>
+#include <string>
+#include <thread>
 
+#include <cstring>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+
+#include "constants.h"
+#include "helpers.h"
+
+using namespace std;
 /*
 fast_dft usage:
 	fast_dft ...folder/containing/grid/folder/
@@ -8,13 +22,11 @@ fast_dft usage:
 int main(int argc, char *argv[]) {
 	setup_NL();
 	if (argc == 1) {
-		double *grid = load_grid(cin);
-		double *density = run_dft(grid);
+        std::array<double,N_SQUARES> grid = load_grid(cin);
+        std::array<double,N_ITER+1> density = run_dft(grid);
 		
 		write_density(density, cout);
 		
-		delete[] grid;
-		delete[] density;
 	} else if (argc == 2) {
 		string base_dir(argv[1]);
 		if (base_dir.back() != '/')
@@ -34,16 +46,11 @@ int main(int argc, char *argv[]) {
 			string grid_file = grid_dir + grid_name;
 			string density_file = density_dir + density_name;
 		
-			double *grid = load_grid(grid_file);
-			if (grid == nullptr) break;
-			double *pred_density = run_dft(grid);
-			if (pred_density == nullptr) return -1;
+            std::array<double,N_SQUARES> grid = load_grid(grid_file);
+            std::array<double,N_ITER+1> pred_density = run_dft(grid);
 			
 			bool write_success = write_density(pred_density, density_file);
 			if (!write_success) return -1;
-
-			delete[] grid;
-			delete[] pred_density;
 		}
 	} else {
 		cerr << "Invalid cmd line arguments" << endl;
