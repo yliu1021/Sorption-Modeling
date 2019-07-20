@@ -1,23 +1,21 @@
 CXX = c++
-CXXFLAGS = -Wall -Wextra -std=c++14
-sources = constants.h fast_dft_main.cpp fast_dft.cpp Makefile naive_random.cpp helpers.cpp
+CXXFLAGS = -Wall -Wextra -std=c++17
+
+vpath %.cpp src
+INCLUDE := -Iinclude/
+TARGETS := fast_dft evolution
 
 all: fast_dft evolution
 
 fast_dft: fast_dft.o helpers.o
 	$(CXX) $(CXXFLAGS) -o fast_dft fast_dft.o helpers.o
 
-fast_dft.o: fast_dft.cpp helpers.h constants.h
-
 evolution: evolution.o helpers.o
 	$(CXX) $(CXXFLAGS) -o evolution evolution.o helpers.o
 
-evolution.o: evolution.cpp helpers.h constants.h
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ -c $<
 
-helpers.o: helpers.h
-
-# dist:
-# 	tar -czf out.tar.gz $(sources)
-
+.PHONY: clean
 clean:
-	rm -f *.o fast_dft naive_random evolution
+	rm -f *.o $(TARGETS)
