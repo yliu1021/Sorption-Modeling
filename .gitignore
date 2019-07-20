@@ -20,7 +20,8 @@ run.sh
 # VSCode
 .vscode/
 
-# Local executables
+# C++ builds
+*.o
 fast_dft
 naive_random
 evolution
