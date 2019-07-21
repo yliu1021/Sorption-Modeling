@@ -1,27 +1,31 @@
-#include <iostream>
-#include <iomanip>
-#include <fstream>
-#include <array>
-#include <string>
-#include <thread>
-#include <vector>
-#include <iterator>
+#include "helpers.h"
 
 #include <cstring>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
 
+#include <iostream>
+#include <iomanip>
+#include <fstream>
+#include <array>
+#include <string>
+#include <vector>
+#include <iterator>
+
+#include <math.h>
+#include <stdlib.h>
+
 #include "constants.h"
-#include "helpers.h"
 
 using namespace std;
 
-/*
-Loads a grid from a grid_####.csv file
- */
-std::array<double,N_SQUARES> load_grid(istream &grid_file) {
-    std::array<double,N_SQUARES> grid;
+// ============================================================================
+// I/O
+// ============================================================================
+
+array<double,N_SQUARES> load_grid(istream &grid_file) {
+    array<double,N_SQUARES> grid;
 	int pos = 0;
 	string line;
 	while (getline(grid_file, line) && pos < N_SQUARES) {
@@ -43,7 +47,7 @@ std::array<double,N_SQUARES> load_grid(istream &grid_file) {
 	return grid;
 }
 
-std::array<double,N_SQUARES> load_grid(const string &path) {
+array<double,N_SQUARES> load_grid(const string &path) {
     ifstream grid_file;
     grid_file.open(path);
 	if (!grid_file.is_open()) {
@@ -51,13 +55,13 @@ std::array<double,N_SQUARES> load_grid(const string &path) {
         exit(1);
 	}
 	
-	std::array<double,N_SQUARES> grid = load_grid(grid_file);
+	array<double,N_SQUARES> grid = load_grid(grid_file);
 	
 	grid_file.close();
 	return grid;
 }
 
-std::array<double,N_ITER+1> load_density(const string &path) {
+array<double,N_ITER+1> load_density(const string &path) {
 	ifstream density_file;
 	density_file.open(path);
 	if (!density_file.is_open()) {
@@ -65,7 +69,7 @@ std::array<double,N_ITER+1> load_density(const string &path) {
         exit(1);
 	}
 	
-    std::array<double,N_ITER+1> densities;
+    array<double,N_ITER+1> densities;
 	string line;
 	while (getline(density_file, line)) {
 		if (line[0] == ',') continue;
@@ -80,14 +84,14 @@ std::array<double,N_ITER+1> load_density(const string &path) {
 	return densities;
 }
 
-void write_density(std::array<double,N_ITER+1> density, ostream &density_file) {
+void write_density(array<double,N_ITER+1> density, ostream &density_file) {
 	density_file << ",0" << endl;
 	for (int i = 0; i <= N_ITER; ++i) {
 		density_file << i << "," << setprecision(17) << density[i] << endl;;
 	}
 }
 
-bool write_density(std::array<double,N_ITER+1> density, const string &path) {
+bool write_density(array<double,N_ITER+1> density, const string &path) {
 	ofstream density_file;
 	density_file.open(path);
 	if (!density_file.is_open()) {
@@ -101,71 +105,58 @@ bool write_density(std::array<double,N_ITER+1> density, const string &path) {
 	return true;
 }
 
-#include <array>
-#include <math.h>
-#include <stdlib.h>
-#include <iterator>
-#include <vector>
 
-#include "constants.h"
+// ============================================================================
+// Grid Mutators
+// ============================================================================
 
-void toggle_random(std::array<double, N_SQUARES> &grid) {
+void toggle_random(array<double, N_SQUARES> &grid) {
     int sq = rand() % N_SQUARES;
     grid[sq] = 1- grid[sq];
 }
 
-// Normalize the values in an array to between 0 and 1
-void normalizeArr(std::vector<double>::iterator begin, std::vector<double>::iterator end, double min, double max) {
-    // TODO: Make normalized STDDEV
-     double diff = max - min;
-     if (diff == 0) { diff = 1; } // If all grids have same cost
+// ============================================================================
+// Math Helpers
+// ============================================================================
 
-     // print each value held in the array
-     while (begin != end) {
-          *(begin) -= min;
-          *(begin) /= diff;
-          begin++;
-     }
+void normalizeVec(vector<double> v) {
+	double min = *min_element(v.begin(), v.end());
+	double range = *max_element(v.begin(), v.end()) - min;
+	for (auto &x : v) {
+		x -= min;
+		x /= range;
+	}
 }
 
-// Normalize the values in an array to between 0 and 1
-void normalizeArr(double* piStart, double* piLast, double min, double max){
+// TODO: Standardize vector function
 
-     // Calculate the size of the array (how many values it holds)
-     unsigned int uiArraySize = piLast - piStart;
-
-     double diff = max - min;
-     if (diff == 0) { diff = 1; } // If all grids have same cost
-
-     // print each value held in the array
-     for (unsigned int uiCount = 0; uiCount < uiArraySize; uiCount++) {
-          *(piStart + uiCount) -= min;
-          *(piStart + uiCount) /= diff;
-     }
-}
-
-
-// /*
-// Clip (limit) the values in an array.
-// Given an interval, values outside the interval are clipped to the interval 
-// edges. For example, if an interval of [0, 1] is specified, values smaller than 
-// 0 become 0, and values larger than 1 become 1. 
-// */
-// void clip(double a[], double a_min, double a_max, unsigned short len=N_ADSORP+1) {
-//     for (unsigned short i = 0; i < len; ++i) {
-//         a[i] = std::max(a[i], a_min);
-//         a[i] = std::min(a[i], a_min);
-//     }
+/*
+Clip (limit) the values in an array.
+Given an interval, values outside the interval are clipped to the interval 
+edges. For example, if an interval of [0, 1] is specified, values smaller than 
+0 become 0, and values larger than 1 become 1. 
+*/
+// void clip(array<double, N_ADSORP+1> a, const double a_min, const double a_max) {
+//     for (unsigned short i = 0; i < a.size(); ++i) { 
+//         a[i] = max(a[i], a_min);
+//         a[i] = min(a[i], a_max);
+//     } 
 // }
 
-void clip(std::array<double, N_ADSORP+1> a, const double a_min, const double a_max) {
-    for (unsigned short i = 0; i < a.size(); ++i) { 
-        a[i] = std::max(a[i], a_min);
-        a[i] = std::min(a[i], a_max);
-    } 
+// ============================================================================
+// Cost functions
+// ============================================================================
+
+double mean_abs_error(const array<double, N_ADSORP+1> y_true, const array<double, N_ITER+1> y_pred) {
+    double mse = 0;
+    for (unsigned short i = 0; i < N_ADSORP+1; ++i) {
+        mse += abs(y_true[i] - y_pred[i]);
+    }
+    mse /= (N_ADSORP+1);
+    return mse;
 }
 
-// double kullback_leibler_divergence(const std::array<double, N_ADSORP+1> y_true, const std::array<double, N_ITER+1> y_pred) {
+// double kullback_leibler_divergence(const array<double, N_ADSORP+1> y_true, const array<double, N_ITER+1> y_pred) {
 //     // TODO: Something wrong-- NAN values
 //     clip(y_true, EPSILON, 1);
 //     clip(y_pred, EPSILON, 1);
@@ -180,27 +171,12 @@ void clip(std::array<double, N_ADSORP+1> a, const double a_min, const double a_m
 //     return sum;
 // }
 
-double mean_abs_error(const std::array<double, N_ADSORP+1> y_true, const std::array<double, N_ITER+1> y_pred) {
-    double mse = 0;
-    for (unsigned short i = 0; i < N_ADSORP+1; ++i) {
-        mse += abs(y_true[i] - y_pred[i]);
-    }
-    mse /= (N_ADSORP+1);
-    return mse;
-}
+// ============================================================================
+// Target curves
+// ============================================================================
 
-// double kullback_leibler_divergence(double y_true[], double y_pred[], unsigned short len=N_ADSORP+1) {
-//     clip(y_true, EPSILON, 1);
-//     clip(y_pred, EPSILON, 1);
-//     double sum = 0;
-//     for (unsigned short i = 0; i < len; ++i) {
-//         sum += y_true[i] * log(y_true[i] / y_pred[i]);
-//     }
-//     return sum;
-// }
-
-std::array<double, N_ADSORP+1> linear_curve() {
-    std::array<double, N_ADSORP+1> lin;
+array<double, N_ADSORP+1> linear_curve() {
+    array<double, N_ADSORP+1> lin;
     double v = 0;
     for (unsigned short i = 0; i < N_ADSORP+1; ++i, v += STEP_SIZE) {
         lin[i] = v;
@@ -208,29 +184,11 @@ std::array<double, N_ADSORP+1> linear_curve() {
     return lin;
 }
 
-
-#include <iostream>
-#include <iomanip>
-#include <fstream>
-#include <array>
-#include <string>
-#include <thread>
-
-#include <cstring>
-#include <cmath>
-#include <cstdio>
-#include <cstdlib>
-
-#include "constants.h"
-
-using namespace std;
-/*
-fast_dft usage:
-	fast_dft ...folder/containing/grid/folder/
-*/
+// ============================================================================
+// DFT Simulation
+// ============================================================================
 
 int NL[N_SQUARES + 1][N_SQUARES];
-// setup code for run_dft
 void setup_NL() {
 	double r[2][N_SQUARES + 1];	
 	double Lx = 0.0;
@@ -271,14 +229,8 @@ void setup_NL() {
 	}
 }
 
-/*
-Computes and returns the density of a grid
-	grid: a N_SQUARES long array of doubles
-	The returned pointer to an array must be freed via:
-		delete[] density
- */
-std::array<double,N_ITER+1> run_dft(std::array<double,N_SQUARES> grid) {
-    std::array<double,N_ITER+1> density;
+array<double,N_ITER+1> run_dft(array<double,N_SQUARES> grid) {
+    array<double,N_ITER+1> density;
 	double r[2][N_SQUARES + 1];
 	r[0][0] = 0.0;
 	r[1][0] = 0.0;
@@ -351,42 +303,3 @@ std::array<double,N_ITER+1> run_dft(std::array<double,N_SQUARES> grid) {
 	}
 	return density;
 }
-
-// int main(int argc, char *argv[]) {
-// 	setup_NL();
-// 	if (argc == 1) {
-//         std::array<double,N_SQUARES> grid = load_grid(cin);
-//         std::array<double,N_ITER+1> density = run_dft(grid);
-		
-// 		write_density(density, cout);
-		
-// 	} else if (argc == 2) {
-// 		string base_dir(argv[1]);
-// 		if (base_dir.back() != '/')
-// 			base_dir = base_dir + "/";
-// 		// base_dir = "./generative_model/step##/"
-// 		string grid_dir = base_dir + "grids/";
-// 		string density_dir = base_dir + "results/";
-// 		string cmd = "mkdir -p " + density_dir;
-// 		system(cmd.c_str());
-
-// 		for (int i = 0; true; ++i) {
-// 			char grid_name[20];
-// 			sprintf(grid_name, "grid_%04d.csv", i);
-// 			char density_name[20];
-// 			sprintf(density_name, "density_%04d.csv", i);
-		
-// 			string grid_file = grid_dir + grid_name;
-// 			string density_file = density_dir + density_name;
-		
-//             std::array<double,N_SQUARES> grid = load_grid(grid_file);
-//             std::array<double,N_ITER+1> pred_density = run_dft(grid);
-			
-// 			bool write_success = write_density(pred_density, density_file);
-// 			if (!write_success) return -1;
-// 		}
-// 	} else {
-// 		cerr << "Invalid cmd line arguments" << endl;
-// 	}
-// 	return 0;
-// }

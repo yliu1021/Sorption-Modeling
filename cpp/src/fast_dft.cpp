@@ -22,8 +22,8 @@ fast_dft usage:
 int main(int argc, char *argv[]) {
 	setup_NL();
 	if (argc == 1) {
-        std::array<double,N_SQUARES> grid = load_grid(cin);
-        std::array<double,N_ITER+1> density = run_dft(grid);
+        array<double,N_SQUARES> grid = load_grid(cin);
+        array<double,N_ITER+1> density = run_dft(grid);
 		
 		write_density(density, cout);
 		
@@ -46,8 +46,8 @@ int main(int argc, char *argv[]) {
 			string grid_file = grid_dir + grid_name;
 			string density_file = density_dir + density_name;
 		
-            std::array<double,N_SQUARES> grid = load_grid(grid_file);
-            std::array<double,N_ITER+1> pred_density = run_dft(grid);
+            array<double,N_SQUARES> grid = load_grid(grid_file);
+            array<double,N_ITER+1> pred_density = run_dft(grid);
 			
 			bool write_success = write_density(pred_density, density_file);
 			if (!write_success) return -1;
