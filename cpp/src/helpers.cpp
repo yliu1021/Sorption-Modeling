@@ -119,7 +119,7 @@ void toggle_random(array<double, N_SQUARES> &grid) {
 // Math Helpers
 // ============================================================================
 
-void normalizeVec(vector<double> v) {
+void normalizeVec(vector<double> &v) {
 	double min = *min_element(v.begin(), v.end());
 	double range = *max_element(v.begin(), v.end()) - min;
 	for (auto &x : v) {
@@ -137,7 +137,7 @@ edges. For example, if an interval of [0, 1] is specified, values smaller than
 0 become 0, and values larger than 1 become 1. 
 */
 // void clip(array<double, N_ADSORP+1> a, const double a_min, const double a_max) {
-//     for (unsigned short i = 0; i < a.size(); ++i) { 
+//     for (short i = 0; i < a.size(); ++i) { 
 //         a[i] = max(a[i], a_min);
 //         a[i] = min(a[i], a_max);
 //     } 
@@ -147,9 +147,9 @@ edges. For example, if an interval of [0, 1] is specified, values smaller than
 // Cost functions
 // ============================================================================
 
-double mean_abs_error(const array<double, N_ADSORP+1> y_true, const array<double, N_ITER+1> y_pred) {
+double mean_abs_error(const array<double, N_ADSORP+1> &y_true, const array<double, N_ITER+1> &y_pred) {
     double mse = 0;
-    for (unsigned short i = 0; i < N_ADSORP+1; ++i) {
+    for (short i = 0; i < N_ADSORP+1; ++i) {
         mse += abs(y_true[i] - y_pred[i]);
     }
     mse /= (N_ADSORP+1);
@@ -161,7 +161,7 @@ double mean_abs_error(const array<double, N_ADSORP+1> y_true, const array<double
 //     clip(y_true, EPSILON, 1);
 //     clip(y_pred, EPSILON, 1);
 //     double sum = 0;
-//     for (unsigned short i = 0; i < N_ADSORP+1; ++i) {
+//     for (short i = 0; i < N_ADSORP+1; ++i) {
 //         cout << y_true[i] << "\t";
 //         cout << y_pred[i] << "\t";
 //         cout << y_true[i]/y_pred[i] << endl;
@@ -178,7 +178,7 @@ double mean_abs_error(const array<double, N_ADSORP+1> y_true, const array<double
 array<double, N_ADSORP+1> linear_curve() {
     array<double, N_ADSORP+1> lin;
     double v = 0;
-    for (unsigned short i = 0; i < N_ADSORP+1; ++i, v += STEP_SIZE) {
+    for (short i = 0; i < N_ADSORP+1; ++i, v += STEP_SIZE) {
         lin[i] = v;
     }
     return lin;

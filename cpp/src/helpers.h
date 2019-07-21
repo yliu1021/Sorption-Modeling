@@ -37,7 +37,7 @@ void toggle_random(std::array<double, N_SQUARES> &grid);
 #define EPSILON 0.0000001
 
 // Normalize the values in an array to between 0 and 1
-void normalizeVec(std::vector<double> vec);
+void normalizeVec(std::vector<double> &v);
 
 /*
   Clip (limit) the values in an array.
@@ -51,7 +51,7 @@ void normalizeVec(std::vector<double> vec);
 // Cost functions
 // ============================================================================
 
-double mean_abs_error(const std::array<double, N_ADSORP+1> y_true, const std::array<double, N_ITER+1> y_pred);
+double mean_abs_error(const std::array<double, N_ADSORP+1> &y_true, const std::array<double, N_ITER+1> &y_pred);
 
 // double kullback_leibler_divergence(const std::array<double, N_ADSORP+1> y_true, const std::array<double, N_ITER+1> y_pred);
 
