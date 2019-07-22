@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 #include <iterator>
+#include <numeric>
 
 #include <math.h>
 #include <stdlib.h>
@@ -84,10 +85,31 @@ array<double,N_ITER+1> load_density(const string &path) {
 	return densities;
 }
 
+void write_grid(array<double,N_SQUARES> grid, ostream &grid_file) {
+	for (int i = 0; i < GRID_SIZE; ++i) {
+		for (int j = 0; j < GRID_SIZE; ++j) {
+			grid_file << grid[i*GRID_SIZE+j] << ",";
+		}
+		grid_file << endl;
+	}
+}
+
+bool write_grid(array<double,N_SQUARES> grid, const string &path) {
+	ofstream grid_file;
+	grid_file.open(path);
+	if (!grid_file.is_open()) {
+		cerr << "Could not open/create grid file" << endl;
+		return false;
+	}
+	write_grid(grid, grid_file);
+	grid_file.close();
+	return true;
+}
+
 void write_density(array<double,N_ITER+1> density, ostream &density_file) {
 	density_file << ",0" << endl;
 	for (int i = 0; i <= N_ITER; ++i) {
-		density_file << i << "," << setprecision(17) << density[i] << endl;;
+		density_file << i << "," << setprecision(17) << density[i] << endl;
 	}
 }
 
@@ -95,16 +117,13 @@ bool write_density(array<double,N_ITER+1> density, const string &path) {
 	ofstream density_file;
 	density_file.open(path);
 	if (!density_file.is_open()) {
-		cerr << "Could not open/create file" << endl;
+		cerr << "Could not open/create density file" << endl;
 		return false;
 	}
-	
 	write_density(density, density_file);
-	
 	density_file.close();
 	return true;
 }
-
 
 // ============================================================================
 // Grid Mutators
@@ -119,7 +138,7 @@ void toggle_random(array<double, N_SQUARES> &grid) {
 // Math Helpers
 // ============================================================================
 
-void normalizeVec(vector<double> v) {
+void normalizeVec(vector<double> &v) {
 	double min = *min_element(v.begin(), v.end());
 	double range = *max_element(v.begin(), v.end()) - min;
 	for (auto &x : v) {
@@ -128,7 +147,21 @@ void normalizeVec(vector<double> v) {
 	}
 }
 
-// TODO: Standardize vector function
+void standardizeVec(vector<double> &v) {
+	double sum = std::accumulate(std::begin(v), std::end(v), 0.0);
+	double mean =  sum / v.size();
+
+	double accum = 0.0;
+	std::for_each (std::begin(v), std::end(v), [&](const double d) {
+		accum += (d - mean) * (d - mean);
+	});
+	double stdev = sqrt(accum / (v.size()-1));
+
+	for (auto &x : v) {
+		x -= mean;
+		x /= stdev;
+	}
+}
 
 /*
 Clip (limit) the values in an array.
@@ -137,7 +170,7 @@ edges. For example, if an interval of [0, 1] is specified, values smaller than
 0 become 0, and values larger than 1 become 1. 
 */
 // void clip(array<double, N_ADSORP+1> a, const double a_min, const double a_max) {
-//     for (unsigned short i = 0; i < a.size(); ++i) { 
+//     for (short i = 0; i < a.size(); ++i) { 
 //         a[i] = max(a[i], a_min);
 //         a[i] = min(a[i], a_max);
 //     } 
@@ -147,9 +180,9 @@ edges. For example, if an interval of [0, 1] is specified, values smaller than
 // Cost functions
 // ============================================================================
 
-double mean_abs_error(const array<double, N_ADSORP+1> y_true, const array<double, N_ITER+1> y_pred) {
+double mean_abs_error(const array<double, N_ADSORP+1> &y_true, const array<double, N_ITER+1> &y_pred) {
     double mse = 0;
-    for (unsigned short i = 0; i < N_ADSORP+1; ++i) {
+    for (short i = 0; i < N_ADSORP+1; ++i) {
         mse += abs(y_true[i] - y_pred[i]);
     }
     mse /= (N_ADSORP+1);
@@ -161,7 +194,7 @@ double mean_abs_error(const array<double, N_ADSORP+1> y_true, const array<double
 //     clip(y_true, EPSILON, 1);
 //     clip(y_pred, EPSILON, 1);
 //     double sum = 0;
-//     for (unsigned short i = 0; i < N_ADSORP+1; ++i) {
+//     for (short i = 0; i < N_ADSORP+1; ++i) {
 //         cout << y_true[i] << "\t";
 //         cout << y_pred[i] << "\t";
 //         cout << y_true[i]/y_pred[i] << endl;
@@ -178,7 +211,7 @@ double mean_abs_error(const array<double, N_ADSORP+1> y_true, const array<double
 array<double, N_ADSORP+1> linear_curve() {
     array<double, N_ADSORP+1> lin;
     double v = 0;
-    for (unsigned short i = 0; i < N_ADSORP+1; ++i, v += STEP_SIZE) {
+    for (short i = 0; i < N_ADSORP+1; ++i, v += STEP_SIZE) {
         lin[i] = v;
     }
     return lin;

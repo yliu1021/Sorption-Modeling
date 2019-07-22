@@ -18,6 +18,8 @@
 std::array<double, N_SQUARES> load_grid(std::istream &grid_file);
 std::array<double, N_SQUARES> load_grid(const std::string &path);
 std::array<double, N_ITER+1> load_density(const std::string &path);
+void write_grid(std::array<double,N_SQUARES> grid, std::ostream &grid_file);
+bool write_grid(std::array<double,N_SQUARES> grid, const std::string &path);
 void write_density(std::array<double, N_ITER+1> density, std::ostream &density_file);
 bool write_density(std::array<double, N_ITER+1> density, const std::string &path);
 
@@ -36,8 +38,11 @@ void toggle_random(std::array<double, N_SQUARES> &grid);
 
 #define EPSILON 0.0000001
 
-// Normalize the values in an array to between 0 and 1
-void normalizeVec(std::vector<double> vec);
+// Rescale the values of a vector into a range of [0, 1]
+void normalizeVec(std::vector<double> &v);
+
+// Rescale the values of a vector to have a mean of 0 and a stdev of 1
+void standardizeVec(std::vector<double> &v);
 
 /*
   Clip (limit) the values in an array.
@@ -51,7 +56,7 @@ void normalizeVec(std::vector<double> vec);
 // Cost functions
 // ============================================================================
 
-double mean_abs_error(const std::array<double, N_ADSORP+1> y_true, const std::array<double, N_ITER+1> y_pred);
+double mean_abs_error(const std::array<double, N_ADSORP+1> &y_true, const std::array<double, N_ITER+1> &y_pred);
 
 // double kullback_leibler_divergence(const std::array<double, N_ADSORP+1> y_true, const std::array<double, N_ITER+1> y_pred);
 
