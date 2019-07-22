@@ -24,6 +24,7 @@ run.sh
 # C++ builds
 *.o
 fast_dft
-naive_random
-evolution
-benchmark
+cpp/fast_dft
+cpp/naive_random
+cpp/evolution
+cpp/benchmark
