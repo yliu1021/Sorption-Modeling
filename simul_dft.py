@@ -132,6 +132,7 @@ def run_dft(grid):
                 r[:,4] = rounew                     # convergence criteria
             if i == 100000000-1:
                 print('error')                      # cannot converge
+        print(i)
         density[jj] = sum(r[:,4])/(Ntotal_pores)    # normalized by the number of empty pores
     return density
 
@@ -220,7 +221,7 @@ grid = grid.reshape(N_SQUARES)
     from random import randint
     for i in range(5):
         r = randint(0, 299)
-        grid = np.genfromtxt('generative_model/step1/grids/grid_%04d.csv'%r, delimiter=',')
+        grid = np.genfromtxt('generative_model_1/step1/grids/grid_%04d.csv'%r, delimiter=',')
         grid = grid.reshape(N_SQUARES)
         den1 = run_dft(grid)
         den2 = run_dft_fast(grid)
