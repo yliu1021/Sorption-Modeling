@@ -13,6 +13,7 @@
 #include <vector>
 #include <iterator>
 #include <numeric>
+#include <valarray>
 
 #include <math.h>
 #include <stdlib.h>
@@ -222,6 +223,8 @@ array<double, N_ADSORP+1> linear_curve() {
 // ============================================================================
 
 int NL[N_SQUARES + 1][N_SQUARES];
+double muu_lookup[N_ITER + 1];
+
 void setup_NL() {
 	double r[2][N_SQUARES + 1];	
 	double Lx = 0.0;
@@ -260,6 +263,20 @@ void setup_NL() {
 			}
 		}
 	}
+	
+	for (int jj = 0; jj <= N_ITER; ++jj) {
+		double RH;
+		double muu = -90;
+		if (jj <= N_ADSORP) {
+			RH = jj * STEP_SIZE;
+		} else {
+			RH = N_ADSORP*STEP_SIZE - (jj - N_ADSORP)*STEP_SIZE;
+		}
+		if (RH != 0.0) {
+			muu = MUSAT + KB*T*log(RH);
+		}
+		muu_lookup[jj] = muu;
+	}
 }
 
 array<double,N_ITER+1> run_dft(array<double,N_SQUARES> grid) {
@@ -287,16 +304,7 @@ array<double,N_ITER+1> run_dft(array<double,N_SQUARES> grid) {
 	}
 	
 	for (int jj = 0; jj <= N_ITER; ++jj) {
-		double RH;
-		double muu = -90;
-		if (jj <= N_ADSORP) {
-			RH = jj * STEP_SIZE;
-		} else {
-			RH = N_ADSORP*STEP_SIZE - (jj - N_ADSORP)*STEP_SIZE;
-		}
-		if (RH != 0.0) {
-			muu = MUSAT + KB*T*log(RH);
-		}
+		double muu = muu_lookup[jj];
 		
 		for (int c = 1; c < 100000000; ++c) {
             // vi = veff(r,muu,NL)
@@ -328,8 +336,8 @@ array<double,N_ITER+1> run_dft(array<double,N_SQUARES> grid) {
 				break;
 			}
 		}
-		density[jj] = 0.0;
-		for (int i = 0; i <= N_SQUARES; ++i) {
+		density[jj] = r[1][0];
+		for (int i = 1; i <= N_SQUARES; ++i) {
 			density[jj] += r[1][i];
 		}
 		density[jj] /= Ntotal_pores;
