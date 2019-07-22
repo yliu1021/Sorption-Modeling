@@ -5,8 +5,7 @@ n = 40
 x = np.linspace(0, 1, n+1)
 
 def gen_diffs(mean, var):
-    mean = np.random.uniform(-np.log(2+1/40), np.log(2+1/40))
-    diffs = np.exp(np.random.normal(mean, var, n))
+    diffs = np.clip(np.exp(np.random.normal(0, var, n)), -10, 10)
     return diffs / np.sum(diffs)
 
 def gen_func(mean, var):
@@ -16,12 +15,8 @@ def gen_func(mean, var):
 loss = 0.1
 for _ in range(20):
     correct_diffs = gen_diffs(0, 2)
-    wrong_diffs = correct_diffs + np.random.uniform(-loss, loss, n)
     correct_f = np.insert(np.cumsum(correct_diffs), 0, 0)
-    wrong_f = np.insert(np.cumsum(wrong_diffs), 0, 0)
-
     plt.plot(x, correct_f)
-    # plt.plot(x, wrong_f)
     plt.show()
 
 exit(0)
