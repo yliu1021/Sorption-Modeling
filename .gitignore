@@ -26,3 +26,4 @@ run.sh
 fast_dft
 naive_random
 evolution
+benchmark
