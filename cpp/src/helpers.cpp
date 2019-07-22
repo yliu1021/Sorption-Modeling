@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 #include <iterator>
+#include <numeric>
 
 #include <math.h>
 #include <stdlib.h>
@@ -84,10 +85,31 @@ array<double,N_ITER+1> load_density(const string &path) {
 	return densities;
 }
 
+void write_grid(array<double,N_SQUARES> grid, ostream &grid_file) {
+	for (int i = 0; i < GRID_SIZE; ++i) {
+		for (int j = 0; j < GRID_SIZE; ++j) {
+			grid_file << grid[i*GRID_SIZE+j] << ",";
+		}
+		grid_file << endl;
+	}
+}
+
+bool write_grid(array<double,N_SQUARES> grid, const string &path) {
+	ofstream grid_file;
+	grid_file.open(path);
+	if (!grid_file.is_open()) {
+		cerr << "Could not open/create grid file" << endl;
+		return false;
+	}
+	write_grid(grid, grid_file);
+	grid_file.close();
+	return true;
+}
+
 void write_density(array<double,N_ITER+1> density, ostream &density_file) {
 	density_file << ",0" << endl;
 	for (int i = 0; i <= N_ITER; ++i) {
-		density_file << i << "," << setprecision(17) << density[i] << endl;;
+		density_file << i << "," << setprecision(17) << density[i] << endl;
 	}
 }
 
@@ -95,16 +117,13 @@ bool write_density(array<double,N_ITER+1> density, const string &path) {
 	ofstream density_file;
 	density_file.open(path);
 	if (!density_file.is_open()) {
-		cerr << "Could not open/create file" << endl;
+		cerr << "Could not open/create density file" << endl;
 		return false;
 	}
-	
 	write_density(density, density_file);
-	
 	density_file.close();
 	return true;
 }
-
 
 // ============================================================================
 // Grid Mutators
@@ -128,7 +147,21 @@ void normalizeVec(vector<double> &v) {
 	}
 }
 
-// TODO: Standardize vector function
+void standardizeVec(vector<double> &v) {
+	double sum = std::accumulate(std::begin(v), std::end(v), 0.0);
+	double mean =  sum / v.size();
+
+	double accum = 0.0;
+	std::for_each (std::begin(v), std::end(v), [&](const double d) {
+		accum += (d - mean) * (d - mean);
+	});
+	double stdev = sqrt(accum / (v.size()-1));
+
+	for (auto &x : v) {
+		x -= mean;
+		x /= stdev;
+	}
+}
 
 /*
 Clip (limit) the values in an array.
