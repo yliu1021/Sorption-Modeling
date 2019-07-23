@@ -26,11 +26,11 @@ _filter = tf.constant(
     [[[[0]], [[1]], [[0]]],
      [[[1]], [[0]], [[1]]],
      [[[0]], [[1]], [[0]]]],
-    dtype=tf.float64
+    dtype=tf.float32
 )
 
 
-def run_dft(grids):
+def run_dft(grids, batch_size=None):
     """Runs the DFT simulation on a batch of grids
     
     Parameters
@@ -40,7 +40,7 @@ def run_dft(grids):
     
     # we tile the grid and then crop it so that the boundaries
     # from one side will also exist on the other side
-    batch_size = grids.shape[0]
+    batch_size = grids.shape[0] if batch_size is None else batch_size
     Ntotal_pores = tf.reduce_sum(grids, axis=[1, 2])
 
     r0 = tf.tile(grids, [1, 3, 3])
@@ -62,7 +62,7 @@ def run_dft(grids):
     for jj in range(N_ADSORP + 1):
         print('loading density {}'.format(jj))
         muu = muu_lookup[jj]
-        for i in range(10):
+        for i in range(20):
             wffr1 = WFF * r1
             vi = tf.nn.conv2d(wffr1, filter=_filter, padding='VALID',
                               name='vi_conv_%04d'%i)
@@ -76,20 +76,25 @@ def run_dft(grids):
 
         density = tf.reduce_sum(r1, axis=[1, 2, 3])
         densities.append(density/Ntotal_pores)
-    return tf.stack(densities, axis=1)
+    diffs = list()
+    last = densities[0]
+    for density in densities[1:]:
+        diffs.append(density - last)
+        last = density
+    return tf.stack(diffs, axis=1)
 
-grid_tf = tf.placeholder(tf.float64, shape=[1000, GRID_SIZE, GRID_SIZE], name='input_grid')
-density_tf = run_dft(grid_tf)
-
-base_dir = '/Users/yuhanliu/Google Drive/1st year/Research/sorption_modeling/generative_model_0/step0/grids'
-grid_files = glob.glob(os.path.join(base_dir, 'grid_*.csv'))
-grid_files.sort()
-grids = [np.genfromtxt(grid_file, delimiter=',') for grid_file in grid_files]
-
-sess = tf.Session()
-start = time.time()
-densities = sess.run(density_tf, feed_dict={grid_tf: grids})
-end = time.time()
-print(end - start)
-print(densities[0])
-print(densities.shape)
+# grid_tf = tf.placeholder(tf.float64, shape=[1000, GRID_SIZE, GRID_SIZE], name='input_grid')
+# density_tf = run_dft(grid_tf)
+#
+# base_dir = '/Users/yuhanliu/Google Drive/1st year/Research/sorption_modeling/generative_model_0/step0/grids'
+# grid_files = glob.glob(os.path.join(base_dir, 'grid_*.csv'))
+# grid_files.sort()
+# grids = [np.genfromtxt(grid_file, delimiter=',') for grid_file in grid_files]
+#
+# sess = tf.Session()
+# start = time.time()
+# densities = sess.run(density_tf, feed_dict={grid_tf: grids})
+# end = time.time()
+# print(end - start)
+# print(densities[0])
+# print(densities.shape)
