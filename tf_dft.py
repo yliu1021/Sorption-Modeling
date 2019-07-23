@@ -56,7 +56,7 @@ def run_dft(grids, batch_size=None):
     rneg = tf.reshape(rneg, [batch_size, GRID_SIZE+2, GRID_SIZE+2, 1])
 
     wffyr0 = WFF * Y * rneg
-    wffyr0_conv = tf.nn.conv2d(wffyr0, filter=_filter, padding='VALID')
+    wffyr0_conv = tf.nn.conv2d(wffyr0, strides=1, filter=_filter, padding='VALID')
 
     densities = list()
     for jj in range(N_ADSORP + 1):
