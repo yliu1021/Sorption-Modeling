@@ -1,17 +1,23 @@
 CXX = c++
-CXXFLAGS = -Wall -Wextra -std=c++17
+CXXFLAGS = -Wall -Wextra -std=c++17 -O3 -funroll-loops -march=native
 
 vpath %.cpp src
 vpath %.h src
-TARGETS := fast_dft evolution
+TARGETS := fast_dft evolution benchmark
 
-all: fast_dft evolution
+all: fast_dft evolution benchmark
 
 fast_dft: fast_dft.o helpers.o
 	$(CXX) $(CXXFLAGS) -o fast_dft fast_dft.o helpers.o
 
 evolution: evolution.o helpers.o
 	$(CXX) $(CXXFLAGS) -o evolution evolution.o helpers.o
+
+benchmark: benchmark_dft.o helpers.o
+	$(CXX) $(CXXFLAGS) -o benchmark benchmark_dft.o helpers.o
+	
+benchmark_dft.o: benchmark_dft.cpp helpers.h
+	$(CXX) $(CXXFLAGS) -o $@ -c $<
 
 fast_dft.o: fast_dft.cpp helpers.h constants.h
 	$(CXX) $(CXXFLAGS) -o $@ -c $<

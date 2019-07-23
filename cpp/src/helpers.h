@@ -90,5 +90,6 @@ void setup_NL();
   @return a N_ITER+1 long array of doubles
  */
 std::array<double, N_ITER + 1> run_dft(std::array<double, N_SQUARES> grid);
+std::array<double, N_ITER + 1> run_dft_fast(std::array<double, N_SQUARES> grid);
 
 #endif // HELPERS_H_

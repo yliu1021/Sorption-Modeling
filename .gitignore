@@ -25,5 +25,10 @@ run.sh
 # C++ builds
 *.o
 fast_dft
-naive_random
-evolution
+cpp/fast_dft
+cpp/naive_random
+cpp/evolution
+cpp/benchmark
+
+# TensorFlow
+tensorflow/
