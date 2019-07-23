@@ -10,7 +10,7 @@ from itertools import cycle
 from constants import *
 
 
-base_dir = 'cpp/evol_iter_grids/'
+base_dir = 'cpp/evol_iter_grids_6/'
 
 def press(event):
     if event.key != 'q':
@@ -26,7 +26,12 @@ def show_grids():
         df = pd.read_csv(density_file, index_col=0)
         density = df['0'][0:N_ADSORP]
         # target_density = np.linspace(0.0, 1.0, num=40)
-        target_density = np.arange(40) * STEP_SIZE
+        # target_density = np.arange(40) * STEP_SIZE
+
+        target_density = np.arange(40) * STEP_SIZE # heaviside step 1
+        target_density = target_density - 0.25 # heaviside step 2
+        target_density = np.heaviside(target_density, 0.5) # heaviside step 3
+
         metric = (np.sum(np.absolute(density - target_density)) / 20.0)
         
         grid = np.genfromtxt(grid_file, delimiter=',')
@@ -41,7 +46,7 @@ def show_grids():
 
         ax = plt.subplot(212)
         ax.plot(df.index[0:N_ADSORP], df['0'][0:N_ADSORP])
-        ax.plot(np.linspace(0, N_ADSORP, num=N_ADSORP), np.linspace(0, 1, num=N_ADSORP))
+        ax.plot(np.linspace(0, N_ADSORP, num=N_ADSORP), target_density)
         ax.legend(['Metric: {:.4f}'.format(metric), 'Target'])
         ax.set_aspect(N_ADSORP)
         

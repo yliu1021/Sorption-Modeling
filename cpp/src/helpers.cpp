@@ -218,6 +218,16 @@ array<double, N_ADSORP+1> linear_curve() {
     return lin;
 }
 
+array<double, N_ADSORP+1> heaviside_step_function(double c) {
+    array<double, N_ADSORP+1> f;
+	for (short i = 0; i <= N_ADSORP+1; ++i) {
+		if (i*STEP_SIZE < c) { f[i] = 0; }
+		else if (i*STEP_SIZE == c) { f[i] = 0.5; }
+		else { f[i] = 1; }
+	}
+	return f;
+}
+
 // ============================================================================
 // DFT Simulation
 // ============================================================================
