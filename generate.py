@@ -205,16 +205,31 @@ def make_generator_model():
 
 
 def make_generator_input(n_grids, use_generator=False, batchsize=generator_batchsize):
+    def gen_diffs(mean, var, _n=n, up_to=1):
+        diffs = np.clip(np.exp(np.random.normal(mean, var, _n)), -10, 10)
+        return diffs / np.sum(diffs) * up_to
+
+    def gen_func():
+        f = np.insert(np.cumsum(gen_diffs(0, 2)), 0, 0)
+        return f
+
+    def gen_func():
+        anchor = np.random.uniform(0, 1)
+        x = np.clip(np.random.normal(0.5, 0.4), 0.1, 0.9)
+        ind = int(n*x)
+        f_1 = np.insert(np.cumsum(gen_diffs(0, 3, ind, anchor)), 0, 0)
+        f_2 = np.insert(np.cumsum(gen_diffs(0, 3, n - ind - 2, 1-anchor)), 0, 0) + anchor
+        f = np.concatenate((f_1, np.array([anchor]), f_2))
+        f[-1] = 1.0
+        return f
+
     if use_generator:
         def gen():
             while True:
                 uniform_latent_code = np.clip(np.random.normal(loc=0.5, scale=0.25, size=(batchsize, uniform_boost_dim)), 0, 1)
                 artificial_metrics = list()
                 for i in range(batchsize):
-                    mean = np.random.uniform(-np.log(2+1/N_ADSORP), np.log(2+1/N_ADSORP))
-                    diffs = np.exp(np.random.normal(mean, np.sqrt(i/batchsize) * max_var, N_ADSORP))
-                    diffs /= np.sum(diffs, axis=0)
-                    artificial_metrics.append(diffs)
+                    artificial_metrics.append(np.diff(gen_func()))
                 artificial_metrics = np.array(artificial_metrics)
                 out = [artificial_metrics, uniform_latent_code]
                 yield out, out
@@ -224,10 +239,7 @@ def make_generator_input(n_grids, use_generator=False, batchsize=generator_batch
         uniform_latent_code = np.clip(np.random.normal(loc=0.5, scale=0.25, size=(n_grids, uniform_boost_dim)), 0, 1)
         artificial_metrics = list()
         for i in range(n_grids):
-            mean = np.random.uniform(-np.log(2+1/N_ADSORP), np.log(2+1/N_ADSORP)) # centralize mean at 1/40
-            diffs = np.exp(np.random.normal(mean, np.sqrt(i/n_grids) * max_var, N_ADSORP))
-            diffs /= np.sum(diffs, axis=0)
-            artificial_metrics.append(diffs)
+            artificial_metrics.append(np.diff(gen_func()))
         artificial_metrics = np.array(artificial_metrics)
         return artificial_metrics, uniform_latent_code
 

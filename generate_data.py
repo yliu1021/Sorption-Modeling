@@ -41,47 +41,6 @@ def get_files_from_base_dir(dir):
     return data_files
 
 
-def get_generator(batch_size=64, val_split=0.3):
-    data_files = list()
-
-    base_dirs = glob.glob('generative_model_*')
-    for base_dir in base_dirs:
-        data_files.extend(get_files_from_base_dir(base_dir))
-    
-    shuffle(data_files)
-    val_split = int(val_split * len(data_files))
-    val_data_files, data_files = data_files[:val_split], data_files[val_split:]
-
-    def batch(x):
-        # batch list x
-        batched_x = list()
-        for i in range(0, len(x), batch_size):
-            batched_x.append(x[i:i+batch_size])
-        return batched_x
-    
-    val_data_files, data_files = batch(val_data_files), batch(data_files)
-    
-    def make_generator(x):
-        # convert list x into a generator (with some preprocessing)
-        def preprocess(data):
-            grid_file, density_file = data
-            grid = np.genfromtxt(grid_file, delimiter=',')
-            density = np.genfromtxt(density_file, delimiter=',', skip_header=1, max_rows=N_ADSORP)
-            density[:, 0] /= N_ADSORP
-            metric = np.sum(np.absolute(density[:, 1] - density[:, 0]), axis=0) / 20.0
-            return grid, metric
-        
-        for batch in x:
-            b = map(preprocess, batch)
-            b = zip(*b)
-            yield b
-    
-    val_generator = make_generator(val_data_files)
-    train_generator = make_generator(data_files)
-    
-    return ((train_generator, len(data_files)), (val_generator, len(val_data_files)))
-
-
 def get_all_data_files():
     all_files = list()
     base_dirs = glob.glob('generative_model_*')
@@ -104,7 +63,6 @@ def get_all_data_files():
 def get_all_data():
     data = list()
     all_files = get_all_data_files()
-    shuffle(all_files)
 
     num_files = len(all_files)
     for i, (grid_files, density_files) in enumerate(all_files):
