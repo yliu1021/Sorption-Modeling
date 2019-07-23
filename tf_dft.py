@@ -64,7 +64,7 @@ def run_dft(grids, batch_size=None):
         muu = muu_lookup[jj]
         for i in range(20):
             wffr1 = WFF * r1
-            vi = tf.nn.conv2d(wffr1, filter=_filter, padding='VALID',
+            vi = tf.nn.conv2d(wffr1, strides=1, filter=_filter, padding='VALID',
                               name='vi_conv_%04d'%i)
             vi += wffyr0_conv
             vi += muu

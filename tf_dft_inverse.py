@@ -130,4 +130,4 @@ training_model.fit_generator(generator_train_generator, steps_per_epoch=generato
                              epochs=generator_epochs,
                              max_queue_size=32, shuffle=False)
 
-generator.save('./generator.hdf5')
+generator.save('./generative_model_4/generator.hdf5')
