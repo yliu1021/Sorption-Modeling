@@ -19,15 +19,17 @@ using namespace std;
 // TODO: Multithread
 
 constexpr int WORKERS = 2500;
-constexpr int ITERS = 50;
+constexpr int ITERS = 150;
 constexpr double MUT_RATE = 0.6; // Mutation rate
 
-// Whether to artificially boost the reproduction rate of beneficial mutations
+// Whether to artificially boost the reproduction rate of beneficial mutations. 
+// When set to true starting from high costs (> 0.1-0.2 MSE), this option 
+// vastly increases the robustness of the solution at a large expense of speed.
 #define BOOST_POSITIVE_MUTS
 constexpr int BOOST_FACTOR = 0.05 * WORKERS * MUT_RATE;
 
-// #define WRITE_OUTPUT
-// string WRITE_FOLDER = "evol_iter_grids/";
+#define WRITE_OUTPUT
+string WRITE_FOLDER = "evol_iter_grids_7/";
 
 int main(int argc, char *argv[]) {
     if (argc == 2) {
@@ -35,8 +37,8 @@ int main(int argc, char *argv[]) {
 
         string grid_path(argv[1]);
         array<double, N_SQUARES> start_grid = load_grid(grid_path);
-        array<double, N_ADSORP+1> lin_curve = linear_curve();
-        double grid_cost = mean_abs_error(lin_curve, run_dft(start_grid));
+        array<double, N_ADSORP+1> target_curve = heaviside_step_function(0.75);
+        double grid_cost = mean_abs_error(target_curve, run_dft(start_grid));
 
         vector<array<double,N_SQUARES>> grids(WORKERS, start_grid);
         vector<double> costs(WORKERS, grid_cost);
@@ -53,7 +55,7 @@ int main(int argc, char *argv[]) {
                         double orig_cost = costs[j];
                     #endif
                     toggle_random(grids[j]);
-                    costs[j] = mean_abs_error(lin_curve, run_dft(grids[j]));
+                    costs[j] = mean_abs_error(target_curve, run_dft(grids[j]));
                     #ifdef BOOST_POSITIVE_MUTS
                         if (costs[j] < orig_cost) {
                             array<double,N_SQUARES> copy_grid(grids[j]);
@@ -65,7 +67,6 @@ int main(int argc, char *argv[]) {
                     #endif
                 }
             }
-            if (i == (ITERS - 1)) { break; }
 
             double min_cost_iter = *min_element(costs.begin(), costs.end());
             cout << "Minimum cost for iteration " << i << ": " << min_cost_iter << endl;
@@ -79,6 +80,8 @@ int main(int argc, char *argv[]) {
                 }
                 cout << endl;
             }
+
+            cout << "After artificial reproduction: " << grids.size() << " grids alive" << endl;
 
             #ifdef WRITE_OUTPUT
                 char grid_name[20];
@@ -109,12 +112,16 @@ int main(int argc, char *argv[]) {
             // cout << endl;
 
             // Kill unsuitable grids
+            // TODO: This needs to be improved now that artificial boosting of reproduction can create 100k+ grids. Perhaps
+            // shuffle the grids and iterate through rather than generating a random number every iteration
             while (grids.size() > WORKERS) {
                 int rand_grid = rand() % grids.size();
                 if (((double)rand()/(RAND_MAX)) < norm_costs[rand_grid]) {
                     grids.erase(grids.begin()+rand_grid);
                     norm_costs.erase(norm_costs.begin()+rand_grid);
                     costs.erase(costs.begin()+rand_grid);
+                    if (grids.size()%1000 == 0) { cout << "Killing grids, " << grids.size() << " grids left. " << endl; }
+                    // if (grids.size()%5000 == 0) { standardizeVec(norm_costs); normalizeVec(norm_costs); }
                 }
             }
             for (int j = grids.size()-1; j >= 0; --j) {
@@ -146,13 +153,15 @@ int main(int argc, char *argv[]) {
 			// if (!write_success) return -1;
         }
 
-        // Return best grid
-        array<double,N_SQUARES> best_grid = grids[min_element(costs.begin(), costs.end()) - costs.begin()];
-        for (int i = 0; i < N_SQUARES; ++i) {
-            if (i % 20 == 0) { cout << endl; }
-            cout << best_grid[i] << ",";
-        }
-        cout << "BEST COST: " << *min_element(costs.begin(), costs.end()) << endl;
+        // // Return best grid
+        // array<double,N_SQUARES> best_grid = grids[min_element(costs.begin(), costs.end()) - costs.begin()];
+        // for (int i = 0; i < N_SQUARES; ++i) {
+        //     if (i % 20 == 0) { cout << endl; }
+        //     cout << best_grid[i] << ",";
+        // }
+        cout << endl << "================================================" << endl;
+        cout << "BEST COST AT FINAL ITER: " << *min_element(costs.begin(), costs.end()) << endl;
+        cout << "BEST COST THROUGH ALL ITERS: " << min_cost << endl;
     } else {
         cerr << "Invalid cmd line arguments" << endl;
     }

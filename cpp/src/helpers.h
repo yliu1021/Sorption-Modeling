@@ -65,6 +65,7 @@ double mean_abs_error(const std::array<double, N_ADSORP+1> &y_true, const std::a
 // ============================================================================
 
 std::array<double, N_ADSORP+1> linear_curve();
+std::array<double, N_ADSORP+1> heaviside_step_function(double c = 0.5);
 
 // ============================================================================
 // DFT Simulation
