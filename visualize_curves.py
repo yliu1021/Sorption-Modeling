@@ -4,25 +4,27 @@ import matplotlib.pyplot as plt
 n = 40
 x = np.linspace(0, 1, n+1)
 
-def gen_diffs(mean, var):
-    diffs = np.clip(np.exp(np.random.normal(0, var, n)), -10, 10)
-    return diffs / np.sum(diffs)
+def gen_diffs(mean, var, _n=n, up_to=1):
+    diffs = np.clip(np.exp(np.random.normal(mean, var, _n)), -10, 10)
+    return diffs / np.sum(diffs) * up_to
 
-def gen_func(mean, var):
-    f = np.insert(np.cumsum(gen_diffs(mean, var)), 0, 0)
+def gen_func():
+    f = np.insert(np.cumsum(gen_diffs(0, 2)), 0, 0)
     return f
 
-loss = 0.1
-for _ in range(20):
-    correct_diffs = gen_diffs(0, 2)
-    correct_f = np.insert(np.cumsum(correct_diffs), 0, 0)
-    plt.plot(x, correct_f)
-    plt.show()
+def gen_func():
+    anchor = np.random.uniform(0, 1)
+    x = np.clip(np.random.normal(0.5, 0.4), 0.1, 0.9)
+    ind = int(n*x)
+    f_1 = np.insert(np.cumsum(gen_diffs(0, 3, ind, anchor)), 0, 0)
+    f_2 = np.insert(np.cumsum(gen_diffs(0, 3, n - ind - 2, 1-anchor)), 0, 0) + anchor
+    f = np.concatenate((f_1, np.array([anchor]), f_2))
+    return f, x
 
-exit(0)
-
-nf = 20
-for i in range(nf):
-    y = gen_func(0, i/nf*6)
-    plt.plot(x, y)
+ys = list()
+xs = list()
+for i in range(100):
+    f, ind = gen_func()
+    print(f[0], f[-1])
+    plt.plot(x, f)
     plt.show()
