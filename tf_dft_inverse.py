@@ -6,6 +6,7 @@ import tensorflow as tf
 from tensorflow.keras.layers import *
 from tensorflow.keras.models import *
 from tensorflow.keras.optimizers import *
+from tensorflow.keras.callbacks import *
 from tensorflow.keras import backend as K
 import numpy as np
 
@@ -13,8 +14,10 @@ from constants import *
 from tf_dft import run_dft
 
 
-generator_train_size = 10000
-generator_epochs = 15
+model_loc = './generative_model_4/generator.hdf5'
+
+generator_train_size = 100
+generator_epochs = 25
 generator_batchsize = 32
 generator_train_size //= generator_batchsize
 
@@ -109,6 +112,16 @@ def dft_model():
     return model
 
 
+# generator = load_model(model_loc, custom_objects={'binary_sigmoid': binary_sigmoid})
+# diff = np.ones(N_ADSORP)
+# diff[0] = 100
+# diff /= np.sum(diff)
+# input_np = np.tile(diff, (32, 1))
+# print(input_np.shape)
+# grid = generator.predict(input_np)
+# print(grid[0])
+# exit(0)
+
 generator = inverse_dft_model()
 dft_model = dft_model()
 
@@ -122,12 +135,15 @@ generator_out = generator(inp)
 dft_out = dft_model(generator_out)
 
 training_model = Model(inputs=inp, outputs=dft_out)
-optimizer = Adam(lr=0.001, clipnorm=1.0)
-training_model.compile(optimizer, loss='mae', metrics=['mae', worst_abs_loss])
+optimizer = Adam(lr=0.0001, clipvalue=1.0)
+training_model.compile(optimizer, loss='kullback_leibler_divergence', metrics=['mae', worst_abs_loss])
 training_model.summary()
 
 training_model.fit_generator(generator_train_generator, steps_per_epoch=generator_train_size,
                              epochs=generator_epochs,
-                             max_queue_size=32, shuffle=False)
+                             max_queue_size=32, shuffle=False,
+                             callbacks=[TensorBoard(log_dir='./logs',
+                                                    write_graph=True, write_grads=True,
+                                                    write_images=True)])
 
-generator.save('./generative_model_4/generator.hdf5')
+generator.save(model_loc)
