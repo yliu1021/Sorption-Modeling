@@ -26,8 +26,8 @@ constexpr double MUT_RATE = 0.6; // Mutation rate
 #define BOOST_POSITIVE_MUTS
 constexpr int BOOST_FACTOR = 0.05 * WORKERS * MUT_RATE;
 
-// #define WRITE_OUTPUT
-// string WRITE_FOLDER = "evol_iter_grids/";
+#define WRITE_OUTPUT
+string WRITE_FOLDER = "evol_iter_grids/";
 
 int main(int argc, char *argv[]) {
     if (argc == 2) {
@@ -65,7 +65,6 @@ int main(int argc, char *argv[]) {
                     #endif
                 }
             }
-            if (i == (ITERS - 1)) { break; }
 
             double min_cost_iter = *min_element(costs.begin(), costs.end());
             cout << "Minimum cost for iteration " << i << ": " << min_cost_iter << endl;
@@ -146,13 +145,15 @@ int main(int argc, char *argv[]) {
 			// if (!write_success) return -1;
         }
 
-        // Return best grid
-        array<double,N_SQUARES> best_grid = grids[min_element(costs.begin(), costs.end()) - costs.begin()];
-        for (int i = 0; i < N_SQUARES; ++i) {
-            if (i % 20 == 0) { cout << endl; }
-            cout << best_grid[i] << ",";
-        }
-        cout << "BEST COST: " << *min_element(costs.begin(), costs.end()) << endl;
+        // // Return best grid
+        // array<double,N_SQUARES> best_grid = grids[min_element(costs.begin(), costs.end()) - costs.begin()];
+        // for (int i = 0; i < N_SQUARES; ++i) {
+        //     if (i % 20 == 0) { cout << endl; }
+        //     cout << best_grid[i] << ",";
+        // }
+        cout << endl << "================================================" << endl;
+        cout << "BEST COST AT FINAL ITER: " << *min_element(costs.begin(), costs.end()) << endl;
+        cout << "BEST COST THROUGH ALL ITERS: " << min_cost << endl;
     } else {
         cerr << "Invalid cmd line arguments" << endl;
     }
