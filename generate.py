@@ -519,6 +519,17 @@ def generate_custom_curves(model_step):
     artificial_metrics = np.array(artificial_metrics)
     uniform_latent_code = np.random.uniform(-0.2, 0.2, size=(n_generate, uniform_boost_dim))
     
+    square_density_files = glob.glob(os.path.join(base_dir, 'step_custom_grids/results/density_*.csv'))
+    square_density_files.sort()
+    square_densities = [np.genfromtxt(square_density_file, delimiter=',', skip_header=1,
+                                      max_rows=N_ADSORP) for square_density_file in square_density_files]
+    square_densities = np.array(square_densities)
+    square_metrics = np.diff(square_densities, axis=1, append=1.0)
+    square_metrics = square_metrics[:, :, 1]
+    new_latent_codes = np.random.uniform(-0.2, 0.2, size=(len(square_metrics), uniform_boost_dim))
+    artificial_metrics = np.concatenate((artificial_metrics, square_metrics))
+    uniform_latent_code = np.concatenate((uniform_latent_code, new_latent_codes))
+    
     generated_grids = generator_model.predict([artificial_metrics, uniform_latent_code])
     generated_grids = generated_grids.astype('int')
 
@@ -527,7 +538,7 @@ def generate_custom_curves(model_step):
     os.makedirs(grid_dir, exist_ok=True)
     os.makedirs(density_dir, exist_ok=True)
     print('saving generated grids')
-    for i in range(n_generate):
+    for i in range(len(generated_grids)):
         path = os.path.join(grid_dir, 'grid_%04d.csv'%i)
         np.savetxt(path, generated_grids[i, :, :], fmt='%i', delimiter=',')
     
