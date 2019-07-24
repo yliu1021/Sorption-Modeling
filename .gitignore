@@ -8,7 +8,6 @@ __pycache__
 # Data files
 generative_model_*
 evol_iter_grids*
-predict_mc/grids*
 
 # Hoffman scripts
 run.sh
@@ -32,3 +31,6 @@ cpp/benchmark
 
 # TensorFlow
 tensorflow/
+
+# Test
+test_grids
