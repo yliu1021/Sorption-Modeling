@@ -25,13 +25,16 @@ def fetch_density_from_step(base_dir, step):
                           max_rows=N_ADSORP) for density_file in density_files]
 
 
-def get_all_data_files():
+def get_all_data_files(get_all_files=False):
     all_files = list()
     base_dirs = glob.glob('generative_model_*')
     print('Indexing files')
     for base_dir in base_dirs:
         data_files = list()
-        step_dirs = glob.glob(os.path.join(base_dir, 'step[0-9]*'))
+        if get_all_files:
+            step_dirs = glob.glob(os.path.join(base_dir, 'step*'))
+        else:
+            step_dirs = glob.glob(os.path.join(base_dir, 'step[0-9]*'))
         for step_dir in step_dirs:
             grid_dir = os.path.join(step_dir, 'grids')
             density_dir = os.path.join(step_dir, 'results')
@@ -48,7 +51,7 @@ _cached_densities = dict()
 def get_all_data():
     data = list()
     all_files = get_all_data_files()
-
+    
     num_files = len(all_files)
     for i, (grid_files, density_files) in enumerate(all_files):
         print('\rLoading {}/{}                    '.format(i+1, num_files), end='')

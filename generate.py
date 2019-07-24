@@ -54,7 +54,7 @@ uniform_boost_dim = 5
 loss_weights = [1.0, 0.5] # weights of losses in the metric and each latent code
 
 proxy_enforcer_epochs = 20
-proxy_enforcer_epochs = 2
+proxy_enforcer_epochs = 5
 proxy_enforcer_batchsize = 64
 
 generator_train_size = 10000
@@ -65,7 +65,6 @@ generator_batchsize = 64
 generator_train_size //= generator_batchsize
 
 n_gen_grids = 300
-max_var = 12
 
 
 def summarize_model(model):
@@ -380,7 +379,7 @@ def visualize_enforcer(model_step=None):
     enforcer_model, _ = make_proxy_enforcer_model()
     enforcer_model.load_weights(os.path.join(base_dir, 'step{}/enforcer.hdf5'.format(model_step)))
 
-    all_data_files = get_all_data_files()
+    all_data_files = get_all_data_files(get_all_files=True)
     all_data_files = [item for sublist in all_data_files for item in zip(*sublist)]
     
     extreme_grid = None
@@ -389,8 +388,8 @@ def visualize_enforcer(model_step=None):
     extreme_metric = 1
 
     for grid_file, density_file in all_data_files:
-        # if 'generative_model_3/step_custom_grids' not in grid_file:
-        #     continue
+        if 'generative_model_3/step_custom_grids' not in grid_file:
+            continue
         grid = np.genfromtxt(grid_file, delimiter=',')
         density = np.genfromtxt(density_file, delimiter=',', skip_header=1, max_rows=N_ADSORP)
         density = density[:, 1]
@@ -502,7 +501,7 @@ def visualize_curr_step_generator(step, enforcer_model=None):
 
 
 def generate_custom_curves(model_step):
-    step_dir = os.path.join(base_dir, 'step_custom_curve')
+    step_dir = os.path.join(base_dir, 'step_custom_curves')
     os.makedirs(step_dir, exist_ok=True)
 
     generator_model = make_generator_model()
