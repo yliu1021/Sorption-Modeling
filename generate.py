@@ -205,16 +205,31 @@ def make_generator_model():
 
 
 def make_generator_input(n_grids, use_generator=False, batchsize=generator_batchsize):
+    def gen_diffs(mean, var, _n=n, up_to=1):
+        diffs = np.clip(np.exp(np.random.normal(mean, var, _n)), -10, 10)
+        return diffs / np.sum(diffs) * up_to
+
+    def gen_func():
+        f = np.insert(np.cumsum(gen_diffs(0, 2)), 0, 0)
+        return f
+
+    def gen_func():
+        anchor = np.random.uniform(0, 1)
+        x = np.clip(np.random.normal(0.5, 0.4), 0.1, 0.9)
+        ind = int(n*x)
+        f_1 = np.insert(np.cumsum(gen_diffs(0, 3, ind, anchor)), 0, 0)
+        f_2 = np.insert(np.cumsum(gen_diffs(0, 3, n - ind - 2, 1-anchor)), 0, 0) + anchor
+        f = np.concatenate((f_1, np.array([anchor]), f_2))
+        f[-1] = 1.0
+        return f
+
     if use_generator:
         def gen():
             while True:
                 uniform_latent_code = np.clip(np.random.normal(loc=0.5, scale=0.25, size=(batchsize, uniform_boost_dim)), 0, 1)
                 artificial_metrics = list()
                 for i in range(batchsize):
-                    mean = np.random.uniform(-np.log(2+1/N_ADSORP), np.log(2+1/N_ADSORP))
-                    diffs = np.exp(np.random.normal(mean, np.sqrt(i/batchsize) * max_var, N_ADSORP))
-                    diffs /= np.sum(diffs, axis=0)
-                    artificial_metrics.append(diffs)
+                    artificial_metrics.append(np.diff(gen_func()))
                 artificial_metrics = np.array(artificial_metrics)
                 out = [artificial_metrics, uniform_latent_code]
                 yield out, out
@@ -224,10 +239,7 @@ def make_generator_input(n_grids, use_generator=False, batchsize=generator_batch
         uniform_latent_code = np.clip(np.random.normal(loc=0.5, scale=0.25, size=(n_grids, uniform_boost_dim)), 0, 1)
         artificial_metrics = list()
         for i in range(n_grids):
-            mean = np.random.uniform(-np.log(2+1/N_ADSORP), np.log(2+1/N_ADSORP)) # centralize mean at 1/40
-            diffs = np.exp(np.random.normal(mean, np.sqrt(i/n_grids) * max_var, N_ADSORP))
-            diffs /= np.sum(diffs, axis=0)
-            artificial_metrics.append(diffs)
+            artificial_metrics.append(np.diff(gen_func()))
         artificial_metrics = np.array(artificial_metrics)
         return artificial_metrics, uniform_latent_code
 
@@ -361,78 +373,6 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step):
         np.savetxt(path, artificial_metric, fmt='%f', delimiter=',')
 
 
-def generate_custom_grids(model_step):
-    step_dir = os.path.join(base_dir, 'step_custom_grids')
-    os.makedirs(step_dir, exist_ok=True)
-
-    generator_model = make_generator_model()
-    proxy_enforcer_model, lc_uni = make_proxy_enforcer_model()
-    generator_model.load_weights(os.path.join(base_dir, 'step{}/generator.hdf5'.format(model_step)))
-    proxy_enforcer_model.load_weights(os.path.join(base_dir, 'step{}/enforcer.hdf5'.format(model_step)))
-    
-    grids = list()
-    for i in range(1, 10):
-        grid = np.zeros((GRID_SIZE, GRID_SIZE))
-        offset = i
-        halfway = int(GRID_SIZE / 2)
-        grid[halfway - offset : halfway + offset, halfway - offset : halfway + offset] = 1
-        grids.append(grid)
-        
-    grid_dir = os.path.join(step_dir, 'grids')
-    density_dir = os.path.join(step_dir, 'results')
-    os.makedirs(grid_dir, exist_ok=True)
-    os.makedirs(density_dir, exist_ok=True)
-    print('saving generated grids')
-    for i, grid in enumerate(grids):
-        path = os.path.join(grid_dir, 'grid_%04d.csv'%i)
-        np.savetxt(path, grid, fmt='%i', delimiter=',')
-    
-    print('evaluating grids')
-    os.system('./fast_dft {}'.format(step_dir))
-
-
-def generate_custom_curves(model_step):
-    step_dir = os.path.join(base_dir, 'step_custom_curve')
-    os.makedirs(step_dir, exist_ok=True)
-
-    generator_model = make_generator_model()
-    proxy_enforcer_model, lc_uni = make_proxy_enforcer_model()
-    generator_model.load_weights(os.path.join(base_dir, 'step{}/generator.hdf5'.format(model_step)))
-    proxy_enforcer_model.load_weights(os.path.join(base_dir, 'step{}/enforcer.hdf5'.format(model_step)))
-    
-    n_generate = 30
-    artificial_metrics = list()
-    for i in range(n_generate):
-        diffs = np.zeros(N_ADSORP)
-        ind = int(i / n_generate * N_ADSORP)
-        diffs[ind] = 1.0
-        artificial_metrics.append(diffs)
-    artificial_metrics = np.array(artificial_metrics)
-    uniform_latent_code = np.random.uniform(-0.2, 0.2, size=(n_generate, uniform_boost_dim))
-    
-    generated_grids = generator_model.predict([artificial_metrics, uniform_latent_code])
-    generated_grids = generated_grids.astype('int')
-
-    grid_dir = os.path.join(step_dir, 'grids')
-    density_dir = os.path.join(step_dir, 'results')
-    os.makedirs(grid_dir, exist_ok=True)
-    os.makedirs(density_dir, exist_ok=True)
-    print('saving generated grids')
-    for i in range(n_generate):
-        path = os.path.join(grid_dir, 'grid_%04d.csv'%i)
-        np.savetxt(path, generated_grids[i, :, :], fmt='%i', delimiter=',')
-    
-    print('evaluating grids')
-    os.system('./fast_dft {}'.format(step_dir))
-    
-    print('saving artificial metrics')
-    artificial_metrics_dir = os.path.join(step_dir, 'artificial_metrics')
-    os.makedirs(artificial_metrics_dir, exist_ok=True)
-    for i, artificial_metric in enumerate(artificial_metrics):
-        path = os.path.join(artificial_metrics_dir, 'artificial_metric_%04d.csv'%i)
-        np.savetxt(path, artificial_metric, fmt='%f', delimiter=',')
-
-
 def visualize_enforcer(model_step=None):
     if model_step is None:
         model_step = 1
@@ -441,7 +381,6 @@ def visualize_enforcer(model_step=None):
 
     all_data_files = get_all_data_files()
     all_data_files = [item for sublist in all_data_files for item in zip(*sublist)]
-    # shuffle(all_data_files)
     
     extreme_grid = None
     extreme_density = None
@@ -449,8 +388,8 @@ def visualize_enforcer(model_step=None):
     extreme_metric = 1
 
     for grid_file, density_file in all_data_files:
-        if 'generative_model_3/step_custom_grids' not in grid_file:
-            continue
+        # if 'generative_model_3/step_custom_grids' not in grid_file:
+        #     continue
         grid = np.genfromtxt(grid_file, delimiter=',')
         density = np.genfromtxt(density_file, delimiter=',', skip_header=1, max_rows=N_ADSORP)
         density = density[:, 1]
@@ -559,6 +498,73 @@ def visualize_curr_step_generator(step, enforcer_model=None):
         ax.set_aspect('equal')
 
         plt.show()
+
+
+def generate_custom_curves(model_step):
+    step_dir = os.path.join(base_dir, 'step_custom_curve')
+    os.makedirs(step_dir, exist_ok=True)
+
+    generator_model = make_generator_model()
+    proxy_enforcer_model, lc_uni = make_proxy_enforcer_model()
+    generator_model.load_weights(os.path.join(base_dir, 'step{}/generator.hdf5'.format(model_step)))
+    proxy_enforcer_model.load_weights(os.path.join(base_dir, 'step{}/enforcer.hdf5'.format(model_step)))
+    
+    n_generate = 30
+    artificial_metrics = list()
+    for i in range(n_generate):
+        diffs = np.zeros(N_ADSORP)
+        ind = int(i / n_generate * N_ADSORP)
+        diffs[ind] = 1.0
+        artificial_metrics.append(diffs)
+    artificial_metrics = np.array(artificial_metrics)
+    uniform_latent_code = np.random.uniform(-0.2, 0.2, size=(n_generate, uniform_boost_dim))
+    
+    generated_grids = generator_model.predict([artificial_metrics, uniform_latent_code])
+    generated_grids = generated_grids.astype('int')
+
+    grid_dir = os.path.join(step_dir, 'grids')
+    density_dir = os.path.join(step_dir, 'results')
+    os.makedirs(grid_dir, exist_ok=True)
+    os.makedirs(density_dir, exist_ok=True)
+    print('saving generated grids')
+    for i in range(n_generate):
+        path = os.path.join(grid_dir, 'grid_%04d.csv'%i)
+        np.savetxt(path, generated_grids[i, :, :], fmt='%i', delimiter=',')
+    
+    print('evaluating grids')
+    os.system('./fast_dft {}'.format(step_dir))
+    
+    print('saving artificial metrics')
+    artificial_metrics_dir = os.path.join(step_dir, 'artificial_metrics')
+    os.makedirs(artificial_metrics_dir, exist_ok=True)
+    for i, artificial_metric in enumerate(artificial_metrics):
+        path = os.path.join(artificial_metrics_dir, 'artificial_metric_%04d.csv'%i)
+        np.savetxt(path, artificial_metric, fmt='%f', delimiter=',')
+
+
+def generate_custom_grids(model_step):
+    step_dir = os.path.join(base_dir, 'step_custom_grids')
+    os.makedirs(step_dir, exist_ok=True)
+
+    grids = list()
+    for i in range(1, 10):
+        grid = np.zeros((GRID_SIZE, GRID_SIZE))
+        offset = i
+        halfway = int(GRID_SIZE / 2)
+        grid[halfway - offset : halfway + offset, halfway - offset : halfway + offset] = 1
+        grids.append(grid)
+        
+    grid_dir = os.path.join(step_dir, 'grids')
+    density_dir = os.path.join(step_dir, 'results')
+    os.makedirs(grid_dir, exist_ok=True)
+    os.makedirs(density_dir, exist_ok=True)
+    print('saving generated grids')
+    for i, grid in enumerate(grids):
+        path = os.path.join(grid_dir, 'grid_%04d.csv'%i)
+        np.savetxt(path, grid, fmt='%i', delimiter=',')
+    
+    print('evaluating grids')
+    os.system('./fast_dft {}'.format(step_dir))
 
 
 if __name__ == '__main__':
