@@ -66,7 +66,7 @@ generator_train_size //= generator_batchsize
 
 n_gen_grids = 300
 
-gen_random_sample_rate = 0.2    # generate 20% random curves, 80% will be target curve
+gen_random_sample_rate = 0.8    # generate 80% random curves, 20% will be target curve
 train_random_sample_rate = 0.8  # train on 80% random curves, 20% will be target curve
 
 
@@ -396,15 +396,16 @@ def visualize_enforcer(model_step=None):
 
     all_data_files = get_all_data_files(get_all_files=True)
     all_data_files = [item for sublist in all_data_files for item in zip(*sublist)]
-    
+    shuffle(all_data_files)
+
     extreme_grid = None
     extreme_density = None
     extreme_pred_density = None
     extreme_metric = 1
 
     for grid_file, density_file in all_data_files:
-        if os.path.join(base_dir, 'step1') not in grid_file:
-            continue
+        # if os.path.join(base_dir, 'step1') not in grid_file:
+        #     continue
         grid = np.genfromtxt(grid_file, delimiter=',')
         density = np.genfromtxt(density_file, delimiter=',', skip_header=1, max_rows=N_ADSORP)
         density = density[:, 1]
