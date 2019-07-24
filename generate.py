@@ -66,8 +66,8 @@ generator_train_size //= generator_batchsize
 
 n_gen_grids = 300
 
-gen_random_sample_rate = 0.8    # generate 80% random curves, 20% will be target curve
-train_random_sample_rate = 0.8  # train on 80% random curves, 20% will be target curve
+gen_random_sample_rate = 0.95    # generate 80% random curves, 20% will be target curve
+train_random_sample_rate = 0.95  # train on 80% random curves, 20% will be target curve
 
 
 def summarize_model(model):
