@@ -54,13 +54,13 @@ uniform_boost_dim = 5
 loss_weights = [1.0, 0.75] # weights of losses in the metric and each latent code
 
 proxy_enforcer_epochs = 20
-proxy_enforcer_epochs = 10
+proxy_enforcer_epochs = 50
 proxy_enforcer_batchsize = 64
 
 generator_train_size = 10000
 # generator_train_size = 128
 generator_epochs = 50
-generator_epochs = 20
+generator_epochs = 50
 generator_batchsize = 64
 generator_train_size //= generator_batchsize
 
