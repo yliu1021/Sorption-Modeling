@@ -36,7 +36,7 @@ def show_grids(v):
         fig.suptitle('{}, {}'.format('/'.join(grid_file.split('/')[-3:]), '/'.join(density_file.split('/')[-3:])))
 
         ax = plt.subplot(211)
-        ax.pcolor(grid, cmap='Greys')
+        ax.pcolor(grid, cmap='Greys', vmin=0.0, vmax=1.0)
         ax.set_aspect('equal')
 
         ax = plt.subplot(212)
