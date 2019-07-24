@@ -205,6 +205,7 @@ def make_generator_model():
 
 
 def make_generator_input(n_grids, use_generator=False, batchsize=generator_batchsize):
+    n = N_ADSORP
     def gen_diffs(mean, var, _n=n, up_to=1):
         diffs = np.clip(np.exp(np.random.normal(mean, var, _n)), -10, 10)
         return diffs / np.sum(diffs) * up_to
