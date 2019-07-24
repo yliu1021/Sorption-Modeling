@@ -27,7 +27,7 @@ def fetch_density_from_step(base_dir, step):
 
 def get_all_data_files(get_all_files=False):
     all_files = list()
-    base_dirs = glob.glob('generative_model_*')
+    base_dirs = glob.glob('generative_model_target_fullsize')
     print('Indexing files')
     for base_dir in base_dirs:
         data_files = list()
@@ -95,6 +95,6 @@ if __name__ == '__main__':
     
     for grid, metric in data:
         print(metric)
-        plt.pcolor(grid, cmap='Greys')
+        plt.pcolor(grid, cmap='Greys', vmin=0.0, vmax=1.0)
         print(grid)
         plt.show()

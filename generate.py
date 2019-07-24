@@ -46,7 +46,7 @@ def press(event):
 
 
 
-base_dir = 'generative_model_3'
+base_dir = 'generative_model_target_fullsize'
 os.makedirs(base_dir, exist_ok=True)
 
 # Hyperparameters
@@ -54,17 +54,20 @@ uniform_boost_dim = 5
 loss_weights = [1.0, 0.5] # weights of losses in the metric and each latent code
 
 proxy_enforcer_epochs = 20
-proxy_enforcer_epochs = 5
+proxy_enforcer_epochs = 1
 proxy_enforcer_batchsize = 64
 
 generator_train_size = 10000
 # generator_train_size = 128
 generator_epochs = 50
-generator_epochs = 15
+generator_epochs = 1
 generator_batchsize = 64
 generator_train_size //= generator_batchsize
 
 n_gen_grids = 300
+
+gen_random_sample_rate = 0.2    # generate 20% random curves, 80% will be target curve
+train_random_sample_rate = 0.8  # train on 80% random curves, 20% will be target curve
 
 
 def summarize_model(model):
@@ -203,6 +206,14 @@ def make_generator_model():
     return model
 
 
+def get_target_curve():
+    # this curve is the one with a large pore the entire size of the grid
+    density_file = 'generative_model_3/step_custom_grids/results/density_0009.csv'
+    density = np.genfromtxt(density_file, delimiter=',', skip_header=1, max_rows=N_ADSORP)
+    density = density[:, 1]
+    return np.diff(density, append=1.0)
+
+
 def make_generator_input(n_grids, use_generator=False, batchsize=generator_batchsize):
     n = N_ADSORP
     def gen_diffs(mean, var, _n=n, up_to=1):
@@ -215,7 +226,7 @@ def make_generator_input(n_grids, use_generator=False, batchsize=generator_batch
 
     def gen_func():
         anchor = np.random.uniform(0, 1)
-        x = np.clip(np.random.normal(0.5, 0.4), 0.1, 0.9)
+        x = np.clip(np.random.normal(0.5, 0.4), 0.05, 0.95)
         ind = int(n*x)
         f_1 = np.insert(np.cumsum(gen_diffs(0, 3, ind, anchor)), 0, 0)
         f_2 = np.insert(np.cumsum(gen_diffs(0, 3, n - ind - 2, 1-anchor)), 0, 0) + anchor
@@ -228,8 +239,10 @@ def make_generator_input(n_grids, use_generator=False, batchsize=generator_batch
             while True:
                 uniform_latent_code = np.clip(np.random.normal(loc=0.5, scale=0.25, size=(batchsize, uniform_boost_dim)), 0, 1)
                 artificial_metrics = list()
-                for i in range(batchsize):
+                num_random_samples = int(round(batchsize * train_random_sample_rate))
+                for i in range(num_random_samples):
                     artificial_metrics.append(np.diff(gen_func()))
+                artificial_metrics.extend([get_target_curve()] * (batchsize - num_random_samples))
                 artificial_metrics = np.array(artificial_metrics)
                 out = [artificial_metrics, uniform_latent_code]
                 yield out, out
@@ -238,8 +251,10 @@ def make_generator_input(n_grids, use_generator=False, batchsize=generator_batch
         print('Generating')
         uniform_latent_code = np.clip(np.random.normal(loc=0.5, scale=0.25, size=(n_grids, uniform_boost_dim)), 0, 1)
         artificial_metrics = list()
-        for i in range(n_grids):
+        num_random_samples = int(round(n_grids * gen_random_sample_rate))
+        for i in range(num_random_samples):
             artificial_metrics.append(np.diff(gen_func()))
+        artificial_metrics.extend([get_target_curve()] * (n_grids - num_random_samples))
         artificial_metrics = np.array(artificial_metrics)
         return artificial_metrics, uniform_latent_code
 
@@ -388,7 +403,7 @@ def visualize_enforcer(model_step=None):
     extreme_metric = 1
 
     for grid_file, density_file in all_data_files:
-        if 'generative_model_3/step_custom_grids' not in grid_file:
+        if os.path.join(base_dir, 'step1') not in grid_file:
             continue
         grid = np.genfromtxt(grid_file, delimiter=',')
         density = np.genfromtxt(density_file, delimiter=',', skip_header=1, max_rows=N_ADSORP)
@@ -409,7 +424,7 @@ def visualize_enforcer(model_step=None):
         fig.canvas.mpl_connect('key_press_event', press)
 
         ax = plt.subplot(211)
-        ax.pcolor(grid, cmap='Greys')
+        ax.pcolor(grid, cmap='Greys', vmin=0.0, vmax=1.0)
         ax.set_aspect('equal')
 
         ax = plt.subplot(212)
@@ -428,7 +443,7 @@ def visualize_enforcer(model_step=None):
     fig.canvas.mpl_connect('key_press_event', press)
 
     ax = plt.subplot(211)
-    ax.pcolor(extreme_grid, cmap='Greys')
+    ax.pcolor(extreme_grid, cmap='Greys', vmin=0.0, vmax=1.0)
     ax.set_aspect('equal')
 
     ax = plt.subplot(212)
@@ -448,8 +463,8 @@ def visualize_generator(step, model_step=None):
         model_step = step
     enforcer_model, _ = make_proxy_enforcer_model()
     enforcer_model.load_weights(os.path.join(base_dir, 'step{}/enforcer.hdf5'.format(model_step)))
-    visualize_curr_step_generator(step, None)
-    # visualize_curr_step_generator(step, enforcer_model)
+    # visualize_curr_step_generator(step, None)
+    visualize_curr_step_generator(step, enforcer_model)
 
 
 def visualize_curr_step_generator(step, enforcer_model=None):
@@ -480,7 +495,7 @@ def visualize_curr_step_generator(step, enforcer_model=None):
         fig.canvas.mpl_connect('key_press_event', press)
 
         ax = plt.subplot(211)
-        ax.pcolor(grid, cmap='Greys')
+        ax.pcolor(grid, cmap='Greys', vmin=0.0, vmax=1.0)
         ax.set_aspect('equal')
 
         ax = plt.subplot(212)
@@ -558,7 +573,7 @@ def generate_custom_grids(model_step):
     os.makedirs(step_dir, exist_ok=True)
 
     grids = list()
-    for i in range(1, 10):
+    for i in range(1, 11):
         grid = np.zeros((GRID_SIZE, GRID_SIZE))
         offset = i
         halfway = int(GRID_SIZE / 2)
