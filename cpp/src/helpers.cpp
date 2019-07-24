@@ -228,6 +228,40 @@ array<double, N_ADSORP+1> heaviside_step_function(double c) {
 	return f;
 }
 
+array<double, N_ADSORP+1> step_function(vector<double> step_height, vector<double> step_size) {
+    array<double, N_ADSORP+1> f;
+	int step_num = 0;
+	for (short i = 0; i < N_ADSORP+1; ++i) {
+		if (i*STEP_SIZE > step_size[step_num]) { step_num++; }
+		f[i] = step_height[step_num];
+	}
+	return f;
+}
+
+array<double, N_ADSORP+1> circular_curve(double radius, bool concave_up) {
+	if (radius < 1) { 
+		cerr << "Invalid radius given for target curve, using default curve" << endl; 
+		radius = 1;
+	}
+    array<double, N_ADSORP+1> f;
+	double x_center, y_center;
+	if (concave_up) {
+		x_center = 0.5 * (1 - sqrt(2*radius*radius-1));
+		y_center = 0.5 * (sqrt(2*radius*radius-1) + 1);
+	} else {
+		x_center = 0.5 * (sqrt(2*radius*radius-1) + 1);
+		y_center = 0.5 * (1 - sqrt(2*radius*radius-1));
+	}
+	for (short i = 0; i < N_ADSORP+1; ++i) {
+		if (concave_up) {
+			f[i] = y_center - sqrt(-1*(x_center*x_center) + 2*x_center*(i*STEP_SIZE) - (i*STEP_SIZE*i*STEP_SIZE) + radius*radius); // concave up
+		} else {
+			f[i] = sqrt(-1*(x_center*x_center) + 2*x_center*(i*STEP_SIZE) - (i*STEP_SIZE*i*STEP_SIZE) + radius*radius) + y_center; // concave down
+		}
+	}
+	return f;
+}
+
 // ============================================================================
 // DFT Simulation
 // ============================================================================

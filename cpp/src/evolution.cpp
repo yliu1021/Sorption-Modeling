@@ -29,15 +29,23 @@ constexpr double MUT_RATE = 0.6; // Mutation rate
 constexpr int BOOST_FACTOR = 0.05 * WORKERS * MUT_RATE;
 
 #define WRITE_OUTPUT
-string WRITE_FOLDER = "evol_iter_grids_7/";
+string WRITE_FOLDER = "evol_iter_grids_8/";
 
 int main(int argc, char *argv[]) {
     if (argc == 2) {
         setup_NL(); // for fast_dft
 
+        // vector<double> step_size{0.3, 0.6, 1};
+        // vector<double> step_height{0.3, 0.6, 1};
+        // array<double, N_ADSORP+1> target_curve = step_function(step_height, step_size);
+
+        // array<double, N_ADSORP+1> target_curve = heaviside_step_function(0.75);
+
+        array<double, N_ADSORP+1> target_curve = circular_curve(1, false);
+
         string grid_path(argv[1]);
         array<double, N_SQUARES> start_grid = load_grid(grid_path);
-        array<double, N_ADSORP+1> target_curve = heaviside_step_function(0.75);
+
         double grid_cost = mean_abs_error(target_curve, run_dft(start_grid));
 
         vector<array<double,N_SQUARES>> grids(WORKERS, start_grid);
