@@ -240,7 +240,7 @@ array<double, N_ADSORP+1> step_function(vector<double> step_height, vector<doubl
 
 array<double, N_ADSORP+1> circular_curve(double radius, bool concave_up) {
 	if (radius < 1) { 
-		cerr << "Invalid radius given for target curve, using default curve" << endl; 
+		cerr << "Invalid radius given for target curve, using default circular curve" << endl; 
 		radius = 1;
 	}
     array<double, N_ADSORP+1> f;
@@ -338,7 +338,7 @@ array<double,N_ITER+1> run_dft(array<double,N_SQUARES> grid) {
 	if (Ntotal_pores < 0.1) {
 		// no pores, return all 0's
 		for (int i = 0; i <= N_ITER; ++i) {
-			density[i] = 0.0;
+			density[i] = 1.0;
 		}
 		return density;
 	}
