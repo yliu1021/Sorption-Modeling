@@ -60,14 +60,14 @@ proxy_enforcer_batchsize = 64
 generator_train_size = 10000
 # generator_train_size = 128
 generator_epochs = 50
-generator_epochs = 50
+generator_epochs = 20
 generator_batchsize = 64
 generator_train_size //= generator_batchsize
 
 n_gen_grids = 300
 
-gen_random_sample_rate = 0.95    # generate 80% random curves, 20% will be target curve
-train_random_sample_rate = 0.95  # train on 80% random curves, 20% will be target curve
+gen_random_sample_rate = 0.8    # generate 80% random curves, 20% will be target curve
+train_random_sample_rate = 0.8  # train on 80% random curves, 20% will be target curve
 
 
 def summarize_model(model):
