@@ -162,7 +162,7 @@ def make_generator_model(**kwargs):
     if 'first_conv_depth' in kwargs:
         first_conv_depth = kwargs['first_conv_depth']
     else:
-        first_conv_depth = 128
+        first_conv_depth = 64
     
     if 'pre_deconv1_depth' in kwargs:
         pre_deconv1_depth = kwargs['pre_deconv1_depth']

@@ -46,8 +46,8 @@ proxy_enforcer_hyperparameters = {
 generator_hyperparameters = {
     'first_conv_depth': {
         'type': int,
-        'min' : 64,
-        'max' : 128
+        'min' : 32,
+        'max' : 96
     },
     'pre_deconv1_depth': {
         'type': int,
