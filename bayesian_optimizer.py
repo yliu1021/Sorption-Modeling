@@ -71,6 +71,7 @@ all_hyperparameters.update(training_hyperparameters)
 all_hyperparameters.update(proxy_enforcer_hyperparameters)
 all_hyperparameters.update(generator_hyperparameters)
 all_hyperparameter_keys = list(all_hyperparameters.keys())
+print(all_hyperparameter_keys)
 parameter_bounds = list()
 for key in all_hyperparameter_keys:
     parameter_opts = all_hyperparameters[key]
@@ -111,7 +112,7 @@ def evaluate_step(step):
 
 def train_network(step, hyperparameters):
     generate.base_dir = get_base_dir(step)
-    generate.start_training(start=1, end=5, **hyperparameters)
+    generate.start_training(start=1, end=11, **hyperparameters)
     return evaluate_step(step)
 
 

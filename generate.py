@@ -45,17 +45,17 @@ def press(event):
         exit(0)
 
 
-base_dir = 'generative_model_optimization_0'
+base_dir = 'generative_model_3'
 
 # Hyperparameters
 uniform_boost_dim = 5
 loss_weights = [1.0, 0.8] # weights of losses in the metric and each latent code
 
-proxy_enforcer_epochs = 30
+proxy_enforcer_epochs = 40
 proxy_enforcer_batchsize = 64
 
 generator_train_size = 10000
-generator_epochs = 10
+generator_epochs = 20
 generator_batchsize = 64
 generator_train_size //= generator_batchsize
 
@@ -563,10 +563,17 @@ def generate_custom_curves(model_step):
     step_dir = os.path.join(base_dir, 'step_custom_curves')
     os.makedirs(step_dir, exist_ok=True)
 
-    generator_model = make_generator_model()
-    proxy_enforcer_model, lc_uni = make_proxy_enforcer_model()
-    generator_model.load_weights(os.path.join(base_dir, 'step{}/generator.hdf5'.format(model_step)))
-    proxy_enforcer_model.load_weights(os.path.join(base_dir, 'step{}/enforcer.hdf5'.format(model_step)))
+    # generator_model = make_generator_model()
+    # proxy_enforcer_model, lc_uni = make_proxy_enforcer_model()
+    # generator_model.load_weights(os.path.join(base_dir, 'step{}/generator.hdf5'.format(model_step)))
+    # proxy_enforcer_model.load_weights(os.path.join(base_dir, 'step{}/enforcer.hdf5'.format(model_step)))
+    
+    generator_model = load_model(os.path.join(base_dir, 'step{}/generator.hdf5'.format(model_step)),
+                                 custom_objects={'worst_abs_loss': worst_abs_loss,
+                                                 'binary_sigmoid': binary_sigmoid})
+    proxy_enforcer_model = load_model(os.path.join(base_dir, 'step{}/enforcer.hdf5'.format(model_step)),
+                                      custom_objects={'worst_abs_loss': worst_abs_loss,
+                                                      'binary_sigmoid': binary_sigmoid})
     
     n_generate = 30
     artificial_metrics = list()
