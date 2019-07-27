@@ -169,10 +169,10 @@ def make_generator_model(**kwargs):
     else:
         pre_deconv1_depth = 128
     
-    if 'pre_deconv2_depth' in kwargs:
-        pre_deconv2_depth = kwargs['pre_deconv2_depth']
+    if 'post_deconv2_depth' in kwargs:
+        post_deconv2_depth = kwargs['post_deconv2_depth']
     else:
-        pre_deconv2_depth = 128
+        post_deconv2_depth = 128
         
     if 'last_filter_size' in kwargs:
         last_filter_size = kwargs['last_filter_size']
@@ -187,10 +187,10 @@ def make_generator_model(**kwargs):
 
     Q_GRID_SIZE = GRID_SIZE // 4 + 4
 
-    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * first_conv_depth//2, name='fc1')(conc)
+    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * first_conv_depth//4, name='fc1')(conc)
     x = LeakyReLU()(x)
 
-    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * first_conv_depth//2, name='fc3')(x)
+    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * first_conv_depth//4, name='fc3')(x)
     x = LeakyReLU()(x)
 
     x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * first_conv_depth, name='fc4')(x)
@@ -206,17 +206,15 @@ def make_generator_model(**kwargs):
 
     x = Conv2DTranspose(128, 3, strides=2, padding='same', name='deconv_expand1')(x)
     x = LeakyReLU()(x)
-    
-    x = Conv2D(pre_deconv2_depth, 3, strides=1, padding='same', name='pre_deconv3')(x)
-    x = LeakyReLU()(x)
 
     x = Conv2DTranspose(64, 3, strides=2, padding='same', name='deconv_expand2')(x)
     x = LeakyReLU()(x)
 
-    out = Conv2D(64, [last_filter_size, 1], strides=1, padding='same',
-                 activation='relu', name='generator_conv1')(x)
-    out = Conv2D(1, [1, last_filter_size], strides=1, padding='same',
-                 activation=binary_sigmoid, name='generator_conv2')(out)
+    x = Conv2D(post_deconv2_depth, 3, strides=1, padding='same', name='post_deconv')(x)
+    x = LeakyReLU()(x)
+
+    out = Conv2D(1, last_filter_size, strides=1, padding='same',
+                 activation=binary_sigmoid, name='generator_conv')(out)
     out = Reshape((GRID_SIZE, GRID_SIZE))(out)
 
     model = Model(inputs=[inp, latent_code_uni], outputs=[out],
