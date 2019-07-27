@@ -136,7 +136,7 @@ def minimize(parameters):
     return result
 
 
-res = gp_minimize(minimize, parameter_bounds, n_calls=30,
+res = gp_minimize(minimize, parameter_bounds, n_calls=25,
                   verbose=True)
 print(all_hyperparameter_keys)
 print(res.x)
