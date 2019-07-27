@@ -112,7 +112,7 @@ def evaluate_step(step):
 
 def train_network(step, hyperparameters):
     generate.base_dir = get_base_dir(step)
-    generate.start_training(start=1, end=11, **hyperparameters)
+    generate.start_training(start=1, end=6, **hyperparameters)
     return evaluate_step(step)
 
 
@@ -136,7 +136,7 @@ def minimize(parameters):
     return result
 
 
-res = gp_minimize(minimize, parameter_bounds, n_calls=40,
+res = gp_minimize(minimize, parameter_bounds, n_calls=30,
                   verbose=True)
 print(all_hyperparameter_keys)
 print(res.x)
