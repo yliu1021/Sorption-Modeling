@@ -47,7 +47,7 @@ generator_hyperparameters = {
     'first_conv_depth': {
         'type': int,
         'min' : 32,
-        'max' : 96
+        'max' : 128
     },
     'pre_deconv1_depth': {
         'type': int,

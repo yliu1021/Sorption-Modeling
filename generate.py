@@ -185,7 +185,7 @@ def make_generator_model(**kwargs):
 
     conc = Concatenate(axis=-1)([inp, latent_code_uni])
 
-    Q_GRID_SIZE = GRID_SIZE // 4 + 4
+    Q_GRID_SIZE = GRID_SIZE // 4 + 6
 
     x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * first_conv_depth//4, name='fc1')(conc)
     x = LeakyReLU()(x)
@@ -198,7 +198,7 @@ def make_generator_model(**kwargs):
 
     x = Reshape((Q_GRID_SIZE, Q_GRID_SIZE, first_conv_depth))(x)
 
-    x = Conv2D(first_conv_depth, 3, strides=1, padding='valid', name='pre_deconv1')(x)
+    x = Conv2D(first_conv_depth, 5, strides=1, padding='valid', name='pre_deconv1')(x)
     x = LeakyReLU()(x)
     
     x = Conv2D(pre_deconv1_depth, 3, strides=1, padding='valid', name='pre_deconv2')(x)
@@ -340,7 +340,7 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step, **kwargs):
                              callbacks=[ReduceLROnPlateau(patience=20),
                                         EarlyStopping(patience=30)])
 
-    proxy_enforcer_model.save(proxy_enforcer_model_save_loc)
+    proxy_enforcer_model.save(proxy_enforcer_model_save_loc, include_optimizer=False)
 
     # Train G on M
     lr = 10 ** learning_rate_power
@@ -382,8 +382,8 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step, **kwargs):
                                             EarlyStopping(patience=10, monitor='loss')],
                                  max_queue_size=32, shuffle=False)
 
-    generator_model.save(generator_model_save_loc)
-    lc_uni.save(lc_uni_save_loc)
+    generator_model.save(generator_model_save_loc, include_optimizer=False)
+    lc_uni.save(lc_uni_save_loc, include_optimizer=False)
 
     # Generate random grids using G then evaluate them
     artificial_metrics, uniform_latent_code = make_generator_input(n_grids=n_gen_grids, use_generator=False)
@@ -501,10 +501,10 @@ def visualize_enforcer(model_step=None):
 def visualize_generator(step, model_step=None):
     if model_step is None:
         model_step = step
-    # enforcer_model, _ = make_proxy_enforcer_model()
-    # enforcer_model.load_weights(os.path.join(base_dir, 'step{}/enforcer.hdf5'.format(model_step)))
-    enforcer_model = load_model(os.path.join(base_dir, 'step{}/enforcer.hdf5'.format(model_step)),
-                                custom_objects={'worst_abs_loss': worst_abs_loss})
+    enforcer_model, _ = make_proxy_enforcer_model()
+    enforcer_model.load_weights(os.path.join(base_dir, 'step{}/enforcer.hdf5'.format(model_step)))
+    # enforcer_model = load_model(os.path.join(base_dir, 'step{}/enforcer.hdf5'.format(model_step)),
+                                # custom_objects={'worst_abs_loss': worst_abs_loss})
     # visualize_curr_step_generator(step, None)
     visualize_curr_step_generator(step, enforcer_model)
 
