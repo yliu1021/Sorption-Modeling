@@ -34,12 +34,12 @@ proxy_enforcer_hyperparameters = {
     'last_conv_depth': {
         'type': int,
         'min' : 128,
-        'max' : 300
+        'max' : 400
     },
     'dense_layer_size': {
         'type': int,
         'min' : 1024,
-        'max' : 2500
+        'max' : 2700
     }
 }
 
@@ -52,7 +52,7 @@ generator_hyperparameters = {
     'pre_deconv1_depth': {
         'type': int,
         'min' : 80,
-        'max' : 120
+        'max' : 130
     },
     'post_deconv2_depth': {
         'type': int,
