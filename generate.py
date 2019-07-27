@@ -214,7 +214,7 @@ def make_generator_model(**kwargs):
     x = LeakyReLU()(x)
 
     out = Conv2D(1, last_filter_size, strides=1, padding='same',
-                 activation=binary_sigmoid, name='generator_conv')(out)
+                 activation=binary_sigmoid, name='generator_conv')(x)
     out = Reshape((GRID_SIZE, GRID_SIZE))(out)
 
     model = Model(inputs=[inp, latent_code_uni], outputs=[out],
