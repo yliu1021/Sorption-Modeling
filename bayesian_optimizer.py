@@ -54,9 +54,9 @@ generator_hyperparameters = {
         'min' : 80,
         'max' : 120
     },
-    'pre_deconv2_depth': {
+    'post_deconv2_depth': {
         'type': int,
-        'min' : 64,
+        'min' : 32,
         'max' : 96
     },
     'last_filter_size': {
