@@ -261,7 +261,7 @@ def make_generator_input(n_grids, use_generator=False, batchsize=generator_batch
                 num_random_samples = int(round(batchsize * train_random_sample_rate))
                 for i in range(num_random_samples):
                     artificial_metrics.append(np.diff(gen_func()))
-                artificial_metrics.extend([get_target_curve()] * (batchsize - num_random_samples))
+                # artificial_metrics.extend([get_target_curve()] * (batchsize - num_random_samples))
                 artificial_metrics = np.array(artificial_metrics)
                 out = [artificial_metrics, uniform_latent_code]
                 yield out, out
@@ -273,7 +273,7 @@ def make_generator_input(n_grids, use_generator=False, batchsize=generator_batch
         num_random_samples = int(round(n_grids * gen_random_sample_rate))
         for i in range(num_random_samples):
             artificial_metrics.append(np.diff(gen_func()))
-        artificial_metrics.extend([get_target_curve()] * (n_grids - num_random_samples))
+        # artificial_metrics.extend([get_target_curve()] * (n_grids - num_random_samples))
         artificial_metrics = np.array(artificial_metrics)
         return artificial_metrics, uniform_latent_code
 
