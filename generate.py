@@ -114,7 +114,7 @@ def make_proxy_enforcer_model(**kwargs):
     if 'last_conv_depth' in kwargs:
         last_conv_depth = kwargs['last_conv_depth']
     else:
-        last_conv_depth = 512
+        last_conv_depth = 256
     
     if 'dense_layer_size' in kwargs:
         dense_layer_size = kwargs['dense_layer_size']
@@ -132,10 +132,10 @@ def make_proxy_enforcer_model(**kwargs):
     x = Conv2D(64, 3, padding='valid', name='conv2')(x)
     x = Conv2D(128, 3, padding='valid', name='conv3')(x)
     x = Dropout(0.1)(x)
-    x = Conv2D(256, 3, padding='valid', name='conv4')(x)
+    x = Conv2D(128, 3, padding='valid', name='conv4')(x)
     x = Dropout(0.1)(x)
     
-    x = Conv2D(516, 3, padding='valid', strides=2, name='conv_stride_1')(x)
+    x = Conv2D(256, 3, padding='valid', strides=2, name='conv_stride_1')(x)
     x = LeakyReLU()(x)
     
     x = Conv2D(last_conv_depth, 3, padding='valid', strides=2, name='conv_stride_2')(x)   
