@@ -109,12 +109,12 @@ def make_proxy_enforcer_model(**kwargs):
     if 'first_filter_size' in kwargs:
         first_filter_size = kwargs['first_filter_size']
     else:
-        first_filter_size = 11
+        first_filter_size = 8
     
     if 'last_conv_depth' in kwargs:
         last_conv_depth = kwargs['last_conv_depth']
     else:
-        last_conv_depth = 512
+        last_conv_depth = 256
     
     if 'dense_layer_size' in kwargs:
         dense_layer_size = kwargs['dense_layer_size']
@@ -145,9 +145,9 @@ def make_proxy_enforcer_model(**kwargs):
     x = Flatten()(x)
 
     x_fc1 = Dense(dense_layer_size, name='hidden_fc_1', activation='relu')(x)
-    x_fc1 = Dropout(0.7)(x_fc1)
+    x_fc1 = Dropout(0.1)(x_fc1)
     hidden = Dense(dense_layer_size, name='hidden_fc_final', activation='relu')(x_fc1)
-    hidden = Dropout(0.7)(hidden)
+    hidden = Dropout(0.1)(hidden)
 
     latent_code_uni = Dense(uniform_boost_dim, name='uniform_latent_codes')(x_fc1)
     out = Dense(N_ADSORP, name='out', activation='softmax')(hidden)
@@ -173,7 +173,7 @@ def make_generator_model(**kwargs):
     if 'post_deconv2_depth' in kwargs:
         post_deconv2_depth = kwargs['post_deconv2_depth']
     else:
-        post_deconv2_depth = 32
+        post_deconv2_depth = 64
         
     if 'last_filter_size' in kwargs:
         last_filter_size = kwargs['last_filter_size']
