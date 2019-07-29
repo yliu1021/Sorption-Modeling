@@ -45,7 +45,7 @@ def press(event):
         exit(0)
 
 
-base_dir = 'generative_model_3'
+base_dir = 'generative_model_4'
 
 # Hyperparameters
 uniform_boost_dim = 5
@@ -109,7 +109,7 @@ def make_proxy_enforcer_model(**kwargs):
     if 'first_filter_size' in kwargs:
         first_filter_size = kwargs['first_filter_size']
     else:
-        first_filter_size = 3
+        first_filter_size = 8
     
     if 'last_conv_depth' in kwargs:
         last_conv_depth = kwargs['last_conv_depth']
@@ -119,7 +119,7 @@ def make_proxy_enforcer_model(**kwargs):
     if 'dense_layer_size' in kwargs:
         dense_layer_size = kwargs['dense_layer_size']
     else:
-        dense_layer_size = 2048
+        dense_layer_size = 1024
     
     inp = Input(shape=(GRID_SIZE, GRID_SIZE), name='proxy_enforcer_input')
     x = Lambda(lambda x: K.tile(x, [1, 3, 3]))(inp)
@@ -172,12 +172,12 @@ def make_generator_model(**kwargs):
     if 'post_deconv2_depth' in kwargs:
         post_deconv2_depth = kwargs['post_deconv2_depth']
     else:
-        post_deconv2_depth = 128
+        post_deconv2_depth = 96
         
     if 'last_filter_size' in kwargs:
         last_filter_size = kwargs['last_filter_size']
     else:
-        last_filter_size = 3
+        last_filter_size = 6
     
     latent_code_uni = Input(shape=(uniform_boost_dim,))
 
