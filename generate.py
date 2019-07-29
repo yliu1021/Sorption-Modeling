@@ -109,7 +109,7 @@ def make_proxy_enforcer_model(**kwargs):
     if 'first_filter_size' in kwargs:
         first_filter_size = kwargs['first_filter_size']
     else:
-        first_filter_size = 3
+        first_filter_size = 7
     
     if 'last_conv_depth' in kwargs:
         last_conv_depth = kwargs['last_conv_depth']
@@ -132,7 +132,7 @@ def make_proxy_enforcer_model(**kwargs):
     x = Conv2D(64, 3, padding='valid', name='conv2')(x)
     x = Conv2D(64, 3, padding='valid', name='conv3')(x)
     x = Dropout(0.1)(x)
-    x = Conv2D(64, 3, padding='valid', name='conv4')(x)
+    x = Conv2D(64, 3, padding='valid', strides=2, name='conv4')(x)
     x = Dropout(0.1)(x)
     
     x = Conv2D(128, 3, padding='valid', strides=2, name='conv_stride_1')(x)
