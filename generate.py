@@ -129,7 +129,7 @@ def make_proxy_enforcer_model(**kwargs):
     # The filter for DFT is linearly separable
     x = Conv2D(32, first_filter_size, padding='valid', name='conv0')(x)
     x = Conv2D(64, 3, padding='valid', name='conv1')(x)
-    x = Conv2D(128, 3, padding='valid', name='conv2')(x)
+    x = Conv2D(128, 3, padding='valid', strides=2, name='conv2')(x)
     x = Dropout(0.1)(x)
     
     x = Conv2D(128, 3, padding='valid', strides=2, name='conv_stride_1')(x)
