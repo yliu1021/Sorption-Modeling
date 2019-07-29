@@ -45,7 +45,7 @@ def press(event):
         exit(0)
 
 
-base_dir = 'generative_model_3_cpu'
+base_dir = 'generative_model_4'
 
 # Hyperparameters
 uniform_boost_dim = 5
