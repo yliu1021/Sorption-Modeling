@@ -109,7 +109,7 @@ def make_proxy_enforcer_model(**kwargs):
     if 'first_filter_size' in kwargs:
         first_filter_size = kwargs['first_filter_size']
     else:
-        first_filter_size = 8
+        first_filter_size = 3
     
     if 'last_conv_depth' in kwargs:
         last_conv_depth = kwargs['last_conv_depth']
@@ -124,18 +124,18 @@ def make_proxy_enforcer_model(**kwargs):
     inp = Input(shape=(GRID_SIZE, GRID_SIZE), name='proxy_enforcer_input')
     x = Lambda(lambda x: K.tile(x, [1, 3, 3]))(inp)
     x = Reshape((GRID_SIZE * 3, GRID_SIZE * 3, 1))(x)
-    x = Cropping2D(cropping=(GRID_SIZE - (first_filter_size - 1), GRID_SIZE - (first_filter_size - 1)))(x)
+    # x = Cropping2D(cropping=(GRID_SIZE - (first_filter_size - 1), GRID_SIZE - (first_filter_size - 1)))(x)
 
     # The filter for DFT is linearly separable
     x = Conv2D(32, first_filter_size, padding='valid', name='conv0')(x)
     x = Conv2D(64, 3, padding='valid', name='conv1')(x)
     x = Conv2D(64, 3, padding='valid', name='conv2')(x)
-    x = Conv2D(128, 3, padding='valid', name='conv3')(x)
+    x = Conv2D(64, 3, padding='valid', name='conv3')(x)
     x = Dropout(0.1)(x)
-    x = Conv2D(128, 3, padding='valid', name='conv4')(x)
+    x = Conv2D(64, 3, padding='valid', name='conv4')(x)
     x = Dropout(0.1)(x)
     
-    x = Conv2D(256, 3, padding='valid', strides=2, name='conv_stride_1')(x)
+    x = Conv2D(128, 3, padding='valid', strides=2, name='conv_stride_1')(x)
     x = LeakyReLU()(x)
     
     x = Conv2D(last_conv_depth, 3, padding='valid', strides=2, name='conv_stride_2')(x)   
@@ -167,7 +167,7 @@ def make_generator_model(**kwargs):
     if 'pre_deconv1_depth' in kwargs:
         pre_deconv1_depth = kwargs['pre_deconv1_depth']
     else:
-        pre_deconv1_depth = 128
+        pre_deconv1_depth = 96
     
     if 'post_deconv2_depth' in kwargs:
         post_deconv2_depth = kwargs['post_deconv2_depth']
@@ -187,7 +187,7 @@ def make_generator_model(**kwargs):
 
     Q_GRID_SIZE = GRID_SIZE // 4
 
-    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * first_conv_depth, name='fc1')(conc)
+    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * first_conv_depth//2, name='fc1')(conc)
     x = LeakyReLU()(x)
 
     x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * first_conv_depth, name='fc2')(x)
@@ -201,7 +201,7 @@ def make_generator_model(**kwargs):
     x = Conv2D(pre_deconv1_depth, 3, strides=1, padding='same', name='pre_deconv2')(x)
     x = LeakyReLU()(x)
 
-    x = Conv2DTranspose(128, 3, strides=2, padding='same', name='deconv_expand1')(x)
+    x = Conv2DTranspose(96, 3, strides=2, padding='same', name='deconv_expand1')(x)
     x = LeakyReLU()(x)
 
     x = Conv2DTranspose(64, 3, strides=2, padding='same', name='deconv_expand2')(x)
