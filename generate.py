@@ -51,11 +51,11 @@ base_dir = 'generative_model_3_cpu'
 uniform_boost_dim = 5
 loss_weights = [1.0, 0.8] # weights of losses in the metric and each latent code
 
-proxy_enforcer_epochs = 40
+proxy_enforcer_epochs = 60
 proxy_enforcer_batchsize = 64
 
 generator_train_size = 10000
-generator_epochs = 20
+generator_epochs = 35
 generator_batchsize = 64
 generator_train_size //= generator_batchsize
 
@@ -246,7 +246,8 @@ def make_generator_input(n_grids, use_generator=False, batchsize=generator_batch
 
     def gen_func():
         anchor = np.random.uniform(0, 1)
-        x = np.clip(np.random.normal(0.5, 0.7), 0.05, 0.95)
+        # x = np.clip(np.random.normal(0.5, 0.7), 0.05, 0.95)
+        x = np.random.uniform(0.05, 0.95)
         ind = int(n*x)
         f_1 = np.insert(np.cumsum(gen_diffs(0, 3, ind, anchor)), 0, 0)
         f_2 = np.insert(np.cumsum(gen_diffs(0, 3, n - ind - 2, 1-anchor)), 0, 0) + anchor
@@ -319,7 +320,7 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step, **kwargs):
     if 'learning_rate_damper' in kwargs:
         learning_rate_damper = kwargs['learning_rate_damper']
     else:
-        learning_rate_damper = 0.5
+        learning_rate_damper = 0.9
     
     # Train M
     lr = 10 ** learning_rate_power
