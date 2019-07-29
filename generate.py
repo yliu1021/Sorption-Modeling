@@ -51,11 +51,11 @@ base_dir = 'generative_model_4'
 uniform_boost_dim = 5
 loss_weights = [1.0, 0.8] # weights of losses in the metric and each latent code
 
-proxy_enforcer_epochs = 60
+proxy_enforcer_epochs = 30
 proxy_enforcer_batchsize = 64
 
 generator_train_size = 10000
-generator_epochs = 35
+generator_epochs = 15
 generator_batchsize = 64
 generator_train_size //= generator_batchsize
 
@@ -109,7 +109,7 @@ def make_proxy_enforcer_model(**kwargs):
     if 'first_filter_size' in kwargs:
         first_filter_size = kwargs['first_filter_size']
     else:
-        first_filter_size = 7
+        first_filter_size = 3
     
     if 'last_conv_depth' in kwargs:
         last_conv_depth = kwargs['last_conv_depth']
@@ -129,10 +129,7 @@ def make_proxy_enforcer_model(**kwargs):
     # The filter for DFT is linearly separable
     x = Conv2D(32, first_filter_size, padding='valid', name='conv0')(x)
     x = Conv2D(64, 3, padding='valid', name='conv1')(x)
-    x = Conv2D(64, 3, padding='valid', name='conv2')(x)
-    x = Conv2D(64, 3, padding='valid', name='conv3')(x)
-    x = Dropout(0.1)(x)
-    x = Conv2D(64, 3, padding='valid', strides=2, name='conv4')(x)
+    x = Conv2D(128, 3, padding='valid', name='conv2')(x)
     x = Dropout(0.1)(x)
     
     x = Conv2D(128, 3, padding='valid', strides=2, name='conv_stride_1')(x)
