@@ -8,6 +8,7 @@
 . /u/local/Modules/default/init/modules.sh
 module load intel/14.cs 
 module load intelmpi/5.0.0 
+module load python/3.7.2
 
 #module load python/3.6.1
 #~/PYTHON/python3 

@@ -45,7 +45,7 @@ def press(event):
         exit(0)
 
 
-base_dir = 'generative_model_4'
+base_dir = 'generative_model_3_cpu'
 
 # Hyperparameters
 uniform_boost_dim = 5
@@ -109,7 +109,7 @@ def make_proxy_enforcer_model(**kwargs):
     if 'first_filter_size' in kwargs:
         first_filter_size = kwargs['first_filter_size']
     else:
-        first_filter_size = 8
+        first_filter_size = 11
     
     if 'last_conv_depth' in kwargs:
         last_conv_depth = kwargs['last_conv_depth']
@@ -127,15 +127,16 @@ def make_proxy_enforcer_model(**kwargs):
     x = Cropping2D(cropping=(GRID_SIZE - (first_filter_size - 1), GRID_SIZE - (first_filter_size - 1)))(x)
 
     # The filter for DFT is linearly separable
-    x = Conv2D(32, [first_filter_size, 1], padding='valid', name='conv0_1', use_bias=False)(x)
-    x = Conv2D(32, [1, first_filter_size], padding='valid', name='conv0_2')(x)
+    x = Conv2D(32, first_filter_size, padding='valid', name='conv0')(x)
     x = LeakyReLU()(x)
-    
+    x = Dropout(0.1)(x)
+
     x = Conv2D(64, 3, padding='valid', name='conv1')(x)
     x = LeakyReLU()(x)
 
     x = Conv2D(128, 3, padding='valid', name='conv2')(x)
     x = LeakyReLU()(x)
+    x = Dropout(0.1)(x)
 
     x = Conv2D(256, 3, padding='valid', strides=2, name='conv3')(x)
     x = LeakyReLU()(x)
@@ -146,7 +147,9 @@ def make_proxy_enforcer_model(**kwargs):
     x = Flatten()(x)
 
     x_fc1 = Dense(dense_layer_size, name='hidden_fc_1', activation='relu')(x)
+    x_fc1 = Dropout(0.5)(x_fc1)
     hidden = Dense(dense_layer_size, name='hidden_fc_final', activation='relu')(x_fc1)
+    hidden = Dropout(0.5)(hidden)
 
     latent_code_uni = Dense(uniform_boost_dim, name='uniform_latent_codes')(x_fc1)
     out = Dense(N_ADSORP, name='out', activation='softmax')(hidden)
@@ -162,7 +165,7 @@ def make_generator_model(**kwargs):
     if 'first_conv_depth' in kwargs:
         first_conv_depth = kwargs['first_conv_depth']
     else:
-        first_conv_depth = 64
+        first_conv_depth = 128
     
     if 'pre_deconv1_depth' in kwargs:
         pre_deconv1_depth = kwargs['pre_deconv1_depth']
@@ -185,7 +188,7 @@ def make_generator_model(**kwargs):
 
     conc = Concatenate(axis=-1)([inp, latent_code_uni])
 
-    Q_GRID_SIZE = GRID_SIZE // 4 + 6
+    Q_GRID_SIZE = GRID_SIZE // 4
 
     x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * first_conv_depth//4, name='fc1')(conc)
     x = LeakyReLU()(x)
@@ -198,10 +201,10 @@ def make_generator_model(**kwargs):
 
     x = Reshape((Q_GRID_SIZE, Q_GRID_SIZE, first_conv_depth))(x)
 
-    x = Conv2D(first_conv_depth, 5, strides=1, padding='valid', name='pre_deconv1')(x)
+    x = Conv2D(first_conv_depth, 5, strides=1, padding='same', name='pre_deconv1')(x)
     x = LeakyReLU()(x)
     
-    x = Conv2D(pre_deconv1_depth, 3, strides=1, padding='valid', name='pre_deconv2')(x)
+    x = Conv2D(pre_deconv1_depth, 3, strides=1, padding='same', name='pre_deconv2')(x)
     x = LeakyReLU()(x)
 
     x = Conv2DTranspose(128, 3, strides=2, padding='same', name='deconv_expand1')(x)
@@ -502,9 +505,9 @@ def visualize_generator(step, model_step=None):
     if model_step is None:
         model_step = step
     enforcer_model, _ = make_proxy_enforcer_model()
-    enforcer_model.load_weights(os.path.join(base_dir, 'step{}/enforcer.hdf5'.format(model_step)))
-    # enforcer_model = load_model(os.path.join(base_dir, 'step{}/enforcer.hdf5'.format(model_step)),
-                                # custom_objects={'worst_abs_loss': worst_abs_loss})
+    # enforcer_model.load_weights(os.path.join(base_dir, 'step{}/enforcer.hdf5'.format(model_step)))
+    enforcer_model = load_model(os.path.join(base_dir, 'step{}/enforcer.hdf5'.format(model_step)),
+                                custom_objects={'worst_abs_loss': worst_abs_loss})
     # visualize_curr_step_generator(step, None)
     visualize_curr_step_generator(step, enforcer_model)
 
