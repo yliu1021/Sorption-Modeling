@@ -129,14 +129,12 @@ def make_proxy_enforcer_model(**kwargs):
     # The filter for DFT is linearly separable
     x = Conv2D(32, first_filter_size, padding='valid', name='conv0')(x)
     x = LeakyReLU()(x)
-    x = Dropout(0.1)(x)
 
     x = Conv2D(64, 3, padding='valid', name='conv1')(x)
     x = LeakyReLU()(x)
 
     x = Conv2D(128, 3, padding='valid', name='conv2')(x)
     x = LeakyReLU()(x)
-    x = Dropout(0.1)(x)
 
     x = Conv2D(256, 3, padding='valid', strides=2, name='conv3')(x)
     x = LeakyReLU()(x)
@@ -147,9 +145,9 @@ def make_proxy_enforcer_model(**kwargs):
     x = Flatten()(x)
 
     x_fc1 = Dense(dense_layer_size, name='hidden_fc_1', activation='relu')(x)
-    x_fc1 = Dropout(0.5)(x_fc1)
+    x_fc1 = Dropout(0.7)(x_fc1)
     hidden = Dense(dense_layer_size, name='hidden_fc_final', activation='relu')(x_fc1)
-    hidden = Dropout(0.5)(hidden)
+    hidden = Dropout(0.7)(hidden)
 
     latent_code_uni = Dense(uniform_boost_dim, name='uniform_latent_codes')(x_fc1)
     out = Dense(N_ADSORP, name='out', activation='softmax')(hidden)
