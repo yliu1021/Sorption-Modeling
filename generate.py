@@ -114,7 +114,7 @@ def make_proxy_enforcer_model(**kwargs):
     if 'last_conv_depth' in kwargs:
         last_conv_depth = kwargs['last_conv_depth']
     else:
-        last_conv_depth = 128
+        last_conv_depth = 256
     
     if 'dense_layer_size' in kwargs:
         dense_layer_size = kwargs['dense_layer_size']
@@ -128,15 +128,17 @@ def make_proxy_enforcer_model(**kwargs):
 
     # The filter for DFT is linearly separable
     x = Conv2D(32, first_filter_size, padding='valid', name='conv0')(x)
-
     x = Conv2D(64, 3, padding='valid', name='conv1')(x)
-
-    x = Conv2D(128, 3, padding='valid', name='conv2')(x)
-
-    x = Conv2D(128, 3, padding='valid', strides=2, name='conv3')(x)
+    x = Conv2D(64, 3, padding='valid', name='conv2')(x)
+    x = Conv2D(64, 3, padding='valid', name='conv3')(x)
+    x = Dropout(0.1)(x)
+    x = Conv2D(128, 3, padding='valid', name='conv4')(x)
+    x = Dropout(0.1)(x)
+    
+    x = Conv2D(256, 3, padding='valid', strides=2, name='conv_stride_1')(x)
     x = LeakyReLU()(x)
     
-    x = Conv2D(last_conv_depth, 3, padding='valid', strides=2, name='conv4')(x)   
+    x = Conv2D(last_conv_depth, 3, padding='valid', strides=2, name='conv_stride_2')(x)   
     x = LeakyReLU()(x)
 
     x = Flatten()(x)
