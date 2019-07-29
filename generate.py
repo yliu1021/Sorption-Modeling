@@ -130,21 +130,21 @@ def make_proxy_enforcer_model(**kwargs):
     x = Conv2D(32, first_filter_size, padding='valid', name='conv0')(x)
     x = LeakyReLU()(x)
 
-    x = Conv2D(64, 3, padding='valid', name='conv1')(x)
+    x = Conv2D(128, 3, padding='valid', name='conv1')(x)
     x = LeakyReLU()(x)
 
-    x = Conv2D(128, 3, padding='valid', name='conv2')(x)
+    x = Conv2D(256, 3, padding='valid', strides=2, name='conv2')(x)
     x = LeakyReLU()(x)
     
-    x = Conv2D(last_conv_depth, 3, padding='valid', strides=2, name='conv4')(x)   
+    x = Conv2D(last_conv_depth, 3, padding='valid', strides=2, name='conv3')(x)   
     x = LeakyReLU()(x)
 
     x = Flatten()(x)
 
     x_fc1 = Dense(dense_layer_size, name='hidden_fc_1', activation='relu')(x)
-    x_fc1 = Dropout(0.1)(x_fc1)
+    x_fc1 = Dropout(0.5)(x_fc1)
     hidden = Dense(dense_layer_size, name='hidden_fc_final', activation='relu')(x_fc1)
-    hidden = Dropout(0.1)(hidden)
+    hidden = Dropout(0.5)(hidden)
 
     latent_code_uni = Dense(uniform_boost_dim, name='uniform_latent_codes')(x_fc1)
     out = Dense(N_ADSORP, name='out', activation='softmax')(hidden)
@@ -160,12 +160,12 @@ def make_generator_model(**kwargs):
     if 'first_conv_depth' in kwargs:
         first_conv_depth = kwargs['first_conv_depth']
     else:
-        first_conv_depth = 256
+        first_conv_depth = 128
     
     if 'pre_deconv1_depth' in kwargs:
         pre_deconv1_depth = kwargs['pre_deconv1_depth']
     else:
-        pre_deconv1_depth = 256
+        pre_deconv1_depth = 128
     
     if 'post_deconv2_depth' in kwargs:
         post_deconv2_depth = kwargs['post_deconv2_depth']
@@ -185,7 +185,7 @@ def make_generator_model(**kwargs):
 
     Q_GRID_SIZE = GRID_SIZE // 4
 
-    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * first_conv_depth//2, name='fc1')(conc)
+    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * first_conv_depth, name='fc1')(conc)
     x = LeakyReLU()(x)
 
     x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * first_conv_depth, name='fc2')(x)
