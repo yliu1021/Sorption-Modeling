@@ -9,8 +9,9 @@ from itertools import cycle
 
 from constants import *
 
+# from simul_dft import *
 
-base_dir = 'cpp/evol_iter_grids_6/'
+base_dir = 'cpp/evol_iter_grids/evol_iter_grids_1'
 
 def press(event):
     if event.key != 'q':
@@ -25,16 +26,28 @@ def show_grids():
     for density_file, grid_file in cycle(zip(density_files, grid_files)):
         df = pd.read_csv(density_file, index_col=0)
         density = df['0'][0:N_ADSORP]
-        # target_density = np.linspace(0.0, 1.0, num=40)
+
+        # # Linear curve
         # target_density = np.arange(40) * STEP_SIZE
 
-        target_density = np.arange(40) * STEP_SIZE # heaviside step 1
-        target_density = target_density - 0.25 # heaviside step 2
-        target_density = np.heaviside(target_density, 0.5) # heaviside step 3
+        # # Heaviside step function
+        # target_density = np.arange(40) * STEP_SIZE # heaviside
+        # target_density = target_density - 0.9 # heaviside
+        # target_density = np.heaviside(target_density, 0.5)
+
+        # # Multi-step function
+        # target_density = np.arange(40) * STEP_SIZE
+        # target_density = np.piecewise(target_density, [target_density<=0.3, np.logical_and(target_density>0.3, target_density<=0.6), target_density>0.6], [0.3, 0.6, 1])
+
+        # Circle functions
+        # target_density = np.genfromtxt("../../../../Desktop/circle_up.csv", delimiter=",")
+        # target_density = np.genfromtxt("../../../../Desktop/circle_down.csv", delimiter=",")
+
+        grid = np.genfromtxt(grid_file, delimiter=',')
+        # density = run_dft_fast(np.reshape(grid, 400))
 
         metric = (np.sum(np.absolute(density - target_density)) / 20.0)
         
-        grid = np.genfromtxt(grid_file, delimiter=',')
     
         fig = plt.figure(1, figsize=(6, 8))
         fig.canvas.mpl_connect('key_press_event', press)

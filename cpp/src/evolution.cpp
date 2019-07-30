@@ -17,54 +17,66 @@ using namespace std;
 #include "helpers.h"
 
 // TODO: Multithread
+// TODO: Duplicate AND mutate
+// TODO: Read from folder
 
-constexpr int WORKERS = 2500;
+constexpr int WORKERS = 1000;
 constexpr int ITERS = 150;
 constexpr double MUT_RATE = 0.6; // Mutation rate
 
 // Whether to artificially boost the reproduction rate of beneficial mutations. 
 // When set to true starting from high costs (> 0.1-0.2 MSE), this option 
 // vastly increases the robustness of the solution at a large expense of speed.
-#define BOOST_POSITIVE_MUTS
+constexpr bool BOOST_POSITIVE_MUTS = true;
 constexpr int BOOST_FACTOR = 0.05 * WORKERS * MUT_RATE;
 
-#define WRITE_OUTPUT
-string WRITE_FOLDER = "evol_iter_grids_8/";
+constexpr bool WRITE_OUTPUT = true;
+string WRITE_FOLDER = "evol_iter_grids/1/";
 
 int main(int argc, char *argv[]) {
     if (argc == 2) {
         setup_NL(); // for fast_dft
-
-        // vector<double> step_size{0.3, 0.6, 1};
-        // vector<double> step_height{0.3, 0.6, 1};
-        // array<double, N_ADSORP+1> target_curve = step_function(step_height, step_size);
-
-        // array<double, N_ADSORP+1> target_curve = heaviside_step_function(0.75);
-
-        array<double, N_ADSORP+1> target_curve = circular_curve(1, false);
-
-        string grid_path(argv[1]);
-        array<double, N_SQUARES> start_grid = load_grid(grid_path);
-
-        double grid_cost = mean_abs_error(target_curve, run_dft(start_grid));
-
-        vector<array<double,N_SQUARES>> grids(WORKERS, start_grid);
-        vector<double> costs(WORKERS, grid_cost);
-
         srand(time(NULL)); // Generate random seed for random number generation
+
+        vector<array<double,N_SQUARES>> grids;
+        vector<double> costs;
+        array<double, N_ADSORP+1> target_curve = circular_curve(1, true);
+
+		string grid_dir(argv[1]);
+		if (grid_dir.back() != '/') { grid_dir = grid_dir + "/"; }
+
+        // TODO: Improve reading of files/dft function. Currently inefficient
+		for (int i = 0; true; ++i) {
+            array<double,N_SQUARES> grid;
+			char grid_name[20];
+			sprintf(grid_name, "grid_%04d.csv", i);
+			string grid_file = grid_dir + grid_name;
+            ifstream ifile(grid_file);
+            if (ifile) {
+                grid = load_grid(grid_file);
+            } else if (i == 0) {
+                cerr << "Unable to read grids: " << grid_file << " does not exist." << endl;
+                exit(1);
+            } else {
+                cerr << "Read " << i << " grids. Starting evolution." << endl;
+                break;
+            }
+            ifile.close();
+            double grid_cost = mean_abs_error(target_curve, run_dft(grid));
+            grids.push_back(grid);
+            costs.push_back(grid_cost);
+		}
 
         double min_cost = *min_element(costs.begin(), costs.end());
 
         for (int i = 0; i < ITERS; ++i) {
             // Calculate survival rates
-            for (int j = 0; j < WORKERS; ++j) {
+            for (int j = 0, size = grids.size(); j < size; ++j) {
                 if (((double)rand()/(RAND_MAX)) < MUT_RATE) {
-                    #ifdef BOOST_POSITIVE_MUTS
-                        double orig_cost = costs[j];
-                    #endif
+                    double orig_cost = costs[j];
                     toggle_random(grids[j]);
                     costs[j] = mean_abs_error(target_curve, run_dft(grids[j]));
-                    #ifdef BOOST_POSITIVE_MUTS
+                    if (BOOST_POSITIVE_MUTS) {
                         if (costs[j] < orig_cost) {
                             array<double,N_SQUARES> copy_grid(grids[j]);
                             for (int k = 0; k < BOOST_FACTOR; ++k) {
@@ -72,7 +84,7 @@ int main(int argc, char *argv[]) {
                                 costs.push_back(costs[j]);
                             }
                         }
-                    #endif
+                    }
                 }
             }
 
@@ -91,7 +103,7 @@ int main(int argc, char *argv[]) {
 
             cout << "After artificial reproduction: " << grids.size() << " grids alive" << endl;
 
-            #ifdef WRITE_OUTPUT
+            if (WRITE_OUTPUT) {
                 char grid_name[20];
                 sprintf(grid_name, "grid_%04d.csv", i);
                 char density_name[20];
@@ -105,7 +117,7 @@ int main(int argc, char *argv[]) {
 
                 if (!write_density(pred_density, density_file)) { return -1; }
                 if (!write_grid(best_grid, grid_file)) { return -1; }
-            #endif
+            }
 
             vector<double> norm_costs(costs);
             standardizeVec(norm_costs);
