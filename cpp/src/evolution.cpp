@@ -17,6 +17,8 @@ using namespace std;
 #include "helpers.h"
 
 // TODO: Multithread
+// TODO: Duplicate AND mutate
+// TODO: Read from folder
 
 constexpr int WORKERS = 2500;
 constexpr int ITERS = 150;
@@ -25,23 +27,26 @@ constexpr double MUT_RATE = 0.6; // Mutation rate
 // Whether to artificially boost the reproduction rate of beneficial mutations. 
 // When set to true starting from high costs (> 0.1-0.2 MSE), this option 
 // vastly increases the robustness of the solution at a large expense of speed.
-#define BOOST_POSITIVE_MUTS
+constexpr bool BOOST_POSITIVE_MUTS = true;
 constexpr int BOOST_FACTOR = 0.05 * WORKERS * MUT_RATE;
 
-#define WRITE_OUTPUT
-string WRITE_FOLDER = "evol_iter_grids_8/";
+constexpr bool WRITE_OUTPUT = true;
+string WRITE_FOLDER = "evol_iter_grids/1/";
 
 int main(int argc, char *argv[]) {
     if (argc == 2) {
         setup_NL(); // for fast_dft
 
         // vector<double> step_size{0.3, 0.6, 1};
-        // vector<double> step_height{0.3, 0.6, 1};
+        // vector<double> step_height{0.3, 0.6, 1}
         // array<double, N_ADSORP+1> target_curve = step_function(step_height, step_size);
 
         // array<double, N_ADSORP+1> target_curve = heaviside_step_function(0.75);
 
-        array<double, N_ADSORP+1> target_curve = circular_curve(1, false);
+        array<double, N_ADSORP+1> target_curve = circular_curve(1, true);
+        // for (int i = 0; i < N_ADSORP+1; i++) {
+        //     cout << target_curve[i] << endl;
+        // }
 
         string grid_path(argv[1]);
         array<double, N_SQUARES> start_grid = load_grid(grid_path);
@@ -59,12 +64,10 @@ int main(int argc, char *argv[]) {
             // Calculate survival rates
             for (int j = 0; j < WORKERS; ++j) {
                 if (((double)rand()/(RAND_MAX)) < MUT_RATE) {
-                    #ifdef BOOST_POSITIVE_MUTS
-                        double orig_cost = costs[j];
-                    #endif
+                    double orig_cost = costs[j];
                     toggle_random(grids[j]);
                     costs[j] = mean_abs_error(target_curve, run_dft(grids[j]));
-                    #ifdef BOOST_POSITIVE_MUTS
+                    if (BOOST_POSITIVE_MUTS) {
                         if (costs[j] < orig_cost) {
                             array<double,N_SQUARES> copy_grid(grids[j]);
                             for (int k = 0; k < BOOST_FACTOR; ++k) {
@@ -72,7 +75,7 @@ int main(int argc, char *argv[]) {
                                 costs.push_back(costs[j]);
                             }
                         }
-                    #endif
+                    }
                 }
             }
 
@@ -91,7 +94,7 @@ int main(int argc, char *argv[]) {
 
             cout << "After artificial reproduction: " << grids.size() << " grids alive" << endl;
 
-            #ifdef WRITE_OUTPUT
+            if (WRITE_OUTPUT) {
                 char grid_name[20];
                 sprintf(grid_name, "grid_%04d.csv", i);
                 char density_name[20];
@@ -105,7 +108,7 @@ int main(int argc, char *argv[]) {
 
                 if (!write_density(pred_density, density_file)) { return -1; }
                 if (!write_grid(best_grid, grid_file)) { return -1; }
-            #endif
+            }
 
             vector<double> norm_costs(costs);
             standardizeVec(norm_costs);
