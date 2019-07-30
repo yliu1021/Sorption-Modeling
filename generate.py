@@ -407,7 +407,7 @@ def train_step(generator_model, proxy_enforcer_model, lc_uni, step, **kwargs):
         np.savetxt(path, artificial_metric, fmt='%f', delimiter=',')
 
 
-def start_training(start=1, end=10, **kwargs):
+def start_training(start=1, end=100, **kwargs):
     os.makedirs(base_dir, exist_ok=True)
     for step in range(start, end):
         generator_model = make_generator_model(**kwargs)
