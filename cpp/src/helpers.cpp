@@ -87,11 +87,9 @@ array<double,N_ITER+1> load_density(const string &path) {
 }
 
 void write_grid(array<double,N_SQUARES> grid, ostream &grid_file) {
-	for (int i = 0; i < GRID_SIZE; ++i) {
-		for (int j = 0; j < GRID_SIZE; ++j) {
-			grid_file << grid[i*GRID_SIZE+j] << ",";
-		}
-		grid_file << endl;
+	for (int i = 0; i < N_SQUARES; ++i) {
+		if (i % 20 == 0) { grid_file << endl << grid[i]; }
+		else { grid_file << "," << grid[i]; }
 	}
 }
 
@@ -209,17 +207,17 @@ double mean_abs_error(const array<double, N_ADSORP+1> &y_true, const array<doubl
 // Target curves
 // ============================================================================
 
-array<double, N_ADSORP+1> linear_curve() {
-    array<double, N_ADSORP+1> lin;
+std::array<double, N_ADSORP+1> linear_curve() {
+    std::array<double, N_ADSORP+1> f{0};
     double v = 0;
     for (short i = 0; i < N_ADSORP+1; ++i, v += STEP_SIZE) {
-        lin[i] = v;
+        f[i] = v;
     }
-    return lin;
+    return f;
 }
 
 array<double, N_ADSORP+1> heaviside_step_function(double c) {
-    array<double, N_ADSORP+1> f;
+    array<double, N_ADSORP+1> f{0};
 	for (short i = 0; i <= N_ADSORP+1; ++i) {
 		if (i*STEP_SIZE < c) { f[i] = 0; }
 		else if (i*STEP_SIZE == c) { f[i] = 0.5; }
@@ -229,7 +227,7 @@ array<double, N_ADSORP+1> heaviside_step_function(double c) {
 }
 
 array<double, N_ADSORP+1> step_function(vector<double> step_height, vector<double> step_size) {
-    array<double, N_ADSORP+1> f;
+    array<double, N_ADSORP+1> f{0};
 	int step_num = 0;
 	for (short i = 0; i < N_ADSORP+1; ++i) {
 		if (i*STEP_SIZE > step_size[step_num]) { step_num++; }
@@ -243,7 +241,7 @@ array<double, N_ADSORP+1> circular_curve(double radius, bool concave_up) {
 		cerr << "Invalid radius given for target curve, using default circular curve" << endl; 
 		radius = 1;
 	}
-    array<double, N_ADSORP+1> f;
+    array<double, N_ADSORP+1> f{0};
 	double x_center, y_center;
 	if (concave_up) {
 		x_center = 0.5 * (1 - sqrt(2*radius*radius-1));
