@@ -25,7 +25,7 @@ run.sh
 *.o
 fast_dft
 cpp/fast_dft
-cpp/naive_random
+cpp/naive_min
 cpp/evolution
 cpp/benchmark
 
