@@ -1,0 +1,319 @@
+Finished evaluating with: 
+{
+    "dense_layer_size": 2385,
+    "first_conv_depth": 57,
+    "first_filter_size": 8,
+    "last_conv_depth": 346,
+    "last_filter_size": 4,
+    "learning_rate_damper": 0.3765270796575654,
+    "post_deconv2_depth": 66,
+    "pre_deconv1_depth": 128
+}
+Got result: 0.5105453012590364
+Iteration No: 1 ended. Evaluation done at random point.
+Time taken: 9110.1056
+Function value obtained: 0.5105
+--
+Finished evaluating with: 
+{
+    "dense_layer_size": 1042,
+    "first_conv_depth": 58,
+    "first_filter_size": 7,
+    "last_conv_depth": 327,
+    "last_filter_size": 8,
+    "learning_rate_damper": 0.2496007101364887,
+    "post_deconv2_depth": 63,
+    "pre_deconv1_depth": 129
+}
+Got result: 0.40881418543442405
+Iteration No: 2 ended. Evaluation done at random point.
+Time taken: 8617.5835
+Function value obtained: 0.4088
+--
+Finished evaluating with: 
+{
+    "dense_layer_size": 2369,
+    "first_conv_depth": 57,
+    "first_filter_size": 5,
+    "last_conv_depth": 249,
+    "last_filter_size": 8,
+    "learning_rate_damper": 0.4918730077074043,
+    "post_deconv2_depth": 45,
+    "pre_deconv1_depth": 110
+}
+Got result: 0.46872394000571643
+Iteration No: 3 ended. Evaluation done at random point.
+Time taken: 7792.1164
+Function value obtained: 0.4687
+--
+Finished evaluating with: 
+{
+    "dense_layer_size": 1303,
+    "first_conv_depth": 46,
+    "first_filter_size": 4,
+    "last_conv_depth": 356,
+    "last_filter_size": 5,
+    "learning_rate_damper": 0.3305685131308904,
+    "post_deconv2_depth": 36,
+    "pre_deconv1_depth": 117
+}
+Got result: 0.35104774501932234
+Iteration No: 4 ended. Evaluation done at random point.
+Time taken: 5670.5965
+Function value obtained: 0.3510
+--
+Finished evaluating with: 
+{
+    "dense_layer_size": 2298,
+    "first_conv_depth": 45,
+    "first_filter_size": 6,
+    "last_conv_depth": 206,
+    "last_filter_size": 4,
+    "learning_rate_damper": 0.3409259982570684,
+    "post_deconv2_depth": 56,
+    "pre_deconv1_depth": 100
+}
+Got result: 0.424520638342687
+Iteration No: 5 ended. Evaluation done at random point.
+Time taken: 5529.7493
+Function value obtained: 0.4245
+--
+Finished evaluating with: 
+{
+    "dense_layer_size": 1905,
+    "first_conv_depth": 59,
+    "first_filter_size": 4,
+    "last_conv_depth": 351,
+    "last_filter_size": 6,
+    "learning_rate_damper": 0.46251265806427744,
+    "post_deconv2_depth": 85,
+    "pre_deconv1_depth": 113
+}
+Got result: 0.35322819035309894
+Iteration No: 6 ended. Evaluation done at random point.
+Time taken: 8609.4799
+Function value obtained: 0.3532
+--
+Finished evaluating with: 
+{
+    "dense_layer_size": 2574,
+    "first_conv_depth": 34,
+    "first_filter_size": 4,
+    "last_conv_depth": 140,
+    "last_filter_size": 8,
+    "learning_rate_damper": 0.18789632609026785,
+    "post_deconv2_depth": 68,
+    "pre_deconv1_depth": 105
+}
+Got result: 0.5282639251739443
+Iteration No: 7 ended. Evaluation done at random point.
+Time taken: 6165.4976
+Function value obtained: 0.5283
+--
+Finished evaluating with: 
+{
+    "dense_layer_size": 1282,
+    "first_conv_depth": 35,
+    "first_filter_size": 5,
+    "last_conv_depth": 200,
+    "last_filter_size": 6,
+    "learning_rate_damper": 0.4623180406097287,
+    "post_deconv2_depth": 45,
+    "pre_deconv1_depth": 119
+}
+Got result: 0.3423227638866471
+Iteration No: 8 ended. Evaluation done at random point.
+Time taken: 4793.0339
+Function value obtained: 0.3423
+--
+Finished evaluating with: 
+{
+    "dense_layer_size": 1098,
+    "first_conv_depth": 62,
+    "first_filter_size": 8,
+    "last_conv_depth": 287,
+    "last_filter_size": 6,
+    "learning_rate_damper": 0.4010614575239505,
+    "post_deconv2_depth": 39,
+    "pre_deconv1_depth": 118
+}
+Got result: 0.32160347430631836
+Iteration No: 9 ended. Evaluation done at random point.
+Time taken: 8288.6581
+Function value obtained: 0.3216
+--
+Finished evaluating with: 
+{
+    "dense_layer_size": 2133,
+    "first_conv_depth": 44,
+    "first_filter_size": 4,
+    "last_conv_depth": 371,
+    "last_filter_size": 6,
+    "learning_rate_damper": 0.16107985465986968,
+    "post_deconv2_depth": 72,
+    "pre_deconv1_depth": 102
+}
+Got result: 0.39388925153848603
+Iteration No: 10 ended. Evaluation done at random point.
+Time taken: 7214.8259
+Function value obtained: 0.3939
+--
+Finished evaluating with: 
+{
+    "dense_layer_size": 1142,
+    "first_conv_depth": 64,
+    "first_filter_size": 9,
+    "last_conv_depth": 234,
+    "last_filter_size": 5,
+    "learning_rate_damper": 0.5,
+    "post_deconv2_depth": 33,
+    "pre_deconv1_depth": 112
+}
+Got result: 0.3771021832383472
+Iteration No: 11 ended. Search finished for the next optimal point.
+Time taken: 8031.5835
+Function value obtained: 0.3771
+--
+Finished evaluating with: 
+{
+    "dense_layer_size": 1024,
+    "first_conv_depth": 32,
+    "first_filter_size": 3,
+    "last_conv_depth": 128,
+    "last_filter_size": 9,
+    "learning_rate_damper": 0.1,
+    "post_deconv2_depth": 70,
+    "pre_deconv1_depth": 119
+}
+Got result: 0.4653741012159114
+Iteration No: 12 ended. Search finished for the next optimal point.
+Time taken: 6172.3675
+Function value obtained: 0.4654
+--
+Finished evaluating with: 
+{
+    "dense_layer_size": 1024,
+    "first_conv_depth": 64,
+    "first_filter_size": 6,
+    "last_conv_depth": 400,
+    "last_filter_size": 6,
+    "learning_rate_damper": 0.3219990699746236,
+    "post_deconv2_depth": 32,
+    "pre_deconv1_depth": 119
+}
+Got result: 0.3900050992849927
+Iteration No: 13 ended. Search finished for the next optimal point.
+Time taken: 7554.1010
+Function value obtained: 0.3900
+--
+Finished evaluating with: 
+{
+    "dense_layer_size": 1180,
+    "first_conv_depth": 64,
+    "first_filter_size": 8,
+    "last_conv_depth": 249,
+    "last_filter_size": 6,
+    "learning_rate_damper": 0.5,
+    "post_deconv2_depth": 91,
+    "pre_deconv1_depth": 127
+}
+Got result: 0.2822462117345757
+Iteration No: 14 ended. Search finished for the next optimal point.
+Time taken: 9320.2939
+Function value obtained: 0.2822
+--
+Finished evaluating with: 
+{
+    "dense_layer_size": 1931,
+    "first_conv_depth": 64,
+    "first_filter_size": 7,
+    "last_conv_depth": 141,
+    "last_filter_size": 6,
+    "learning_rate_damper": 0.48128108541951886,
+    "post_deconv2_depth": 96,
+    "pre_deconv1_depth": 130
+}
+Got result: 0.5168222844595234
+Iteration No: 15 ended. Search finished for the next optimal point.
+Time taken: 8529.0328
+Function value obtained: 0.5168
+--
+Finished evaluating with: 
+{
+    "dense_layer_size": 1781,
+    "first_conv_depth": 60,
+    "first_filter_size": 5,
+    "last_conv_depth": 346,
+    "last_filter_size": 9,
+    "learning_rate_damper": 0.5,
+    "post_deconv2_depth": 61,
+    "pre_deconv1_depth": 90
+}
+Got result: 0.5886170129672602
+Iteration No: 16 ended. Search finished for the next optimal point.
+Time taken: 9485.3474
+Function value obtained: 0.5886
+--
+Finished evaluating with: 
+{
+    "dense_layer_size": 1070,
+    "first_conv_depth": 41,
+    "first_filter_size": 5,
+    "last_conv_depth": 259,
+    "last_filter_size": 6,
+    "learning_rate_damper": 0.5,
+    "post_deconv2_depth": 96,
+    "pre_deconv1_depth": 130
+}
+Got result: 0.5908815466458388
+Iteration No: 17 ended. Search finished for the next optimal point.
+Time taken: 6398.9338
+Function value obtained: 0.5909
+--
+Finished evaluating with: 
+{
+    "dense_layer_size": 1226,
+    "first_conv_depth": 60,
+    "first_filter_size": 9,
+    "last_conv_depth": 212,
+    "last_filter_size": 7,
+    "learning_rate_damper": 0.4190255894553899,
+    "post_deconv2_depth": 73,
+    "pre_deconv1_depth": 125
+}
+Got result: 0.37464784033235105
+Iteration No: 18 ended. Search finished for the next optimal point.
+Time taken: 9388.7156
+Function value obtained: 0.3746
+--
+Finished evaluating with: 
+{
+    "dense_layer_size": 1024,
+    "first_conv_depth": 46,
+    "first_filter_size": 6,
+    "last_conv_depth": 293,
+    "last_filter_size": 8,
+    "learning_rate_damper": 0.2044026627789124,
+    "post_deconv2_depth": 69,
+    "pre_deconv1_depth": 127
+}
+Got result: 0.41814263572100885
+Iteration No: 19 ended. Search finished for the next optimal point.
+Time taken: 7551.6578
+Function value obtained: 0.4181
+--
+Finished evaluating with: 
+{
+    "dense_layer_size": 1859,
+    "first_conv_depth": 64,
+    "first_filter_size": 9,
+    "last_conv_depth": 142,
+    "last_filter_size": 8,
+    "learning_rate_damper": 0.5,
+    "post_deconv2_depth": 43,
+    "pre_deconv1_depth": 117
+}
+Got result: 0.38533064629594305
+Iteration No: 20 ended. Search finished for the next optimal point.
+Time taken: 8378.7495
+Function value obtained: 0.3853
