@@ -439,8 +439,8 @@ def visualize_enforcer(model_step=None):
     extreme_metric = 1
 
     for grid_file, density_file in all_data_files:
-        # if os.path.join(base_dir, 'step1') not in grid_file:
-        #     continue
+        if os.path.join(base_dir, 'step9') not in grid_file:
+            continue
         grid = np.genfromtxt(grid_file, delimiter=',')
         density = np.genfromtxt(density_file, delimiter=',', skip_header=1, max_rows=N_ADSORP)
         density = density[:, 1]
@@ -503,10 +503,8 @@ def visualize_generator(step, model_step=None):
                                 custom_objects={'binary_sigmoid': binary_sigmoid})
     enforcer_model = load_model(os.path.join(base_dir, 'step{}/enforcer.hdf5'.format(model_step)),
                                 custom_objects={'worst_abs_loss': worst_abs_loss})
-    gen_model.summary()
-    enforcer_model.summary()
-    # visualize_curr_step_generator(step, None)
-    visualize_curr_step_generator(step, enforcer_model)
+    visualize_curr_step_generator(step, None)
+    # visualize_curr_step_generator(step, enforcer_model)
 
 
 def visualize_curr_step_generator(step, enforcer_model=None):
@@ -543,10 +541,10 @@ def visualize_curr_step_generator(step, enforcer_model=None):
         ax = plt.subplot(212)
         x = np.linspace(0, 1, N_ADSORP+1)
         ax.plot(x, np.insert(density, N_ADSORP, 1))
-        ax.plot(x, np.insert(artificial_density, 0, 0))
+        ax.plot(x, np.insert(artificial_density, 0, 0), color='green')
         if enforcer_model:
             ax.plot(x, np.insert(pred_density, 0, 0))
-            ax.legend(['Actual', 'Target for M^-1', 'Predicted by M'], loc='best')
+            ax.legend(['Actual', 'Generator Target', 'Predictor'], loc='best')
             metric = np.mean(np.abs(artificial_density - pred_density))
             fig.text(0.5, 0.05, 'Mean absolute difference: {:.4f}'.format(metric), ha='center')
         else:
