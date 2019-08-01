@@ -14,8 +14,8 @@ using namespace std;
 // TODO: Multithread
 
 constexpr int population_size = 1000;
-constexpr int max_iters = 150;
-constexpr double mutation_rate = 0.6; // Mutation rate
+constexpr int max_iters = 250;
+constexpr double mutation_rate = 1.0; // Mutation rate 0.0-1.0
 
 constexpr void (*mutate_function)(array<double, N_SQUARES>&) = &toggle_random;
 constexpr double (*cost_function)(const array<double,N_ADSORP+1>&, const array<double,N_ITER+1>&) = &mean_abs_error;
@@ -24,8 +24,8 @@ static array<double, N_ADSORP+1> target_curve = linear_curve();
 // Whether to artificially boost the reproduction rate of beneficial mutations. 
 // When set to true starting from high costs (> 0.1-0.2 MSE), this option 
 // vastly increases the robustness of the solution at a large expense of speed.
-constexpr bool boost_positive_muts = false;
-constexpr int boost_factor = 0.05 * population_size * mutation_rate;
+constexpr bool boost_positive_muts = true;
+constexpr int boost_factor = 0.02 * population_size * mutation_rate;
 
 constexpr bool save_iters = true;
 string save_path = "evol_iter_grids/1/";
@@ -52,18 +52,19 @@ int load_grids(vector<array<double,N_SQUARES>> &grids, vector<double> &costs, co
 }
 
 void mutate_grids(vector<array<double,N_SQUARES>> &grids, vector<double> &costs) {
-    // TODO: mutated grids should only be copies
     for (int i = 0, size = grids.size(); i < size; ++i) {
         if (((double)rand()/(RAND_MAX)) < mutation_rate) {
             double orig_cost = costs[i];
-            (*mutate_function)(grids[i]);
-            costs[i] = (*cost_function)(target_curve, run_dft(grids[i]));
+            array<double,N_SQUARES> copy_grid(grids[i]);
+            (*mutate_function)(copy_grid);
+            grids.push_back(copy_grid);
+            double new_cost = (*cost_function)(target_curve, run_dft(copy_grid));
+            costs.push_back(new_cost);
             if (boost_positive_muts) {
-                if (costs[i] < orig_cost) {
-                    array<double,N_SQUARES> copy_grid(grids[i]);
+                if (new_cost < orig_cost) {
                     for (int j = 0; j < boost_factor; ++j) {
                         grids.push_back(copy_grid);
-                        costs.push_back(costs[i]);
+                        costs.push_back(new_cost);
                     }
                 }
             }
@@ -107,6 +108,12 @@ void reproduce_grids(vector<array<double,N_SQUARES>> &grids, vector<double> &cos
 }
 
 int main(int argc, char *argv[]) {
+    string path = "./1solid_den.csv";
+    array<double,N_ITER+1> whole_curve = load_density(path);
+    for (int i = 0; i < N_ADSORP+1; ++i) {
+        target_curve[i] = whole_curve[i];
+    }
+
     if (argc == 2) {
         setup_NL(); // for fast_dft
         srand(time(NULL)); // Generate random seed for random number generation
@@ -116,12 +123,21 @@ int main(int argc, char *argv[]) {
 		string grid_dir(argv[1]);
         if (grid_dir.back() != '/') { grid_dir = grid_dir + "/"; }
         if (int num_start = load_grids(grids, costs, grid_dir)) {
-            cout << "Loaded " << num_start << " grids. Starting evolution." << endl;
+            cout << "Loaded " << num_start << " grids from folder." << endl;
         } else {
             cerr << "ERROR: Failed to load grids." << endl;
             return 1;
         }
         double min_cost = *min_element(costs.begin(), costs.end());
+
+        while (grids.size() < population_size) {
+            for (int i = 0, size = grids.size(); i < size; ++i) {
+                array<double,N_SQUARES> copy_grid(grids[i]);
+                grids.push_back(copy_grid);
+                costs.push_back(costs[i]);
+            }
+        }
+        cout << "Duplicated grids to fill population. Starting evolution with " << grids.size() << " grids." << endl;
 
         for (int i = 0; i < max_iters; ++i) {
             mutate_grids(grids, costs);
@@ -131,7 +147,7 @@ int main(int argc, char *argv[]) {
             cout << "Minimum cost for iteration " << i << ": " << *min_cost_iter << endl;
             if (*min_cost_iter < min_cost) {
                 min_cost = *min_cost_iter;
-                cout << "FOUND NEW BEST GRID WITH COST: " << *min_cost_iter;
+                cout << "FOUND NEW BEST GRID WITH COST: " << *min_cost_iter << endl;
                 array<double,N_SQUARES> best_grid = grids[min_element(costs.begin(), costs.end()) - costs.begin()];
                 write_grid(best_grid, cout);
                 cout << endl;
