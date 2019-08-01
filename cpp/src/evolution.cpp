@@ -3,13 +3,8 @@
 #include <fstream>
 #include <vector>
 #include <string>
-#include <thread>
 
-#include <ctime>
 #include <cstring>
-#include <cmath>
-#include <cstdio>
-#include <cstdlib>
 
 using namespace std;
 
@@ -24,7 +19,7 @@ constexpr double mutation_rate = 0.6; // Mutation rate
 
 constexpr void (*mutate_function)(array<double, N_SQUARES>&) = &toggle_random;
 constexpr double (*cost_function)(const array<double,N_ADSORP+1>&, const array<double,N_ITER+1>&) = &mean_abs_error;
-array<double, N_ADSORP+1> target_curve = linear_curve(); 
+static array<double, N_ADSORP+1> target_curve = linear_curve(); 
 
 // Whether to artificially boost the reproduction rate of beneficial mutations. 
 // When set to true starting from high costs (> 0.1-0.2 MSE), this option 
@@ -86,8 +81,7 @@ void kill_grids(vector<array<double,N_SQUARES>> &grids, vector<double> &costs, v
             grids.erase(grids.begin()+rand_grid);
             norm_costs.erase(norm_costs.begin()+rand_grid);
             costs.erase(costs.begin()+rand_grid);
-            if (grids.size()%1000 == 0) { cout << "Killing grids, " << grids.size() << " grids left. " << endl; }
-            // if (grids.size()%5000 == 0) { standardizeVec(norm_costs); normalizeVec(norm_costs); }
+            if (grids.size()%5000 == 0) { cout << "Killing grids, " << grids.size() << " grids left. " << endl; }
         }
     }
     for (int i = grids.size()-1; i >= 0; --i) {

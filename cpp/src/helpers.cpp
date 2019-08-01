@@ -1,22 +1,14 @@
 #include "helpers.h"
 
-#include <cstring>
-#include <cmath>
-#include <cstdio>
-#include <cstdlib>
-
+#include <array>
+#include <fstream>
 #include <iostream>
 #include <iomanip>
-#include <fstream>
-#include <array>
-#include <string>
-#include <vector>
 #include <iterator>
 #include <numeric>
-#include <valarray>
+#include <vector>
 
 #include <math.h>
-#include <stdlib.h>
 
 #include "constants.h"
 

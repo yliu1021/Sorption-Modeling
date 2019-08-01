@@ -2,8 +2,8 @@
 #define HELPERS_H_
 
 #include <array>
-#include <iterator>
 #include <iostream>
+#include <iterator>
 #include <vector>
 
 #include "constants.h"
