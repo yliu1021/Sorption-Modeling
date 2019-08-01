@@ -79,7 +79,8 @@ array<double,N_ITER+1> load_density(const string &path) {
 }
 
 void write_grid(array<double,N_SQUARES> grid, ostream &grid_file) {
-	for (int i = 0; i < N_SQUARES; ++i) {
+	grid_file << grid[0];
+	for (int i = 1; i < N_SQUARES; ++i) {
 		if (i % 20 == 0) { grid_file << endl << grid[i]; }
 		else { grid_file << "," << grid[i]; }
 	}
@@ -165,6 +166,11 @@ edges. For example, if an interval of [0, 1] is specified, values smaller than
 //         a[i] = max(a[i], a_min);
 //         a[i] = min(a[i], a_max);
 //     } 
+// }
+
+// void clip(double &a, const double a_min, const double a_max) {
+// 	a = max(a, a_min);
+// 	a = min(a, a_max);
 // }
 
 // ============================================================================

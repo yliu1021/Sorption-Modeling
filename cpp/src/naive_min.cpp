@@ -19,10 +19,17 @@ using namespace std;
 int main(int argc, char *argv[]) {
 	setup_NL(); // for fast_dft
 
-    int ITERS = 2;
+    int ITERS = 300;
 
     if (argc == 2) {
-        array<double, N_ADSORP+1> target_curve = heaviside_step_function();
+        // array<double, N_ADSORP+1> target_curve = linear_curve();
+        array<double, N_ADSORP+1> target_curve;
+
+        string path = "./bigpore.csv";
+        array<double,N_ITER+1> whole_curve = load_density(path);
+        for (int i = 0; i < N_ADSORP+1; ++i) {
+            target_curve[i] = whole_curve[i];
+        }
 
         string grid_path(argv[1]);
         array<double, N_SQUARES> start_grid = load_grid(grid_path);
@@ -41,7 +48,22 @@ int main(int argc, char *argv[]) {
             }
             double* min_cost_it = min_element(costs.begin(), costs.end());
             cout << "Minimum cost for iteration " << i << ": " << *min_cost_it << endl;
-            if (*min_cost_it > last_cost) {
+
+            char grid_name[20];
+            sprintf(grid_name, "grid_%04d.csv", i);
+            char density_name[20];
+            sprintf(density_name, "density_%04d.csv", i);
+            string save_folder = "./evol_iter_grids/2/";
+            string grid_file = save_folder + grid_name;
+            string density_file = save_folder + density_name;
+
+            array<double, N_SQUARES> best_grid = grids[min_cost_it - costs.begin()];
+            array<double, N_ITER + 1> pred_density = run_dft(best_grid);
+
+            if (!write_grid(best_grid, grid_file)) { return 1; }
+            if (!write_density(pred_density, density_file)) { return 1; }
+
+            if (*min_cost_it+0.000000000000001 > last_cost) {
                 cout << "No single cell improvements left" << endl;
                 break;
             }

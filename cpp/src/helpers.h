@@ -73,14 +73,14 @@ std::array<double, N_ADSORP+1> circular_curve(double radius=1, bool concave_up=t
 // DFT Simulation
 // ============================================================================
 
-#define KB 0.0019872041
-#define T 298.0
-#define Y 1.5
-#define TC 647.0
-const double BETA = 1 / (KB * T);
-const double MUSAT = -2.0 * KB * TC;
-const double C = 4.0;
-const double WFF = -2.0 * MUSAT / C;
+constexpr double KB = 0.0019872041;
+constexpr double T = 298.0;
+constexpr double Y = 1.5;
+constexpr double TC = 647.0;
+constexpr double BETA = 1 / (KB * T);
+constexpr double MUSAT = -2.0 * KB * TC;
+constexpr double C = 4.0;
+constexpr double WFF = -2.0 * MUSAT / C;
 
 /*
   Set up DFT simulation. Run once before using run_dft.
