@@ -10,7 +10,7 @@ from itertools import cycle
 from constants import *
 
 
-base_dir = 'generative_model_0'
+base_dir = 'generative_model_3'
 
 def press(event):
     if event.key != 'q':
@@ -40,10 +40,14 @@ def show_grids(v):
         ax.set_aspect('equal')
 
         ax = plt.subplot(212)
-        ax.plot(df.index[0:N_ADSORP], df['0'][0:N_ADSORP])
-        ax.plot(np.linspace(0, N_ADSORP, num=N_ADSORP), np.linspace(0, 1, num=N_ADSORP))
-        ax.legend(['Metric: {:.4f}'.format(metric), 'Target'])
-        ax.set_aspect(N_ADSORP)
+        ax.plot(df.index[0:N_ADSORP]/40, df['0'][0:N_ADSORP])
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        ax.set_xlabel('Relative Humidity')
+        ax.set_ylabel('Proportion of Pores filled')
+        # ax.plot(np.linspace(0, N_ADSORP, num=N_ADSORP), np.linspace(0, 1, num=N_ADSORP))
+        # ax.legend(['Metric: {:.4f}'.format(metric), 'Target'])
+        ax.set_aspect('equal')
         
         plt.show()
                           

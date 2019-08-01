@@ -31,7 +31,7 @@ def get_all_data_files(matching=None, get_all_files=False):
         base_dirs = glob.glob(matching)
         base_dirs.append('generative_model_seed_grids')
     else:
-        base_dirs = glob.glob('generative_model_optimization_1')
+        base_dirs = glob.glob('generative_model_*')
     print('Indexing files')
     for base_dir in base_dirs:
         data_files = list()
