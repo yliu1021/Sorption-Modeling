@@ -12,8 +12,8 @@ from constants import *
 
 # from simul_dft import *
 
-# base_dir = 'cpp/evol_iter_grids/1'
-base_dir = 'cpp/swarm_grids'
+base_dir = 'cpp/evol_iter_grids/3/'
+# base_dir = 'cpp/swarm_grids2'
 
 def press(event):
     if event.key != 'q':
@@ -33,18 +33,18 @@ def show_grids():
     grid_files.sort()
     for density_file, grid_file in zip(density_files, grid_files):
         df = pd.read_csv(density_file, index_col=0)
-        density = df['0'][0:N_ADSORP]
+        density = df['0'][0:N_ADSORP+1]
 
         # # Linear curve
-        target_density = np.arange(40) * STEP_SIZE
+        # target_density = np.arange(41) * STEP_SIZE
 
         # # Heaviside step function
-        # target_density = np.arange(40) * STEP_SIZE # heaviside
-        # target_density = target_density - 0.9 # heaviside
+        # target_density = np.arange(41) * STEP_SIZE # heaviside
+        # target_density = target_density - 0.5 # heaviside
         # target_density = np.heaviside(target_density, 0.5)
 
         # # Multi-step function
-        # target_density = np.arange(40) * STEP_SIZE
+        # target_density = np.arange(41) * STEP_SIZE
         # target_density = np.piecewise(target_density, [target_density<=0.3, np.logical_and(target_density>0.3, target_density<=0.6), target_density>0.6], [0.3, 0.6, 1])
 
         # Circle functions
@@ -53,7 +53,7 @@ def show_grids():
 
         # target_density = np.genfromtxt("../../../../Desktop/1pore_den.csv", delimiter=",")
         # target_density = np.genfromtxt("../../../../Desktop/1solid_den.csv", delimiter=",")
-        # target_density = np.genfromtxt("../../../../Desktop/bigpore.csv", delimiter=",")
+        target_density = np.genfromtxt("../../../../Desktop/bigpore.csv", delimiter=",")
 
         grid = np.genfromtxt(grid_file, delimiter=',')
         grid = grid[:, :20]
@@ -70,11 +70,11 @@ def show_grids():
         ax.set_aspect('equal')
 
         ax = plt.subplot(212)
-        ax.plot(df.index[0:N_ADSORP], df['0'][0:N_ADSORP])
-        ax.plot(np.linspace(0, N_ADSORP, num=N_ADSORP), target_density)
+        ax.plot(df.index[0:N_ADSORP+1], df['0'][0:N_ADSORP+1])
+        ax.plot(np.linspace(0, N_ADSORP+1, num=N_ADSORP+1), target_density)
         plt.plot([1],[1])
         ax.legend(['Metric: {:.4f}'.format(metric), 'Target'])
-        ax.set_aspect(N_ADSORP)
+        ax.set_aspect(N_ADSORP+1)
         
         plt.savefig('evol_animation/' + grid_file[-13:-4] + '.png')
         plt.close()
