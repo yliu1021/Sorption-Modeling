@@ -8,6 +8,8 @@ __pycache__
 # Data files
 generative_model_*
 evol_iter_grids*
+*.csv
+*.png
 
 # Hoffman scripts
 run.sh
@@ -28,6 +30,9 @@ cpp/fast_dft
 cpp/naive_min
 cpp/evolution
 cpp/benchmark
+
+# XCode
+xcuserdata/
 
 # TensorFlow
 tensorflow/
