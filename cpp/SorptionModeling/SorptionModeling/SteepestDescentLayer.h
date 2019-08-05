@@ -28,6 +28,8 @@ public:
     virtual void optimize();
     
 private:
+    void compute_costs_thread(int thread_num, std::array<Grid, N_SQUARES> &toggled_grids, std::array<double, N_SQUARES> &costs);
+    
     SteepestDescentLayerOptions options_;
 };
 

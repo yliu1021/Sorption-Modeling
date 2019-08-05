@@ -38,7 +38,7 @@ public:
 
     void fit(int n_grids, FitOptions fit_options);
 
-private:
+private:    
     ModelOptions options_;
     std::vector<OptimizationLayer*> layers_;
 };

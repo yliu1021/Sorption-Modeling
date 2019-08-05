@@ -25,5 +25,5 @@ int main(int argc, const char * argv[]) {
     
     FitOptions fo;
     fo.target_curve = linear_curve();
-    m.fit(10, fo); // Fit starting with 10 randomly initialized grids
+    m.fit(5, fo); // Fit starting with 1 randomly initialized grids
 }

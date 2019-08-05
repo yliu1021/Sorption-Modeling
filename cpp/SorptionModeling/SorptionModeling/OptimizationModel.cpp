@@ -8,6 +8,8 @@
 
 #include "OptimizationModel.h"
 
+//#include <thread>
+
 #include "Helpers.h"
 #include "OptimizationLayer.h"
 
@@ -29,13 +31,19 @@ void OptimizationModel::add_layer(OptimizationLayer &layer) {
 }
 
 void OptimizationModel::fit(int n_grids, FitOptions fit_options) {
+    cout << "Starting optimization using " << NUM_THREADS << " threads. " << endl;
+//    cout << "This machine supports " << thread::hardware_concurrency() << " threads." << endl;
+    
     std::vector<Grid> grids;
+    std::vector<double> costs;
     for (int i = 0; i < n_grids; ++i) {
-        grids.push_back(random_grid());
+        Grid g = random_grid();
+        grids.push_back(g);
+        costs.push_back((options_.cost_func)(fit_options.target_curve, run_dft(g)));
     }
 
     for (int i = 0; i < layers_.size(); ++i) {
-        layers_[i]->init(&fit_options.target_curve, options_.cost_func, &grids);
+        layers_[i]->init(&fit_options.target_curve, options_.cost_func, &grids, &costs);
         layers_[i]->optimize();
     }
 }

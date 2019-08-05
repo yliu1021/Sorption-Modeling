@@ -10,6 +10,7 @@
 
 #include <array>
 #include <iostream>
+#include <thread>
 #include <vector>
 
 #include "Helpers.h"
@@ -33,21 +34,29 @@ void SteepestDescentLayer::optimize() {
     
     for (int g = 0; g < grids().size(); ++g) {
         
-        cout << "Running Steepest Descent on grid " << g << " with a maximum of " << options_.max_iters << " iterations..." << endl;
+        cout << "Running Steepest Descent on grid " << g+1 << " of " << grids().size() << " with a maximum of " << options_.max_iters << " iterations..." << endl;
         
-        double min_cost = 1;
+        double min_cost = costs()[g];
         array<Grid, N_SQUARES> toggled_grids;
         toggled_grids.fill(grids()[g]);
         Grid best_grid = grids()[g];
-        Grid costs;
+        array<double, N_SQUARES> toggled_costs;
 
         for (int iterations = 0; iterations < options_.max_iters; iterations++) {
-            for (int j = 0; j < N_SQUARES; ++j) {
-                toggled_grids[j][j] = 1 - toggled_grids[j][j];
-                costs[j] = mean_abs_error(target_curve(), run_dft(toggled_grids[j]));
+            
+            array<thread, NUM_THREADS> threads;
+            for (int i = 0; i < threads.size(); ++i) {
+                threads[i] = std::thread(&SteepestDescentLayer::compute_costs_thread, this, i, ref(toggled_grids), ref(toggled_costs));
             }
-            double* min_cost_it = min_element(costs.begin(), costs.end());
-            cout << "Minimum cost for iteration " << iterations << ": " << *min_cost_it << endl;
+            for (int i = 0; i < threads.size(); ++i) {
+                threads[i].join();
+            }
+            
+            double* min_cost_it = min_element(toggled_costs.begin(), toggled_costs.end());
+            
+            if (verbose()) {
+                cout << "Minimum cost for iteration " << iterations << ": " << *min_cost_it << endl;
+            }
 
 //            char grid_name[20];
 //            sprintf(grid_name, "grid_%04d.csv", i);
@@ -66,9 +75,16 @@ void SteepestDescentLayer::optimize() {
                 break;
             }
             min_cost = *min_cost_it;
-            best_grid = toggled_grids[min_cost_it-costs.begin()];
+            best_grid = toggled_grids[min_cost_it-toggled_costs.begin()];
             toggled_grids.fill(best_grid);
         }
         grids()[g] = best_grid;
+    }
+}
+
+void SteepestDescentLayer::compute_costs_thread(int thread_num, array<Grid, N_SQUARES> &toggled_grids, array<double, N_SQUARES> &costs) {
+    for (int j = thread_num; j < N_SQUARES; j += NUM_THREADS) {
+        toggled_grids[j][j] = 1 - toggled_grids[j][j];
+        costs[j] = (*cost_func())(target_curve(), run_dft(toggled_grids[j]));
     }
 }

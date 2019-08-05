@@ -18,4 +18,6 @@ constexpr double STEP_SIZE = 0.025;
 typedef std::array<double, N_SQUARES> Grid;
 typedef double (*CostFunction)(const std::array<double,N_ADSORP+1>&, const std::array<double,N_ITER+1>&);
 
+constexpr int NUM_THREADS = 12;
+
 #endif /* Constants_h */
