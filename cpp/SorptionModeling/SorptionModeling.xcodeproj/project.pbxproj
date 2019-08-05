@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1E8FF30022F89F70009B4ACB /* SwarmLayer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E8FF2FE22F89F70009B4ACB /* SwarmLayer.cpp */; };
 		1EA232D422F4E22A0058CDA2 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EA232D322F4E22A0058CDA2 /* main.cpp */; };
 		1EA232E422F4E3180058CDA2 /* OptimizationModel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EA232E222F4E3180058CDA2 /* OptimizationModel.cpp */; };
 		1EA232E722F4E3910058CDA2 /* OptimizationLayer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EA232E522F4E3910058CDA2 /* OptimizationLayer.cpp */; };
@@ -27,6 +28,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		1E8FF2FE22F89F70009B4ACB /* SwarmLayer.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = SwarmLayer.cpp; sourceTree = "<group>"; };
+		1E8FF2FF22F89F70009B4ACB /* SwarmLayer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SwarmLayer.h; sourceTree = "<group>"; };
 		1EA232D022F4E22A0058CDA2 /* SorptionModeling */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = SorptionModeling; sourceTree = BUILT_PRODUCTS_DIR; };
 		1EA232D322F4E22A0058CDA2 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		1EA232E222F4E3180058CDA2 /* OptimizationModel.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = OptimizationModel.cpp; sourceTree = "<group>"; };
@@ -77,6 +80,8 @@
 				1EA232E522F4E3910058CDA2 /* OptimizationLayer.cpp */,
 				1EA232ED22F4E5190058CDA2 /* SteepestDescentLayer.h */,
 				1EA232EC22F4E5190058CDA2 /* SteepestDescentLayer.cpp */,
+				1E8FF2FF22F89F70009B4ACB /* SwarmLayer.h */,
+				1E8FF2FE22F89F70009B4ACB /* SwarmLayer.cpp */,
 				1EA232E822F4E3CE0058CDA2 /* Constants.h */,
 				1EA232EA22F4E40E0058CDA2 /* Helpers.h */,
 				1EA232E922F4E40E0058CDA2 /* Helpers.cpp */,
@@ -140,6 +145,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1E8FF30022F89F70009B4ACB /* SwarmLayer.cpp in Sources */,
 				1EA232EE22F4E5190058CDA2 /* SteepestDescentLayer.cpp in Sources */,
 				1EA232E422F4E3180058CDA2 /* OptimizationModel.cpp in Sources */,
 				1EA232D422F4E22A0058CDA2 /* main.cpp in Sources */,

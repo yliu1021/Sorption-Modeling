@@ -52,6 +52,9 @@ void toggle_random(std::array<double, N_SQUARES> &grid);
 
 #define EPSILON 0.0000001
 
+double sigmoid(double x);
+double sigmoid_inverse(double x);
+
 // Rescale the values of a vector into a range of [0, 1]
 void normalizeVec(std::vector<double> &v);
 

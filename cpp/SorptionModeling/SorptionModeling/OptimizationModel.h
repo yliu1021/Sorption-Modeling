@@ -20,6 +20,7 @@ class OptimizationLayer;
 
 struct ModelOptions {
     CostFunction cost_func = &mean_abs_error;
+    bool population = false; // Whether to treat grids individually or together as a population
     bool repeat = false;
     bool repeat_iters = 3;
 };
@@ -36,7 +37,8 @@ public:
     
     void add_layer(OptimizationLayer &layer);
 
-    void fit(int n_grids, FitOptions fit_options);
+    void fit(FitOptions fit_options, std::vector<Grid> &grids, std::vector<double> &costs);
+    
 
 private:    
     ModelOptions options_;

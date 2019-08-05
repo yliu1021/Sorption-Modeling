@@ -151,6 +151,10 @@ void toggle_random(array<double, N_SQUARES> &grid) {
 // Math Helpers
 // ============================================================================
 
+double sigmoid(double x) { return (1 / (1 + exp(-x))); }
+
+double sigmoid_inverse(double x) { return log(x / (1-x)); }
+
 void normalizeVec(vector<double> &v) {
     double min = *min_element(v.begin(), v.end());
     double range = *max_element(v.begin(), v.end()) - min;

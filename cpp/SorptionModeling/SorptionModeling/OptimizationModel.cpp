@@ -30,20 +30,33 @@ void OptimizationModel::add_layer(OptimizationLayer &layer) {
     layers_.push_back(&layer);
 }
 
-void OptimizationModel::fit(int n_grids, FitOptions fit_options) {
+void OptimizationModel::fit(FitOptions fit_options, vector<Grid> &grids, vector<double> &costs) {
     cout << "Starting optimization using " << NUM_THREADS << " threads. " << endl;
-//    cout << "This machine supports " << thread::hardware_concurrency() << " threads." << endl;
     
-    std::vector<Grid> grids;
-    std::vector<double> costs;
-    for (int i = 0; i < n_grids; ++i) {
-        Grid g = random_grid();
-        grids.push_back(g);
-        costs.push_back((options_.cost_func)(fit_options.target_curve, run_dft(g)));
+    srand(static_cast<unsigned int>(time(NULL)));
+    
+    costs.clear();
+    for (int i = 0; i < grids.size(); ++i) {
+        costs.push_back((options_.cost_func)(fit_options.target_curve, run_dft(grids[i])));
     }
-
-    for (int i = 0; i < layers_.size(); ++i) {
-        layers_[i]->init(&fit_options.target_curve, options_.cost_func, &grids, &costs);
-        layers_[i]->optimize();
+    
+    if (options_.population) {
+        for (int i = 0; i < layers_.size(); ++i) {
+            layers_[i]->init(&fit_options.target_curve, options_.cost_func, &grids, &costs);
+            layers_[i]->optimize();
+        }
+    } else {
+        for (int i = 0; i < grids.size(); i++) {
+            vector<Grid> g;
+            vector<double> g_costs;
+            g.push_back(grids[i]);
+            g_costs.push_back(costs[i]);
+            for (int i = 0; i < layers_.size(); ++i) {
+                layers_[i]->init(&fit_options.target_curve, options_.cost_func, &g, &g_costs);
+                layers_[i]->optimize();
+            }
+            grids[i] = g[min_element(g_costs.begin(), g_costs.end()) - g_costs.begin()];
+            costs[i] = *min_element(g_costs.begin(), g_costs.end());
+        }
     }
 }
