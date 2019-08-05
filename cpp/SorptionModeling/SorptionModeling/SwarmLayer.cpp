@@ -34,6 +34,7 @@ void SwarmLayer::optimize() {
     
     cout << "Running swarm on grid with a maximum of " << options_.max_iters << " iterations..." << endl;
 
+    int orig_population = grids().size();
     while (grids().size() < options_.bees) {
         Grid g = random_grid();
         grids().push_back(g);
@@ -107,5 +108,10 @@ void SwarmLayer::optimize() {
         if (iteration % 20 == 0) {
             cout << "Minimum cost at iteration " << iteration << ": " << *min_element(costs().begin(), costs().end()) << endl;
         }
+    }
+    
+    while (grids().size() > orig_population) {
+        grids().erase(grids().begin() + (max_element(costs().begin(), costs().end()) - costs().begin()));
+        costs().erase(max_element(costs().begin(), costs().end()));
     }
 }

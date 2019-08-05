@@ -47,6 +47,8 @@ void OptimizationModel::fit(FitOptions fit_options, vector<Grid> &grids, vector<
         }
     } else {
         for (int i = 0; i < grids.size(); i++) {
+            cout << "Optimizing grid " <<  i << "..." << endl;
+            
             vector<Grid> g;
             vector<double> g_costs;
             g.push_back(grids[i]);

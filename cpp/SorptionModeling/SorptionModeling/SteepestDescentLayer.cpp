@@ -54,9 +54,9 @@ void SteepestDescentLayer::optimize() {
             
             double* min_cost_it = min_element(toggled_costs.begin(), toggled_costs.end());
             
-            if (verbose()) {
+//            if (verbose()) {
                 cout << "Minimum cost for iteration " << iterations << ": " << *min_cost_it << endl;
-            }
+//            }
 
 //            char grid_name[20];
 //            sprintf(grid_name, "grid_%04d.csv", i);

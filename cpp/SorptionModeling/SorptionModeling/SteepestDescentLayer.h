@@ -17,7 +17,7 @@
 
 struct SteepestDescentLayerOptions {
     int max_iters = INT_MAX;
-    bool verbose = false;
+    bool verbose = true;
 };
 
 class SteepestDescentLayer : public OptimizationLayer {
