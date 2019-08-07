@@ -23,7 +23,7 @@ from tensorflow.keras import backend as K
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
-import generate_data
+import data
 import models
 from constants import *
 
@@ -92,7 +92,7 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     # Train predictor on dataset
     # --------------------------
     # Get our training data
-    train_grids, train_curves = generate_data.get_all_data(matching=base_dir)
+    train_grids, train_curves = data.get_all_data(matching=base_dir)
     # Define our loss function and compile our model
     loss_func = kwargs.get('loss_func', 'kullback_leibler_divergence')
     models.unfreeze(predictor_model)
