@@ -154,7 +154,7 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     # Generate new data
     # -----------------
     num_new_grids = kwargs.get('num_new_grids', 300)
-    data_upscale_factor = kwargs.get('data_upscale_factor', 1.5)
+    data_upscale_factor = kwargs.get('data_upscale_factor', 3)
     artificial_curves, latent_codes = make_generator_input(int(num_new_grids*data_upscale_factor), boost_dim, as_generator=False)
     generated_grids = generator_model.predict([artificial_curves, latent_codes])
     saved_grids = generated_grids.astype('int')
@@ -162,7 +162,7 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
         path = os.path.join(grids_dir, 'grid_%04d.csv'%i)
         np.savetxt(path, grid, fmt='%i', delimiter=',')
 
-    print('evaluating grids')
+    print('Evaluating candidate grids')
     os.system('./fast_dft {}'.format(step_dir))
     
     target_densities_dir
@@ -183,7 +183,7 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
 
     # Sort the grids by some metric
     # K-nearest sampling
-    num_train_samples = kwargs.get('num_train_samples', 100)
+    num_train_samples = kwargs.get('num_train_samples', 200)
     random_train_samples = train_curves[:num_train_samples]
     
     def sort_key(x):
@@ -200,10 +200,11 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
         return delta_prime_err
     
     # Remove the grids that are already good
+    print('Finding most dissimilar grids')
     new_data.sort(key=sort_key, reverse=True)
     generator_accuracy = sum(map(generator_acc, new_data)) / len(new_data)
     print("Generated data error metric: {}".format(generator_accuracy))
-    explore_rate = kwargs.get('explore_rate', 0.8)
+    explore_rate = kwargs.get('explore_rate', 0.95)
     explore_num = int(explore_rate * num_new_grids)
     refine_num = num_new_grids - explore_num
     new_data = new_data[:explore_num] + new_data[-refine_num:]
@@ -217,6 +218,7 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     make_dirs(grids_dir, densities_dir, target_densities_dir)
     
     # Save new data
+    print('Saving new grids')
     for i, (density, target_density, _, grid) in enumerate(new_data):
         grid_path = os.path.join(grids_dir, 'grid_%04d.csv'%i)
         density_path = os.path.join(densities_dir, 'density_%04d.csv'%i)
@@ -224,6 +226,7 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
         np.savetxt(grid_path, grid, fmt='%i', delimiter=',')
         np.savetxt(target_density_path, np.diff(target_density), fmt='%f', delimiter=',')
 
+    print('Evaluating new grids')
     os.system('./fast_dft {}'.format(step_dir))
 
     return generator_accuracy
