@@ -14,7 +14,7 @@ import models
 from constants import *
 
 
-base_dir = 'generative_model_default'
+base_dir = 'generative_model_optimization_1'
 step_index = -1
 index = 0
 def press(event):
