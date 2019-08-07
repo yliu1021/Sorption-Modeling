@@ -19,21 +19,6 @@ across all grids/curves in the last step of the training process.
 
 # Min max are inclusive
 training_hyperparameters = {
-    'delta_prime_weight': {
-        'type': float,
-        'min' : -1.0,
-        'max' : 1.0
-    },
-    'delta_weight': {
-        'type': float,
-        'min' : -1.0,
-        'max' : 1.0
-    },
-    'gamma_weight': {
-        'type': float,
-        'min' : -1.0,
-        'max' : 1.0
-    },
     'explore_rate': {
         'type': float,
         'min' : 0.0,
@@ -67,7 +52,7 @@ def get_base_dir(step):
 
 def train_network(step, hyperparameters):
     hyperparameters['base_dir'] = get_base_dir(step)
-    hyperparameters['train_steps'] = 3
+    hyperparameters['train_steps'] = 6
     accuracy = targeted_generate.start_training(**hyperparameters)
     return accuracy
 
@@ -92,7 +77,8 @@ def minimize(parameters):
     return result
 
 
-res = gp_minimize(minimize, parameter_bounds, n_calls=20,
+res = gp_minimize(minimize, parameter_bounds, n_calls=7,
+                  n_random_starts=3,
                   verbose=True)
 print(all_hyperparameter_keys)
 print(res.x)
