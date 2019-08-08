@@ -14,7 +14,7 @@ import models
 from constants import *
 
 
-base_dir = 'generative_model_optimization_1'
+base_dir = 'generative_model_seed_grids'
 step_index = -1
 index = 0
 def press(event):
@@ -37,10 +37,10 @@ def show_grids(v):
     global step_index
 
     all_files = list()
-    step_dirs = glob.glob(os.path.join(base_dir, 'step_*'.format(v)))
+    step_dirs = glob.glob(os.path.join(base_dir, 'step*'))
     step_dirs.sort()
     for i, step_dir in enumerate(step_dirs):
-        if 'step_{}'.format(v) in step_dir:
+        if 'step_{}'.format(v) in step_dir or 'step{}'.format(v) in step_dir:
             step_index = i
         grid_files = glob.glob(os.path.join(step_dir, 'grids/grid_*.csv'.format(v)))
         density_files = glob.glob(os.path.join(step_dir, 'results/density_*.csv'.format(v)))
@@ -48,7 +48,10 @@ def show_grids(v):
         grid_files.sort()
         density_files.sort()
         target_density_files.sort()
-        all_step_files = list(zip(grid_files, density_files, target_density_files))
+        if len(target_density_files) == 0:
+            all_step_files = list(zip(grid_files, density_files))
+        else:
+            all_step_files = list(zip(grid_files, density_files, target_density_files))
         all_files.append(all_step_files)
 
     predictor_model = None
@@ -66,17 +69,26 @@ def show_grids(v):
     while True:
         s = step_index % len(all_files)
         i = index % len(all_files[s])
-        grid_file, density_file, target_density_file = all_files[s][i]
+        files = all_files[s][i]
+        target_density_file = None
+        if len(files) == 2:
+            grid_file, density_file = files
+        else:
+            grid_file, density_file, target_density_file = files
 
         df = pd.read_csv(density_file, index_col=0)
         relative_humidity = np.arange(41) * STEP_SIZE
         
         grid = np.genfromtxt(grid_file, delimiter=',')
         density = np.append(df['0'][:N_ADSORP], 1)
-        target_density = np.insert(np.genfromtxt(target_density_file), 0, 0)
-        target_density = np.cumsum(target_density)
-        predicted_density = np.insert(predictor_model.predict(np.array([grid]))[0], 0, 0)
-        predicted_density = np.cumsum(predicted_density)
+        target_density = None
+        if target_density_file:
+            target_density = np.insert(np.genfromtxt(target_density_file), 0, 0)
+            target_density = np.cumsum(target_density)
+        predicted_density = None
+        if predictor_model:
+            predicted_density = np.insert(predictor_model.predict(np.array([grid]))[0], 0, 0)
+            predicted_density = np.cumsum(predicted_density)
 
         fig.suptitle('Step {}, Grid {}'.format(s, i))
 
@@ -92,8 +104,10 @@ def show_grids(v):
         ax.clear()
         ax.set_title('Adsorption Curve')
         ax.plot(relative_humidity, density, label='DFT')
-        ax.plot(relative_humidity, predicted_density, label='Predictor')
-        ax.plot(relative_humidity, target_density, label='Target')
+        if predicted_density:
+            ax.plot(relative_humidity, predicted_density, label='Predictor')
+        if target_density:
+            ax.plot(relative_humidity, target_density, label='Target')
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
         ax.set_xlabel('Relative Humidity')
