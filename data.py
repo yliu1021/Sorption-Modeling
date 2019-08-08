@@ -38,7 +38,10 @@ def get_all_data_files(matching=None, get_all_files=False):
         if get_all_files:
             step_dirs = glob.glob(os.path.join(base_dir, 'step*'))
         else:
-            step_dirs = glob.glob(os.path.join(base_dir, 'step[0-9]*'))
+            step_dirs = glob.glob(os.path.join(base_dir, 'step_[0-9]*'))
+            step_dirs.extend(glob.glob(os.path.join(base_dir, 'step[0-9]*'))) # Backward compatability
+        if len(step_dirs) == 0:
+            continue
         for step_dir in step_dirs:
             grid_dir = os.path.join(step_dir, 'grids')
             density_dir = os.path.join(step_dir, 'results')
