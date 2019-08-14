@@ -25,6 +25,38 @@ def fetch_density_from_step(base_dir, step):
                           max_rows=N_ADSORP) for density_file in density_files]
 
 
+def make_generator_input(amount, boost_dim, as_generator=False):
+    n = N_ADSORP
+    def gen_diffs(mean, var, _n=n, up_to=1):
+        diffs = np.clip(np.exp(np.random.normal(mean, var, _n)), -10, 10)
+        return diffs / np.sum(diffs) * up_to
+
+    def gen_func():
+        anchor = np.random.uniform(0, 1)
+        x = np.random.uniform(0.05, 0.95)
+        ind = int(n*x)
+        f_1 = np.insert(np.cumsum(gen_diffs(0, 3, ind, anchor)), 0, 0)
+        f_2 = np.insert(np.cumsum(gen_diffs(0, 3, n - ind - 2, 1-anchor)), 0, 0) + anchor
+        f = np.concatenate((f_1, np.array([anchor]), f_2))
+        f[-1] = 1.0
+        return f
+
+    def sample_rand_input(size):
+        latent_codes = np.clip(np.random.normal(loc=0.5, scale=0.25, size=(size, boost_dim)), 0, 1)
+        artificial_curves = np.array([np.diff(gen_func()) for _ in range(size)])
+        return [artificial_curves, latent_codes]
+            
+    def gen():
+        while True:
+            out = sample_rand_input(amount)
+            yield out, out
+
+    if as_generator:
+        return gen()
+    else:
+        return sample_rand_input(amount)
+
+
 def get_all_data_files(matching=None, get_all_files=False):
     all_files = list()
     if matching:

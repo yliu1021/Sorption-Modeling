@@ -45,10 +45,12 @@ def make_predictor_model(**kwargs):
     inp = Input(shape=(GRID_SIZE, GRID_SIZE), name='proxy_enforcer_input')
     x = Lambda(lambda x: K.tile(x, [1, 3, 3]))(inp)
     x = Reshape((GRID_SIZE * 3, GRID_SIZE * 3, 1))(x)
+    x = Cropping2D(cropping=(GRID_SIZE-4, GRID_SIZE-4))(x)
 
     x = Conv2D(16, first_filter_size, padding='valid', name='conv0')(x)
     x = Conv2D(32, 3, padding='valid', name='conv1')(x)
-    x = Conv2D(64, 3, padding='valid', strides=2, name='conv2')(x)
+    x = Conv2D(32, 3, padding='valid', name='conv2')(x)
+    x = Conv2D(64, 3, padding='valid', name='conv3')(x)
     x = Dropout(0.1)(x)
     
     x = Conv2D(128, 3, padding='valid', strides=2, name='conv_stride_1')(x)
@@ -75,7 +77,7 @@ def make_predictor_model(**kwargs):
 
 # Generator model
 def make_generator_model(**kwargs):
-    first_conv_depth = kwargs.get('first_conv_depth', 128)
+    first_conv_depth = kwargs.get('first_conv_depth', 512)
     pre_deconv1_depth = kwargs.get('pre_deconv1_depth', 128)
     post_deconv2_depth = kwargs.get('post_deconv2_depth', 32)
     last_filter_size = kwargs.get('last_filter_size', 6)
@@ -87,10 +89,9 @@ def make_generator_model(**kwargs):
 
     Q_GRID_SIZE = GRID_SIZE // 4
 
-    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * first_conv_depth//2, name='fc1')(conc_inp)
-    x = LeakyReLU()(x)
+    x = Dense(2048, name='fc1')(conc_inp)
 
-    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * first_conv_depth//2, name='fc2')(x)
+    x = Dense(2048, name='fc2')(x)
     x = LeakyReLU()(x)
 
     x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * first_conv_depth, name='fc3')(x)
@@ -107,10 +108,15 @@ def make_generator_model(**kwargs):
     x = Conv2DTranspose(96, 3, strides=2, padding='same', name='deconv_expand1')(x)
     x = LeakyReLU()(x)
 
-    x = Conv2DTranspose(64, 3, strides=2, padding='same', name='deconv_expand2')(x)
+    x = Conv2DTranspose(32, 3, strides=2, padding='same', name='deconv_expand2')(x)
+    x = LeakyReLU()(x)
 
     x = Conv2DTranspose(post_deconv2_depth, 3, strides=1, padding='same', name='post_deconv')(x)
-
+    x = LeakyReLU()(x)
+    
+    x = Conv2D(16, 3, strides=1, padding='same', name='smooth_conv')(x)
+    x = LeakyReLU()(x)
+    
     out = Conv2D(1, last_filter_size, strides=1, padding='same',
                  activation=binary_sigmoid, name='generator_conv')(x)
     out = Reshape((GRID_SIZE, GRID_SIZE))(out)

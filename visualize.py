@@ -14,7 +14,7 @@ import models
 from constants import *
 
 
-base_dir = 'generative_model_seed_grids'
+base_dir = 'generative_model_default'
 step_index = -1
 index = 0
 def press(event):
@@ -38,9 +38,20 @@ def show_grids(v):
 
     all_files = list()
     step_dirs = glob.glob(os.path.join(base_dir, 'step*'))
-    step_dirs.sort()
+    
+    def extract_step_num(d):
+        d = d.split('/')[-1]
+        d = d[4:]
+        if d.startswith('_'):
+            d = d[1:]
+        try:
+            return int(d)
+        except:
+            return 0
+
+    step_dirs.sort(key=extract_step_num)
     for i, step_dir in enumerate(step_dirs):
-        if 'step_{}'.format(v) in step_dir or 'step{}'.format(v) in step_dir:
+        if step_dir.endswith('step_{}'.format(v)) or step_dir.endswith('step{}'.format(v)):
             step_index = i
         grid_files = glob.glob(os.path.join(step_dir, 'grids/grid_*.csv'.format(v)))
         density_files = glob.glob(os.path.join(step_dir, 'results/density_*.csv'.format(v)))
@@ -52,7 +63,8 @@ def show_grids(v):
             all_step_files = list(zip(grid_files, density_files))
         else:
             all_step_files = list(zip(grid_files, density_files, target_density_files))
-        all_files.append(all_step_files)
+        if len(all_step_files) != 0:
+            all_files.append(all_step_files)
 
     predictor_model = None
     print('Attempting to load predictor model...')
@@ -104,9 +116,9 @@ def show_grids(v):
         ax.clear()
         ax.set_title('Adsorption Curve')
         ax.plot(relative_humidity, density, label='DFT')
-        if predicted_density:
+        if predicted_density is not None:
             ax.plot(relative_humidity, predicted_density, label='Predictor')
-        if target_density:
+        if target_density is not None:
             ax.plot(relative_humidity, target_density, label='Target')
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
@@ -119,6 +131,10 @@ def show_grids(v):
         plt.waitforbuttonpress(timeout=-1)
 
 
+def show_validation():
+    pass
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("v", nargs="?", help="Show the grids/results of step v",
@@ -128,4 +144,4 @@ if __name__ == '__main__':
     if v >= 0:
         show_grids(v)
     else:
-        show_all_grids()
+        show_validation()

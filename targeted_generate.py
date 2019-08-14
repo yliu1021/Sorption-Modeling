@@ -3,7 +3,7 @@ import shutil
 import glob
 import sys
 from multiprocessing import Pool
-from random import randint, shuffle
+from random import randint, shuffle, sample
 import json
 import argparse
 
@@ -39,38 +39,6 @@ def make_dirs(*dirs, exist_ok=True):
         os.makedirs(d, exist_ok=exist_ok)
 
 
-def make_generator_input(amount, boost_dim, as_generator=False):
-    n = N_ADSORP
-    def gen_diffs(mean, var, _n=n, up_to=1):
-        diffs = np.clip(np.exp(np.random.normal(mean, var, _n)), -10, 10)
-        return diffs / np.sum(diffs) * up_to
-
-    def gen_func():
-        anchor = np.random.uniform(0, 1)
-        x = np.random.uniform(0.05, 0.95)
-        ind = int(n*x)
-        f_1 = np.insert(np.cumsum(gen_diffs(0, 3, ind, anchor)), 0, 0)
-        f_2 = np.insert(np.cumsum(gen_diffs(0, 3, n - ind - 2, 1-anchor)), 0, 0) + anchor
-        f = np.concatenate((f_1, np.array([anchor]), f_2))
-        f[-1] = 1.0
-        return f
-
-    def sample_rand_input(size):
-        latent_codes = np.clip(np.random.normal(loc=0.5, scale=0.25, size=(size, boost_dim)), 0, 1)
-        artificial_curves = np.array([np.diff(gen_func()) for _ in range(size)])
-        return [artificial_curves, latent_codes]
-            
-    def gen():
-        while True:
-            out = sample_rand_input(amount)
-            yield out, out
-
-    if as_generator:
-        return gen()
-    else:
-        return sample_rand_input(amount)
-
-
 def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     # Setup our directory
     # -------------------
@@ -80,7 +48,7 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     densities_dir = os.path.join(step_dir, 'results')
     target_densities_dir = os.path.join(step_dir, 'target_densities')
     model_save_dir = os.path.join(base_dir, 'model_saves')
-    predictor_model_logs = os.path.join(step_dir, 'predictor_train_logs')
+    predictor_model_logs = os.path.join(step_dir, 'predictor_model_logs')
     generator_model_logs = os.path.join(step_dir, 'generator_model_logs')
     make_dirs(step_dir,
               grids_dir, densities_dir, target_densities_dir,
@@ -93,6 +61,17 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     # --------------------------
     # Get our training data
     train_grids, train_curves = data.get_all_data(matching=base_dir)
+
+    num_train_samples = kwargs.get('num_train_samples', 100)
+    random_train_samples = train_curves[:num_train_samples] # Used for later
+    random_train_samples = [np.insert(np.cumsum(train_sample), 0, 0) for train_sample in random_train_samples]
+
+    def divergence(curve): # Define distance from a curve to some samples in our training set
+        distance = 0
+        for train_sample in random_train_samples:
+            distance += np.sum(np.abs(curve - train_sample))
+        return distance
+
     # Define our loss function and compile our model
     loss_func = kwargs.get('loss_func', 'kullback_leibler_divergence')
     models.unfreeze(predictor_model)
@@ -103,9 +82,9 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     predictor_batch_size = kwargs.get('predictor_batch_size', 64)
     predictor_epochs = kwargs.get('predictor_epochs', 30)
     lr_patience = max(int(round(predictor_epochs * 0.3)), 1) # clip to at least 1
-    es_patience = max(int(round(predictor_epochs * 0.4)), 1) # clip to at least 1
+    es_patience = max(int(round(predictor_epochs * 0.4)), 2) # clip to at least 1
     predictor_model.fit(x=train_grids, y=train_curves, batch_size=predictor_batch_size,
-                        epochs=predictor_epochs, validation_split=0.2,
+                        epochs=predictor_epochs, validation_split=0.1,
                         callbacks=[ReduceLROnPlateau(patience=lr_patience),
                                    EarlyStopping(patience=es_patience),
                                    TensorBoard(log_dir=predictor_model_logs, histogram_freq=1,
@@ -117,9 +96,17 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     # ----------------------------
     # Get our training data
     # num_curves = 10000
-    num_curves = 10000
+    num_curves = 2000
+    train_upscale_factor = kwargs.get('train_upscale_factor', 1.5)
+    gen_curves = int(num_curves * train_upscale_factor)
     boost_dim = kwargs.get('boost_dim', 5)
-    random_curves = make_generator_input(num_curves, boost_dim, as_generator=False)
+    random_curves = data.make_generator_input(gen_curves, boost_dim, as_generator=False)
+    random_curves, latent_codes = random_curves
+    latent_codes = latent_codes[:num_curves]
+    random_curves = list(random_curves)
+    random_curves.sort(key=lambda x: divergence(np.insert(np.cumsum(x), 0, 0)), reverse=True)
+    random_curves = np.array(sample(random_curves[:num_curves], num_curves))
+    random_curves = [random_curves, latent_codes]
     # Create the training model
     models.freeze(predictor_model)
     lc_inp = Input(shape=(boost_dim,), name='latent_code')
@@ -129,7 +116,7 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     lc_out = lc_model(generator_out)
     training_model = Model(inputs=[curve_inp, lc_inp], outputs=[predictor_out, lc_out])
     # Define our loss function and compile our model
-    loss_weights = kwargs.get('loss_weights', [1.0, 0.8])
+    loss_weights = kwargs.get('loss_weights', [1.0, 0.9])
     learning_rate = 10**-3
     optimizer = Adam(learning_rate, clipnorm=1.0)
     training_model.compile(optimizer, loss=[loss_func, 'mse'],
@@ -140,8 +127,8 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     # Fit our model to the curves
     generator_batch_size = kwargs.get('generator_batch_size', 64)
     generator_epochs = kwargs.get('generator_epochs', 15)
-    lr_patience = max(int(round(generator_epochs * 0.3)), 1) # clip to at least 1
-    es_patience = max(int(round(generator_epochs * 0.4)), 1) # clip to at least 1
+    lr_patience = max(int(round(generator_epochs * 0.3)), 2) # clip to at least 1
+    es_patience = max(int(round(generator_epochs * 0.4)), 3) # clip to at least 1
     training_model.fit(x=random_curves, y=random_curves, batch_size=generator_batch_size,
                        epochs=generator_epochs, validation_split=0.2,
                        callbacks=[ReduceLROnPlateau(patience=lr_patience),
@@ -153,9 +140,9 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     
     # Generate new data
     # -----------------
-    num_new_grids = kwargs.get('num_new_grids', 300)
-    data_upscale_factor = kwargs.get('data_upscale_factor', 3)
-    artificial_curves, latent_codes = make_generator_input(int(num_new_grids*data_upscale_factor), boost_dim, as_generator=False)
+    num_new_grids = kwargs.get('num_new_grids', 100)
+    data_upscale_factor = kwargs.get('data_upscale_factor', 2)
+    artificial_curves, latent_codes = data.make_generator_input(int(num_new_grids*data_upscale_factor), boost_dim, as_generator=False)
     generated_grids = generator_model.predict([artificial_curves, latent_codes])
     saved_grids = generated_grids.astype('int')
     for i, grid in enumerate(saved_grids):
@@ -182,29 +169,36 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     new_data = list(zip(actual_densities, target_densities, predicted_densities, generated_grids))
 
     # Sort the grids by some metric
-    # K-nearest sampling
-    num_train_samples = kwargs.get('num_train_samples', 200)
-    random_train_samples = train_curves[:num_train_samples]
-    
-    def sort_key(x):
-        actual_curve, target_curve, predicted_curve, _ = x
-        actual_curve = np.diff(actual_curve)
-        distance = 0
-        for train_sample in random_train_samples:
-            distance += KL_divergence(actual_curve, train_sample)
-        return distance
-    
-    def generator_acc(x):
+    # Sample k curves from our dataset to see how close we are to our dataset
+    def generator_err(x):
         actual_curve, target_curve, predicted_curve, _ = x
         delta_prime_err = np.sum(np.abs(actual_curve - target_curve))
         return delta_prime_err
     
+    def predictor_err(x):
+        actual_curve, target_curve, predicted_curve, _ = x
+        gamma_err = np.sum(np.abs(actual_curve - predicted_curve))
+        return gamma_err
+    
+    def cross_err(x):
+        actual_curve, target_curve, predicted_curve, _ = x
+        delta_err = np.sum(np.abs(target_curve - predicted_curve))
+        return delta_err
+
     # Remove the grids that are already good
     print('Finding most dissimilar grids')
-    new_data.sort(key=sort_key, reverse=True)
-    generator_accuracy = sum(map(generator_acc, new_data)) / len(new_data)
-    print("Generated data error metric: {}".format(generator_accuracy))
-    explore_rate = kwargs.get('explore_rate', 0.95)
+    new_data.sort(key=lambda x: divergence(x[0]), reverse=True)
+    # Evaluate our accuracies
+    generator_error = np.array(list(map(generator_err, new_data)))
+    predictor_error = np.array(list(map(predictor_err, new_data)))
+    cross_error = np.array(list(map(cross_err, new_data)))
+    print("Generated data error metric: {:.3f} ± {:.3f}".format(generator_error.mean(),
+                                                                generator_error.std()))
+    print("Predictor error metric: {:.3f} ± {:.3f}".format(predictor_error.mean(),
+                                                           predictor_error.std()))
+    print("Cross error metric: {:.3f} ± {:.3f}".format(cross_error.mean(),
+                                                       cross_error.std()))
+    explore_rate = kwargs.get('explore_rate', 0.75)
     explore_num = int(explore_rate * num_new_grids)
     refine_num = num_new_grids - explore_num
     new_data = new_data[:explore_num] + new_data[-refine_num:]
@@ -229,7 +223,7 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     print('Evaluating new grids')
     os.system('./fast_dft {}'.format(step_dir))
 
-    return generator_accuracy
+    return generator_error, predictor_error, cross_error
 
 
 def start_training(**kwargs):
@@ -246,13 +240,44 @@ def start_training(**kwargs):
     generator_model = models.make_generator_model(**kwargs)
 
     train_steps = kwargs.get('train_steps', 10)
-    last_accuracy = None
+    generator_err_hist = list()
+    predictor_err_hist = list()
+    cross_err_hist = list()
     for step in range(train_steps):
-        last_accuracy = train_step(step, predictor_model, lc_model, generator_model, **kwargs)
+        acc = train_step(step, predictor_model, lc_model, generator_model, **kwargs)
+        generator_err_hist.append(acc[0])
+        predictor_err_hist.append(acc[1])
+        cross_err_hist.append(acc[2])
 
-    return last_accuracy
+    generator_err_medians = [np.median(g) for g in generator_err_hist]
+    predictor_err_medians = [np.median(p) for p in predictor_err_hist]
+    cross_err_medians = [np.median(c) for c in cross_err_hist]
+    steps = list(range(1, len(generator_acc_means)+1))
+
+    plt.violinplot(generator_err_hist, showmeans=True)
+    plt.plot(steps, generator_err_medians)
+    plt.title('Generator error per step')
+    plt.ylabel('Mean abs diff metric')
+    plt.xlabel('Step number')
+    plt.show()
+
+    plt.violinplot(predictor_err_hist, showmeans=True)
+    plt.plot(steps, predictor_err_medians)
+    plt.title('Predictor error per step')
+    plt.ylabel('Mean abs diff metric')
+    plt.xlabel('Step number')
+    plt.show()
+
+    plt.violinplot(cross_err_hist, showmeans=True)
+    plt.plot(steps, cross_err_medians)
+    plt.title('Cross error per step')
+    plt.ylabel('Mean abs diff metric')
+    plt.xlabel('Step number')
+    plt.show()
+
+    return generator_acc_hist[-1].mean()
 
 
 if __name__ == '__main__':
-    # start_training(predictor_epochs=2, generator_epochs=2)
-    start_training(predictor_epochs=30, generator_epochs=15)
+    start_training(predictor_epochs=6, generator_epochs=6, train_steps=30)
+    # start_training(predictor_epochs=30, generator_epochs=15)
