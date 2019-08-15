@@ -97,7 +97,7 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     # Get our training data
     # num_curves = 10000
     num_curves = 2000
-    train_upscale_factor = kwargs.get('train_upscale_factor', 1.5)
+    train_upscale_factor = kwargs.get('train_upscale_factor', 2.0)
     gen_curves = int(num_curves * train_upscale_factor)
     boost_dim = kwargs.get('boost_dim', 5)
     random_curves = data.make_generator_input(gen_curves, boost_dim, as_generator=False)
@@ -189,16 +189,16 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     print('Finding most dissimilar grids')
     new_data.sort(key=lambda x: divergence(x[0]), reverse=True)
     # Evaluate our accuracies
-    generator_error = np.array(list(map(generator_err, new_data)))
-    predictor_error = np.array(list(map(predictor_err, new_data)))
-    cross_error = np.array(list(map(cross_err, new_data)))
+    generator_error = np.array(list(map(generator_err, new_data))) / (N_ADSORP + 1)
+    predictor_error = np.array(list(map(predictor_err, new_data))) / (N_ADSORP + 1)
+    cross_error = np.array(list(map(cross_err, new_data))) / (N_ADSORP + 1)
     print("Generated data error metric: {:.3f} ± {:.3f}".format(generator_error.mean(),
                                                                 generator_error.std()))
     print("Predictor error metric: {:.3f} ± {:.3f}".format(predictor_error.mean(),
                                                            predictor_error.std()))
     print("Cross error metric: {:.3f} ± {:.3f}".format(cross_error.mean(),
                                                        cross_error.std()))
-    explore_rate = kwargs.get('explore_rate', 0.75)
+    explore_rate = kwargs.get('explore_rate', 0.85)
     explore_num = int(explore_rate * num_new_grids)
     refine_num = num_new_grids - explore_num
     new_data = new_data[:explore_num] + new_data[-refine_num:]
@@ -252,13 +252,14 @@ def start_training(**kwargs):
     generator_err_medians = [np.median(g) for g in generator_err_hist]
     predictor_err_medians = [np.median(p) for p in predictor_err_hist]
     cross_err_medians = [np.median(c) for c in cross_err_hist]
-    steps = list(range(1, len(generator_acc_means)+1))
+    steps = list(range(1, len(generator_err_medians)+1))
 
     plt.violinplot(generator_err_hist, showmeans=True)
     plt.plot(steps, generator_err_medians)
     plt.title('Generator error per step')
     plt.ylabel('Mean abs diff metric')
     plt.xlabel('Step number')
+    plt.ylim(0, 1)
     plt.show()
 
     plt.violinplot(predictor_err_hist, showmeans=True)
@@ -266,6 +267,7 @@ def start_training(**kwargs):
     plt.title('Predictor error per step')
     plt.ylabel('Mean abs diff metric')
     plt.xlabel('Step number')
+    plt.ylim(0, 1)
     plt.show()
 
     plt.violinplot(cross_err_hist, showmeans=True)
@@ -273,11 +275,16 @@ def start_training(**kwargs):
     plt.title('Cross error per step')
     plt.ylabel('Mean abs diff metric')
     plt.xlabel('Step number')
+    plt.ylim(0, 1)
     plt.show()
 
-    return generator_acc_hist[-1].mean()
+    last_3_means = 0
+    last_3_means += generator_err_hist[-1].mean()
+    last_3_means += generator_err_hist[-2].mean()
+    last_3_means += generator_err_hist[-3].mean()
+    return last_3_means / 3
 
 
 if __name__ == '__main__':
-    start_training(predictor_epochs=6, generator_epochs=6, train_steps=30)
+    start_training(predictor_epochs=6, generator_epochs=6, train_steps=40)
     # start_training(predictor_epochs=30, generator_epochs=15)
