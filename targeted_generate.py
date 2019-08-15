@@ -80,9 +80,11 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     predictor_model.compile(optimizer, loss=loss_func, metrics=['mae', models.worst_abs_loss])
     # Fit our model to the dataset
     predictor_batch_size = kwargs.get('predictor_batch_size', 64)
-    predictor_epochs = kwargs.get('predictor_epochs', 30)
+    predictor_epochs = kwargs.get('predictor_epochs', 6)
+    if step == 0:
+        predictor_epochs += 30 # train more to start off
     lr_patience = max(int(round(predictor_epochs * 0.3)), 1) # clip to at least 1
-    es_patience = max(int(round(predictor_epochs * 0.4)), 2) # clip to at least 1
+    es_patience = max(int(round(predictor_epochs * 0.5)), 2) # clip to at least 1
     predictor_model.fit(x=train_grids, y=train_curves, batch_size=predictor_batch_size,
                         epochs=predictor_epochs, validation_split=0.1,
                         callbacks=[ReduceLROnPlateau(patience=lr_patience),
@@ -126,9 +128,11 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
                            }, loss_weights=loss_weights)
     # Fit our model to the curves
     generator_batch_size = kwargs.get('generator_batch_size', 64)
-    generator_epochs = kwargs.get('generator_epochs', 15)
+    generator_epochs = kwargs.get('generator_epochs', 3)
+    if step == 0:
+        generator_epochs += 10 # train more to start off
     lr_patience = max(int(round(generator_epochs * 0.3)), 2) # clip to at least 1
-    es_patience = max(int(round(generator_epochs * 0.4)), 3) # clip to at least 1
+    es_patience = max(int(round(generator_epochs * 0.5)), 3) # clip to at least 1
     training_model.fit(x=random_curves, y=random_curves, batch_size=generator_batch_size,
                        epochs=generator_epochs, validation_split=0.2,
                        callbacks=[ReduceLROnPlateau(patience=lr_patience),
