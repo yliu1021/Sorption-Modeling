@@ -90,7 +90,7 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
                         callbacks=[ReduceLROnPlateau(patience=lr_patience),
                                    EarlyStopping(patience=es_patience),
                                    TensorBoard(log_dir=predictor_model_logs, histogram_freq=1,
-                                               write_graph=False, write_images=True)])
+                                               write_graph=False, write_images=False)])
     # Save our model
     predictor_model.save(predictor_save_file, include_optimizer=False)
     
@@ -138,7 +138,7 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
                        callbacks=[ReduceLROnPlateau(patience=lr_patience),
                                   EarlyStopping(patience=es_patience),
                                   TensorBoard(log_dir=generator_model_logs, histogram_freq=1,
-                                              write_graph=False, write_images=True)])
+                                              write_graph=False, write_images=False)])
     # Save our model
     generator_model.save(generator_save_file, include_optimizer=False)
     

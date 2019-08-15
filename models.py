@@ -41,16 +41,18 @@ def make_predictor_model(**kwargs):
     last_conv_depth = kwargs.get('last_conv_depth', 256)
     dense_layer_size = kwargs.get('dense_layer_size', 2048)
     boost_dim = kwargs.get('boost_dim', 5)
+    num_convs = kwargs.get('num_convs', 2)
+    boundary_expand = kwargs.get('boundary_expand', 4)
 
     inp = Input(shape=(GRID_SIZE, GRID_SIZE), name='proxy_enforcer_input')
     x = Lambda(lambda x: K.tile(x, [1, 3, 3]))(inp)
     x = Reshape((GRID_SIZE * 3, GRID_SIZE * 3, 1))(x)
-    x = Cropping2D(cropping=(GRID_SIZE-4, GRID_SIZE-4))(x)
+    x = Cropping2D(cropping=(GRID_SIZE-boundary_expand, GRID_SIZE-boundary_expand))(x)
 
-    x = Conv2D(16, first_filter_size, padding='valid', name='conv0')(x)
-    x = Conv2D(32, 3, padding='valid', name='conv1')(x)
-    x = Conv2D(32, 3, padding='valid', name='conv2')(x)
-    x = Conv2D(64, 3, padding='valid', name='conv3')(x)
+    x = Conv2D(16, first_filter_size, padding='valid', name='preconv')(x)
+    for i in range(1, num_convs+1):
+        x = Conv2D(32, 3, padding='valid', name='preconv{}'.format(i))(x)
+    x = Conv2D(64, 3, padding='valid', name='preconv_final')(x)
     x = Dropout(0.1)(x)
     
     x = Conv2D(128, 3, padding='valid', strides=2, name='conv_stride_1')(x)
@@ -60,6 +62,7 @@ def make_predictor_model(**kwargs):
     x = LeakyReLU()(x)
 
     x = Flatten()(x)
+    x = Dropout(0.1)(x)
 
     x_fc1 = Dense(dense_layer_size, name='hidden_fc_1', activation='relu')(x)
     x_fc1 = Dropout(0.5)(x_fc1)
