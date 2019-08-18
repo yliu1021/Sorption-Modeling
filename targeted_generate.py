@@ -62,15 +62,19 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     # Get our training data
     train_grids, train_curves = data.get_all_data(matching=base_dir)
 
-    num_train_samples = kwargs.get('num_train_samples', 100)
+    num_train_samples = kwargs.get('num_train_samples', 600)
     random_train_samples = train_curves[:num_train_samples] # Used for later
     random_train_samples = [np.insert(np.cumsum(train_sample), 0, 0) for train_sample in random_train_samples]
 
-    def divergence(curve): # Define distance from a curve to some samples in our training set
-        distance = 0
-        for train_sample in random_train_samples:
-            distance += np.sum(np.abs(curve - train_sample))
-        return distance
+    def divergence(curve, all_curves=random_train_samples):
+        # Define the average distance from a curve to some samples in our training set
+        distances = list(map(lambda x: np.sum(np.abs(curve - x)), all_curves))
+        distances.sort()
+        k = 5
+        top_k = distances[:k]
+        # If we have too many curves already in the dataset close to the input curve
+        # it'll get rejected
+        return sum(top_k) / len(top_k)
 
     # Define our loss function and compile our model
     loss_func = kwargs.get('loss_func', 'kullback_leibler_divergence')
@@ -82,9 +86,9 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     predictor_batch_size = kwargs.get('predictor_batch_size', 64)
     predictor_epochs = kwargs.get('predictor_epochs', 6)
     if step == 0:
-        predictor_epochs += 30 # train more to start off
-    lr_patience = max(int(round(predictor_epochs * 0.3)), 1) # clip to at least 1
-    es_patience = max(int(round(predictor_epochs * 0.5)), 2) # clip to at least 1
+        predictor_epochs += 24 # train more to start off
+    lr_patience = max(int(round(predictor_epochs * 0.3)), 3) # clip to at least 1
+    es_patience = max(int(round(predictor_epochs * 0.5)), 4) # clip to at least 1
     predictor_model.fit(x=train_grids, y=train_curves, batch_size=predictor_batch_size,
                         epochs=predictor_epochs, validation_split=0.1,
                         callbacks=[ReduceLROnPlateau(patience=lr_patience),
@@ -99,15 +103,15 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     # Get our training data
     # num_curves = 10000
     num_curves = 2000
-    train_upscale_factor = kwargs.get('train_upscale_factor', 2.0)
+    train_upscale_factor = kwargs.get('train_upscale_factor', 1.5)
     gen_curves = int(num_curves * train_upscale_factor)
     boost_dim = kwargs.get('boost_dim', 5)
     random_curves = data.make_generator_input(gen_curves, boost_dim, as_generator=False)
     random_curves, latent_codes = random_curves
     latent_codes = latent_codes[:num_curves]
     random_curves = list(random_curves)
-    random_curves.sort(key=lambda x: divergence(np.insert(np.cumsum(x), 0, 0)), reverse=True)
-    random_curves = np.array(sample(random_curves[:num_curves], num_curves))
+    random_curves.sort(key=lambda x: divergence(np.insert(np.cumsum(x), 0, 0)), reverse=False)
+    random_curves = np.array(sample(random_curves[-num_curves:], num_curves))
     random_curves = [random_curves, latent_codes]
     # Create the training model
     models.freeze(predictor_model)
@@ -118,7 +122,7 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     lc_out = lc_model(generator_out)
     training_model = Model(inputs=[curve_inp, lc_inp], outputs=[predictor_out, lc_out])
     # Define our loss function and compile our model
-    loss_weights = kwargs.get('loss_weights', [1.0, 0.9])
+    loss_weights = kwargs.get('loss_weights', [1.0, 0.8])
     learning_rate = 10**-3
     optimizer = Adam(learning_rate, clipnorm=1.0)
     training_model.compile(optimizer, loss=[loss_func, 'mse'],
@@ -130,11 +134,11 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     generator_batch_size = kwargs.get('generator_batch_size', 64)
     generator_epochs = kwargs.get('generator_epochs', 3)
     if step == 0:
-        generator_epochs += 10 # train more to start off
+        generator_epochs += 7 # train more to start off
     lr_patience = max(int(round(generator_epochs * 0.3)), 2) # clip to at least 1
     es_patience = max(int(round(generator_epochs * 0.5)), 3) # clip to at least 1
     training_model.fit(x=random_curves, y=random_curves, batch_size=generator_batch_size,
-                       epochs=generator_epochs, validation_split=0.2,
+                       epochs=generator_epochs, validation_split=0.1,
                        callbacks=[ReduceLROnPlateau(patience=lr_patience),
                                   EarlyStopping(patience=es_patience),
                                   TensorBoard(log_dir=generator_model_logs, histogram_freq=1,
@@ -191,7 +195,7 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
 
     # Remove the grids that are already good
     print('Finding most dissimilar grids')
-    new_data.sort(key=lambda x: divergence(x[0]), reverse=True)
+    new_data.sort(key=lambda x: divergence(x[0]))
     # Evaluate our accuracies
     generator_error = np.array(list(map(generator_err, new_data))) / (N_ADSORP + 1)
     predictor_error = np.array(list(map(predictor_err, new_data))) / (N_ADSORP + 1)
@@ -205,7 +209,8 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     explore_rate = kwargs.get('explore_rate', 0.85)
     explore_num = int(explore_rate * num_new_grids)
     refine_num = num_new_grids - explore_num
-    new_data = new_data[:explore_num] + new_data[-refine_num:]
+    skip_factor = int((len(new_data) - explore_num) / refine_num)
+    new_data = new_data[-explore_num:] + new_data[:refine_num:skip_factor]
 
     # Add data back to dataset
     # ------------------------
@@ -290,5 +295,5 @@ def start_training(**kwargs):
 
 
 if __name__ == '__main__':
-    start_training(predictor_epochs=6, generator_epochs=6, train_steps=40)
+    start_training(predictor_epochs=20, generator_epochs=15, train_steps=150)
     # start_training(predictor_epochs=30, generator_epochs=15)

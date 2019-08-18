@@ -25,7 +25,7 @@ def fetch_density_from_step(base_dir, step):
                           max_rows=N_ADSORP) for density_file in density_files]
 
 
-def make_generator_input(amount, boost_dim, as_generator=False):
+def make_generator_input(amount, boost_dim, allow_squeeze=False, as_generator=False):
     n = N_ADSORP
     def gen_diffs(mean, var, _n=n, up_to=1):
         diffs = np.clip(np.exp(np.random.normal(mean, var, _n)), -10, 10)
@@ -43,8 +43,17 @@ def make_generator_input(amount, boost_dim, as_generator=False):
         return f
 
     def sample_rand_input(size):
-        latent_codes = np.clip(np.random.normal(loc=0.5, scale=0.25, size=(size, boost_dim)), 0, 1)
-        artificial_curves = np.array([np.diff(gen_func()) for _ in range(size)])
+        funcs = [gen_func() for _ in range(size)]
+        artificial_curves = np.array([f for f in funcs])
+        latent_codes = list()
+        for f in funcs:
+            area = np.sum(f)
+            if allow_squeeze:
+                s = (area/4)
+            else:
+                s = 0.25
+            latent_codes.append(np.clip(np.random.normal(loc=0.5, scale=s, size=boost_dim), 0, 1))
+        latent_codes = np.array(latent_codes)
         return [artificial_curves, latent_codes]
             
     def gen():

@@ -17,7 +17,8 @@ from constants import *
 
 
 base_dir = 'generative_model_default'
-base_dir = 'generative_model_3_cpu'
+# base_dir = 'generative_model_3_cpu'
+# base_dir = 'generative_model_seed_grids'
 step_index = -1
 index = 0
 run = True
@@ -148,6 +149,7 @@ def show_validation():
     try:
         print('Loading predictor model')
         predictor = load_model(predictor_file, custom_objects={'worst_abs_loss': models.worst_abs_loss})
+        predictor.summary()
     except Exception as e:
         print('Unable to load predictor model: {}'.format(e))
         return
@@ -155,6 +157,7 @@ def show_validation():
     try:
         print('Loading generator model')
         generator = load_model(generator_file, custom_objects={'binary_sigmoid': models.binary_sigmoid})
+        generator.summary()
     except Exception as e:
         print('Unable to load generator model: {}'.format(e))
         return

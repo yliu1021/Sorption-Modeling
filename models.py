@@ -41,7 +41,7 @@ def make_predictor_model(**kwargs):
     last_conv_depth = kwargs.get('last_conv_depth', 256)
     dense_layer_size = kwargs.get('dense_layer_size', 2048)
     boost_dim = kwargs.get('boost_dim', 5)
-    num_convs = kwargs.get('num_convs', 2)
+    num_convs = kwargs.get('num_convs', 1)
     boundary_expand = kwargs.get('boundary_expand', 4)
 
     inp = Input(shape=(GRID_SIZE, GRID_SIZE), name='proxy_enforcer_input')
@@ -80,7 +80,7 @@ def make_predictor_model(**kwargs):
 
 # Generator model
 def make_generator_model(**kwargs):
-    first_conv_depth = kwargs.get('first_conv_depth', 512)
+    first_conv_depth = kwargs.get('first_conv_depth', 128)
     pre_deconv1_depth = kwargs.get('pre_deconv1_depth', 128)
     post_deconv2_depth = kwargs.get('post_deconv2_depth', 32)
     last_filter_size = kwargs.get('last_filter_size', 6)
@@ -108,16 +108,16 @@ def make_generator_model(**kwargs):
     x = Conv2DTranspose(pre_deconv1_depth, 3, strides=1, padding='same', name='pre_deconv2')(x)
     x = LeakyReLU()(x)
 
-    x = Conv2DTranspose(96, 3, strides=2, padding='same', name='deconv_expand1')(x)
+    x = Conv2DTranspose(128, 3, strides=2, padding='same', name='deconv_expand1')(x)
     x = LeakyReLU()(x)
 
-    x = Conv2DTranspose(32, 3, strides=2, padding='same', name='deconv_expand2')(x)
+    x = Conv2DTranspose(64, 3, strides=2, padding='same', name='deconv_expand2')(x)
     x = LeakyReLU()(x)
 
     x = Conv2DTranspose(post_deconv2_depth, 3, strides=1, padding='same', name='post_deconv')(x)
     x = LeakyReLU()(x)
     
-    x = Conv2D(16, 3, strides=1, padding='same', name='smooth_conv')(x)
+    x = Conv2D(32, 3, strides=1, padding='same', name='smooth_conv')(x)
     x = LeakyReLU()(x)
     
     out = Conv2D(1, last_filter_size, strides=1, padding='same',
