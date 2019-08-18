@@ -106,13 +106,15 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     train_upscale_factor = kwargs.get('train_upscale_factor', 1.5)
     gen_curves = int(num_curves * train_upscale_factor)
     boost_dim = kwargs.get('boost_dim', 5)
-    random_curves = data.make_generator_input(gen_curves, boost_dim, as_generator=False)
-    random_curves, latent_codes = random_curves
-    latent_codes = latent_codes[:num_curves]
-    random_curves = list(random_curves)
-    random_curves.sort(key=lambda x: divergence(np.insert(np.cumsum(x), 0, 0)), reverse=False)
-    random_curves = np.array(sample(random_curves[-num_curves:], num_curves))
+    random_curves = data.make_generator_input(gen_curves, boost_dim, allow_squeeze=True, as_generator=False)
+    random_curves = list(zip(*random_curves))
+    random_curves.sort(key=lambda x: divergence(np.insert(np.cumsum(x[0]), 0, 0)), reverse=False)
+    random_curves = sample(random_curves[-num_curves:], num_curves)
+    random_curves, latent_codes = list(zip(*random_curves))
+    random_curves = np.array(random_curves)
+    latent_codes = np.array(latent_codes)
     random_curves = [random_curves, latent_codes]
+
     # Create the training model
     models.freeze(predictor_model)
     lc_inp = Input(shape=(boost_dim,), name='latent_code')
@@ -295,5 +297,5 @@ def start_training(**kwargs):
 
 
 if __name__ == '__main__':
-    start_training(predictor_epochs=20, generator_epochs=15, train_steps=150)
+    start_training(predictor_epochs=20, generator_epochs=15, train_steps=30)
     # start_training(predictor_epochs=30, generator_epochs=15)

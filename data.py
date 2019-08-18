@@ -44,15 +44,19 @@ def make_generator_input(amount, boost_dim, allow_squeeze=False, as_generator=Fa
 
     def sample_rand_input(size):
         funcs = [gen_func() for _ in range(size)]
-        artificial_curves = np.array([f for f in funcs])
+        artificial_curves = np.array([np.diff(f) for f in funcs])
         latent_codes = list()
         for f in funcs:
-            area = np.sum(f)
-            if allow_squeeze:
-                s = (area/4)
-            else:
-                s = 0.25
-            latent_codes.append(np.clip(np.random.normal(loc=0.5, scale=s, size=boost_dim), 0, 1))
+            area = np.sum(f) / (len(f) + 1)
+            s = area if allow_squeeze else 1.0
+            latent_code = list()
+            var_damp = 1/boost_dim
+            max_var = 0.25
+            for _ in range(boost_dim):
+                v = min(s, var_damp) * (max_var / var_damp)
+                latent_code.append(np.clip(np.random.normal(0.5, v), 0, 1))
+                s = max(0, s - var_damp)
+            latent_codes.append(latent_code)
         latent_codes = np.array(latent_codes)
         return [artificial_curves, latent_codes]
             
