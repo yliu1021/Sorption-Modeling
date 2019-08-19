@@ -19,6 +19,7 @@ from constants import *
 base_dir = 'generative_model_default'
 # base_dir = 'generative_model_3_cpu'
 # base_dir = 'generative_model_seed_grids'
+base_dir = 'generative_model_new'
 step_index = -1
 index = 0
 run = True
@@ -225,10 +226,12 @@ def show_validation():
     
     # Now just create some random grids
     num_new_grids = 500
-    artificial_curves, latent_codes = data.make_generator_input(num_new_grids, boost_dim, as_generator=False)
-    artificial_curves = list(artificial_curves)
-    artificial_curves.sort(key=lambda x: np.sum(np.cumsum(x)), reverse=True)
+    artificial_curves, latent_codes = data.make_generator_input(num_new_grids, boost_dim, allow_squeeze=True, as_generator=False)
+    artificial_curves = list(zip(artificial_curves, latent_codes))
+    artificial_curves.sort(key=lambda x: np.sum(np.cumsum(x[0])), reverse=True)
+    artificial_curves, latent_codes = list(zip(*artificial_curves))
     artificial_curves = np.array(artificial_curves)
+    latent_codes = np.array(latent_codes)
     print('Generating {} grids...'.format(len(artificial_curves)), end='', flush=True)
     start = time.time()
     new_grids = generator.predict([artificial_curves, latent_codes])

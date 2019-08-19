@@ -86,7 +86,7 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     predictor_batch_size = kwargs.get('predictor_batch_size', 64)
     predictor_epochs = kwargs.get('predictor_epochs', 6)
     if step == 0:
-        predictor_epochs += 24 # train more to start off
+        predictor_epochs += kwargs.get('predictor_first_step_epoch_boost', 24) # train more to start off
     lr_patience = max(int(round(predictor_epochs * 0.3)), 3) # clip to at least 1
     es_patience = max(int(round(predictor_epochs * 0.5)), 4) # clip to at least 1
     predictor_model.fit(x=train_grids, y=train_curves, batch_size=predictor_batch_size,
@@ -108,8 +108,11 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     boost_dim = kwargs.get('boost_dim', 5)
     random_curves = data.make_generator_input(gen_curves, boost_dim, allow_squeeze=True, as_generator=False)
     random_curves = list(zip(*random_curves))
-    random_curves.sort(key=lambda x: divergence(np.insert(np.cumsum(x[0]), 0, 0)), reverse=False)
-    random_curves = sample(random_curves[-num_curves:], num_curves)
+    divergences = np.fromiter(map(lambda x: divergence(np.insert(np.cumsum(x[0]), 0, 0)), random_curves), dtype=float)
+    divergences = divergences ** 2
+    divergences /= np.sum(divergences)
+    random_curve_inds = np.random.choice(len(random_curves), num_curves, replace=False, p=divergences)
+    random_curves = [random_curves[i] for i in random_curve_inds]
     random_curves, latent_codes = list(zip(*random_curves))
     random_curves = np.array(random_curves)
     latent_codes = np.array(latent_codes)
@@ -136,7 +139,7 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     generator_batch_size = kwargs.get('generator_batch_size', 64)
     generator_epochs = kwargs.get('generator_epochs', 3)
     if step == 0:
-        generator_epochs += 7 # train more to start off
+        generator_epochs += kwargs.get('generator_first_step_epoch_boost', 7) # train more to start off
     lr_patience = max(int(round(generator_epochs * 0.3)), 2) # clip to at least 1
     es_patience = max(int(round(generator_epochs * 0.5)), 3) # clip to at least 1
     training_model.fit(x=random_curves, y=random_curves, batch_size=generator_batch_size,
@@ -151,7 +154,7 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     # Generate new data
     # -----------------
     num_new_grids = kwargs.get('num_new_grids', 100)
-    data_upscale_factor = kwargs.get('data_upscale_factor', 2)
+    data_upscale_factor = kwargs.get('data_upscale_factor', 1.5)
     artificial_curves, latent_codes = data.make_generator_input(int(num_new_grids*data_upscale_factor), boost_dim, as_generator=False)
     generated_grids = generator_model.predict([artificial_curves, latent_codes])
     saved_grids = generated_grids.astype('int')
@@ -195,9 +198,6 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
         delta_err = np.sum(np.abs(target_curve - predicted_curve))
         return delta_err
 
-    # Remove the grids that are already good
-    print('Finding most dissimilar grids')
-    new_data.sort(key=lambda x: divergence(x[0]))
     # Evaluate our accuracies
     generator_error = np.array(list(map(generator_err, new_data))) / (N_ADSORP + 1)
     predictor_error = np.array(list(map(predictor_err, new_data))) / (N_ADSORP + 1)
@@ -208,11 +208,14 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
                                                            predictor_error.std()))
     print("Cross error metric: {:.3f} ± {:.3f}".format(cross_error.mean(),
                                                        cross_error.std()))
-    explore_rate = kwargs.get('explore_rate', 0.85)
-    explore_num = int(explore_rate * num_new_grids)
-    refine_num = num_new_grids - explore_num
-    skip_factor = int((len(new_data) - explore_num) / refine_num)
-    new_data = new_data[-explore_num:] + new_data[:refine_num:skip_factor]
+
+    # Remove the grids that are already good
+    print('Finding most dissimilar grids')
+    divergences = np.fromiter(map(lambda x: divergence(x[0]), new_data), dtype=float)
+    divergences = divergences ** 2
+    divergences /= np.sum(divergences)
+    new_data_inds = np.random.choice(len(new_data), num_new_grids, replace=False, p=divergences)
+    new_data = [new_data[i] for i in new_data_inds]
 
     # Add data back to dataset
     # ------------------------
@@ -297,5 +300,8 @@ def start_training(**kwargs):
 
 
 if __name__ == '__main__':
-    start_training(predictor_epochs=20, generator_epochs=15, train_steps=30)
+    start_training(predictor_epochs=20, generator_epochs=15, train_steps=30,
+                   predictor_first_step_epoch_boost=24,
+                   generator_first_step_epoch_boost=7,
+                   base_dir='generative_model_new')
     # start_training(predictor_epochs=30, generator_epochs=15)
