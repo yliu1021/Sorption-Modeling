@@ -1,6 +1,6 @@
 import os
 import glob
-from random import shuffle
+from random import shuffle, random, randint
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -33,14 +33,20 @@ def make_generator_input(amount, boost_dim, allow_squeeze=False, as_generator=Fa
         return diffs / np.sum(diffs) * up_to
 
     def gen_func():
-        anchor = np.random.uniform(0, 1)
-        x = np.random.uniform(0.05, 0.95)
-        ind = int(n*x)
-        f_1 = np.insert(np.cumsum(gen_diffs(0, 4, ind, anchor)), 0, 0)
-        f_2 = np.insert(np.cumsum(gen_diffs(0, 4, n - ind - 2, 1-anchor)), 0, 0) + anchor
-        f = np.concatenate((f_1, np.array([anchor]), f_2))
-        f[-1] = 1.0
-        return f
+        if random() < 0.25:
+            f = np.zeros(N_ADSORP + 1)
+            i = randint(1, N_ADSORP)
+            f[-i:] = 1.0
+            return f
+        else:
+            anchor = np.random.uniform(0, 1)
+            x = np.random.uniform(0.05, 0.95)
+            ind = int(n*x)
+            f_1 = np.insert(np.cumsum(gen_diffs(0, 4, ind, anchor)), 0, 0)
+            f_2 = np.insert(np.cumsum(gen_diffs(0, 4, n - ind - 2, 1-anchor)), 0, 0) + anchor
+            f = np.concatenate((f_1, np.array([anchor]), f_2))
+            f[-1] = 1.0
+            return f
 
     def sample_rand_input(size):
         funcs = [gen_func() for _ in range(size)]

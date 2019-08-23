@@ -77,22 +77,22 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
         return sum(top_k) / len(top_k)
 
     # Define our loss function and compile our model
-    loss_func = kwargs.get('loss_func', 'kullback_leibler_divergence')
+    predictor_loss_func = kwargs.get('predictor_loss_func', 'kullback_leibler_divergence') # or binary_crossentropy
     models.unfreeze(predictor_model)
     learning_rate = 10**-3
     optimizer = Adam(learning_rate, clipnorm=1.0)
-    predictor_model.compile(optimizer, loss=loss_func, metrics=['mae', models.worst_abs_loss])
+    predictor_model.compile(optimizer, loss=predictor_loss_func, metrics=['mae', models.worst_abs_loss])
     # Fit our model to the dataset
     predictor_batch_size = kwargs.get('predictor_batch_size', 64)
     predictor_epochs = kwargs.get('predictor_epochs', 6)
     if step == 0:
-        predictor_epochs += kwargs.get('predictor_first_step_epoch_boost', 24) # train more to start off
+        predictor_epochs += kwargs.get('predictor_first_step_epoch_boost', 10) # train more to start off
     lr_patience = max(int(round(predictor_epochs * 0.3)), 3) # clip to at least 1
     es_patience = max(int(round(predictor_epochs * 0.5)), 4) # clip to at least 1
     predictor_model.fit(x=train_grids, y=train_curves, batch_size=predictor_batch_size,
                         epochs=predictor_epochs, validation_split=0.1,
                         callbacks=[ReduceLROnPlateau(patience=lr_patience),
-                                   EarlyStopping(patience=es_patience),
+                                   EarlyStopping(patience=es_patience, restore_best_weights=True),
                                    TensorBoard(log_dir=predictor_model_logs, histogram_freq=1,
                                                write_graph=False, write_images=False)])
     # Save our model
@@ -109,7 +109,7 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     random_curves = data.make_generator_input(gen_curves, boost_dim, allow_squeeze=True, as_generator=False)
     random_curves = list(zip(*random_curves))
     divergences = np.fromiter(map(lambda x: divergence(np.insert(np.cumsum(x[0]), 0, 0)), random_curves), dtype=float)
-    divergences = divergences ** 2
+    divergences = divergences ** 0.5
     divergences /= np.sum(divergences)
     random_curve_inds = np.random.choice(len(random_curves), num_curves, replace=False, p=divergences)
     random_curves = [random_curves[i] for i in random_curve_inds]
@@ -127,10 +127,11 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     lc_out = lc_model(generator_out)
     training_model = Model(inputs=[curve_inp, lc_inp], outputs=[predictor_out, lc_out])
     # Define our loss function and compile our model
+    generator_loss_func = kwargs.get('generator_loss_func', 'kullback_leibler_divergence') # or binary_crossentropy
     loss_weights = kwargs.get('loss_weights', [1.0, 0.8])
-    learning_rate = 10**-3
+    learning_rate = 10**-2
     optimizer = Adam(learning_rate, clipnorm=1.0)
-    training_model.compile(optimizer, loss=[loss_func, 'mse'],
+    training_model.compile(optimizer, loss=[generator_loss_func, 'mse'],
                            metrics={
                                'predictor_model': ['mae', models.worst_abs_loss],
                                'latent_code_model': ['mae', models.worst_abs_loss]
@@ -139,7 +140,7 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     generator_batch_size = kwargs.get('generator_batch_size', 64)
     generator_epochs = kwargs.get('generator_epochs', 3)
     if step == 0:
-        generator_epochs += kwargs.get('generator_first_step_epoch_boost', 7) # train more to start off
+        generator_epochs += kwargs.get('generator_first_step_epoch_boost', 20) # train more to start off
     lr_patience = max(int(round(generator_epochs * 0.3)), 2) # clip to at least 1
     es_patience = max(int(round(generator_epochs * 0.5)), 3) # clip to at least 1
     training_model.fit(x=random_curves, y=random_curves, batch_size=generator_batch_size,
@@ -212,7 +213,7 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     # Remove the grids that are already good
     print('Finding most dissimilar grids')
     divergences = np.fromiter(map(lambda x: divergence(x[0]), new_data), dtype=float)
-    divergences = divergences ** 2
+    divergences = divergences ** 1.2
     divergences /= np.sum(divergences)
     new_data_inds = np.random.choice(len(new_data), num_new_grids, replace=False, p=divergences)
     new_data = [new_data[i] for i in new_data_inds]
@@ -300,8 +301,10 @@ def start_training(**kwargs):
 
 
 if __name__ == '__main__':
-    start_training(predictor_epochs=20, generator_epochs=15, train_steps=30,
+    start_training(predictor_epochs=10, generator_epochs=40, train_steps=50,
                    predictor_first_step_epoch_boost=24,
                    generator_first_step_epoch_boost=7,
+                   predictor_loss_func='binary_crossentropy',
+                   generator_loss_func='binary_crossentropy',
                    base_dir='generative_model_new')
     # start_training(predictor_epochs=30, generator_epochs=15)

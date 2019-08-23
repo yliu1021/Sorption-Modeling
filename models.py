@@ -86,13 +86,16 @@ def make_generator_model(**kwargs):
     last_filter_size = kwargs.get('last_filter_size', 6)
     boost_dim = kwargs.get('boost_dim', 5)
 
-    latent_code = Input(shape=(boost_dim,))
+    lc_merge_depth = 128
+    
+    latent_code_inp = Input(shape=(boost_dim,))
+    latent_code = Dense(512, use_bias=True, activation='relu')(latent_code_inp)
+    latent_code = Dense(lc_merge_depth, use_bias=False)(latent_code)
     inp = Input(shape=(N_ADSORP,))
-    conc_inp = Concatenate(axis=-1)([inp, latent_code])
 
     Q_GRID_SIZE = GRID_SIZE // 4
 
-    x = Dense(2048, name='fc1')(conc_inp)
+    x = Dense(2048, name='fc1')(inp)
 
     x = Dense(2048, name='fc2')(x)
     x = LeakyReLU()(x)
@@ -108,8 +111,10 @@ def make_generator_model(**kwargs):
     x = Conv2DTranspose(pre_deconv1_depth, 3, strides=1, padding='same', name='pre_deconv2')(x)
     x = LeakyReLU()(x)
 
-    x = Conv2DTranspose(128, 3, strides=2, padding='same', name='deconv_expand1')(x)
+    x = Conv2DTranspose(lc_merge_depth, 3, strides=2, padding='same', name='deconv_expand1')(x)
     x = LeakyReLU()(x)
+
+    x = Multiply()([x, latent_code])
 
     x = Conv2DTranspose(64, 3, strides=2, padding='same', name='deconv_expand2')(x)
     x = LeakyReLU()(x)
@@ -124,7 +129,7 @@ def make_generator_model(**kwargs):
                  activation=binary_sigmoid, name='generator_conv')(x)
     out = Reshape((GRID_SIZE, GRID_SIZE))(out)
 
-    model = Model(inputs=[inp, latent_code], outputs=[out],
+    model = Model(inputs=[inp, latent_code_inp], outputs=[out],
                   name='generator_model')
     
     return model
