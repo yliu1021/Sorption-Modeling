@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <thread>
+#include <algorithm>
 
 #include <ctime>
 #include <cstring>

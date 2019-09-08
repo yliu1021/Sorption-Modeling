@@ -11,7 +11,7 @@ import numpy as np
 np.set_printoptions(edgeitems=3)
 np.core.arrayprint._line_width = 1000
 import pandas as pd
-# os.environ["KERAS_BACKEND"] = "plaidml.keras.backend"
+# os.environ['KERAS_BACKEND'] = 'plaidml.keras.backend'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
 from tensorflow.keras.layers import Input
@@ -96,13 +96,16 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
                                    TensorBoard(log_dir=predictor_model_logs, histogram_freq=1,
                                                write_graph=False, write_images=False)])
     # Save our model
+    print('Saving model', end='... ', flush=True)
     predictor_model.save(predictor_save_file, include_optimizer=False)
-    
+    print('done')
+
     # Train generator on predictor
     # ----------------------------
     # Get our training data
     # num_curves = 10000
-    num_curves = 2000
+    print('Picking random curves ', end='... ', flush=True)
+    num_curves = 20000
     train_upscale_factor = kwargs.get('train_upscale_factor', 1.5)
     gen_curves = int(num_curves * train_upscale_factor)
     boost_dim = kwargs.get('boost_dim', 5)
@@ -117,6 +120,7 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     random_curves = np.array(random_curves)
     latent_codes = np.array(latent_codes)
     random_curves = [random_curves, latent_codes]
+    print('Done')
 
     # Create the training model
     models.freeze(predictor_model)
@@ -129,7 +133,7 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     # Define our loss function and compile our model
     generator_loss_func = kwargs.get('generator_loss_func', 'kullback_leibler_divergence') # or binary_crossentropy
     loss_weights = kwargs.get('loss_weights', [1.0, 0.8])
-    learning_rate = 10**-2
+    learning_rate = 10**-4
     optimizer = Adam(learning_rate, clipnorm=1.0)
     training_model.compile(optimizer, loss=[generator_loss_func, 'mse'],
                            metrics={
@@ -203,11 +207,11 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     generator_error = np.array(list(map(generator_err, new_data))) / (N_ADSORP + 1)
     predictor_error = np.array(list(map(predictor_err, new_data))) / (N_ADSORP + 1)
     cross_error = np.array(list(map(cross_err, new_data))) / (N_ADSORP + 1)
-    print("Generated data error metric: {:.3f} ± {:.3f}".format(generator_error.mean(),
+    print('Generated data error metric: {:.3f} ± {:.3f}'.format(generator_error.mean(),
                                                                 generator_error.std()))
-    print("Predictor error metric: {:.3f} ± {:.3f}".format(predictor_error.mean(),
+    print('Predictor error metric: {:.3f} ± {:.3f}'.format(predictor_error.mean(),
                                                            predictor_error.std()))
-    print("Cross error metric: {:.3f} ± {:.3f}".format(cross_error.mean(),
+    print('Cross error metric: {:.3f} ± {:.3f}'.format(cross_error.mean(),
                                                        cross_error.std()))
 
     # Remove the grids that are already good
@@ -301,9 +305,9 @@ def start_training(**kwargs):
 
 
 if __name__ == '__main__':
-    start_training(predictor_epochs=10, generator_epochs=40, train_steps=50,
-                   predictor_first_step_epoch_boost=24,
-                   generator_first_step_epoch_boost=7,
+    start_training(predictor_epochs=5, generator_epochs=10, train_steps=100,
+                   predictor_first_step_epoch_boost=5,
+                   generator_first_step_epoch_boost=3,
                    predictor_loss_func='binary_crossentropy',
                    generator_loss_func='binary_crossentropy',
                    base_dir='generative_model_new')
