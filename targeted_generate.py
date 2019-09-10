@@ -6,6 +6,7 @@ from multiprocessing import Pool
 from random import randint, shuffle, sample
 import json
 import argparse
+import math
 
 import numpy as np
 np.set_printoptions(edgeitems=3)
@@ -15,7 +16,7 @@ import pandas as pd
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
 from tensorflow.keras.layers import Input
-from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.optimizers import Adam, SGD
 from tensorflow.keras.models import Model, Sequential
 from tensorflow.keras.models import load_model
 from tensorflow.keras.callbacks import ReduceLROnPlateau, EarlyStopping, TensorBoard
@@ -37,7 +38,7 @@ def KL_divergence(p, q):
 def make_dirs(*dirs, exist_ok=True):
     for d in dirs:
         os.makedirs(d, exist_ok=exist_ok)
-
+        
 
 def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     # Setup our directory
@@ -79,19 +80,20 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     # Define our loss function and compile our model
     predictor_loss_func = kwargs.get('predictor_loss_func', 'kullback_leibler_divergence') # or binary_crossentropy
     models.unfreeze(predictor_model)
-    learning_rate = 10**-3
-    optimizer = Adam(learning_rate, clipnorm=1.0)
+    learning_rate = 10**-2
+    optimizer = SGD(learning_rate, clipnorm=1.0)
     predictor_model.compile(optimizer, loss=predictor_loss_func, metrics=['mae', models.worst_abs_loss])
     # Fit our model to the dataset
     predictor_batch_size = kwargs.get('predictor_batch_size', 64)
     predictor_epochs = kwargs.get('predictor_epochs', 6)
     if step == 0:
         predictor_epochs += kwargs.get('predictor_first_step_epoch_boost', 10) # train more to start off
-    lr_patience = max(int(round(predictor_epochs * 0.3)), 3) # clip to at least 1
-    es_patience = max(int(round(predictor_epochs * 0.5)), 4) # clip to at least 1
+    lr_patience = max(int(round(predictor_epochs * 0.2)), 3) # clip to at least 1
+    es_patience = max(int(round(predictor_epochs * 0.8)), 4) # clip to at least 1
+    
     predictor_model.fit(x=train_grids, y=train_curves, batch_size=predictor_batch_size,
                         epochs=predictor_epochs, validation_split=0.1,
-                        callbacks=[ReduceLROnPlateau(patience=lr_patience),
+                        callbacks=[ReduceLROnPlateau(patience=lr_patience, factor=0.1),
                                    EarlyStopping(patience=es_patience, restore_best_weights=True),
                                    TensorBoard(log_dir=predictor_model_logs, histogram_freq=1,
                                                write_graph=False, write_images=False)])
@@ -103,23 +105,22 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     # Train generator on predictor
     # ----------------------------
     # Get our training data
-    # num_curves = 10000
     print('Picking random curves ', end='... ', flush=True)
-    num_curves = 20000
-    train_upscale_factor = kwargs.get('train_upscale_factor', 1.5)
+    num_curves = 10000
+    train_upscale_factor = kwargs.get('train_upscale_factor', 1.0)
     gen_curves = int(num_curves * train_upscale_factor)
     boost_dim = kwargs.get('boost_dim', 5)
     random_curves = data.make_generator_input(gen_curves, boost_dim, allow_squeeze=True, as_generator=False)
-    random_curves = list(zip(*random_curves))
-    divergences = np.fromiter(map(lambda x: divergence(np.insert(np.cumsum(x[0]), 0, 0)), random_curves), dtype=float)
-    divergences = divergences ** 0.5
-    divergences /= np.sum(divergences)
-    random_curve_inds = np.random.choice(len(random_curves), num_curves, replace=False, p=divergences)
-    random_curves = [random_curves[i] for i in random_curve_inds]
-    random_curves, latent_codes = list(zip(*random_curves))
-    random_curves = np.array(random_curves)
-    latent_codes = np.array(latent_codes)
-    random_curves = [random_curves, latent_codes]
+#    random_curves = list(zip(*random_curves))
+#    divergences = np.fromiter(map(lambda x: divergence(np.insert(np.cumsum(x[0]), 0, 0)), random_curves), dtype=float)
+#    divergences = divergences ** 0.5
+#    divergences /= np.sum(divergences)
+#    random_curve_inds = np.random.choice(len(random_curves), num_curves, replace=False, p=divergences)
+#    random_curves = [random_curves[i] for i in random_curve_inds]
+#    random_curves, latent_codes = list(zip(*random_curves))
+#    random_curves = np.array(random_curves)
+#    latent_codes = np.array(latent_codes)
+#    random_curves = [random_curves, latent_codes]
     print('Done')
 
     # Create the training model
@@ -132,9 +133,9 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     training_model = Model(inputs=[curve_inp, lc_inp], outputs=[predictor_out, lc_out])
     # Define our loss function and compile our model
     generator_loss_func = kwargs.get('generator_loss_func', 'kullback_leibler_divergence') # or binary_crossentropy
-    loss_weights = kwargs.get('loss_weights', [1.0, 0.8])
-    learning_rate = 10**-4
-    optimizer = Adam(learning_rate, clipnorm=1.0)
+    loss_weights = kwargs.get('loss_weights', [1.0, 0.6])
+    learning_rate = 10**-2
+    optimizer = Adam(learning_rate)
     training_model.compile(optimizer, loss=[generator_loss_func, 'mse'],
                            metrics={
                                'predictor_model': ['mae', models.worst_abs_loss],
@@ -145,11 +146,11 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     generator_epochs = kwargs.get('generator_epochs', 3)
     if step == 0:
         generator_epochs += kwargs.get('generator_first_step_epoch_boost', 20) # train more to start off
-    lr_patience = max(int(round(generator_epochs * 0.3)), 2) # clip to at least 1
-    es_patience = max(int(round(generator_epochs * 0.5)), 3) # clip to at least 1
+    lr_patience = max(int(round(generator_epochs * 0.1)), 3) # clip to at least 1
+    es_patience = max(int(round(generator_epochs * 0.8)), 4) # clip to at least 1
     training_model.fit(x=random_curves, y=random_curves, batch_size=generator_batch_size,
                        epochs=generator_epochs, validation_split=0.1,
-                       callbacks=[ReduceLROnPlateau(patience=lr_patience),
+                       callbacks=[ReduceLROnPlateau(patience=lr_patience, factor=0.1),
                                   EarlyStopping(patience=es_patience),
                                   TensorBoard(log_dir=generator_model_logs, histogram_freq=1,
                                               write_graph=False, write_images=False)])
@@ -262,6 +263,10 @@ def start_training(**kwargs):
     generator_err_hist = list()
     predictor_err_hist = list()
     cross_err_hist = list()
+    kwargs['generator_err_hist'] = generator_err_hist
+    kwargs['predictor_err_hist'] = predictor_err_hist
+    kwargs['cross_err_hist'] = cross_err_hist
+    # TODO
     for step in range(train_steps):
         acc = train_step(step, predictor_model, lc_model, generator_model, **kwargs)
         generator_err_hist.append(acc[0])
@@ -305,9 +310,9 @@ def start_training(**kwargs):
 
 
 if __name__ == '__main__':
-    start_training(predictor_epochs=5, generator_epochs=10, train_steps=100,
-                   predictor_first_step_epoch_boost=5,
-                   generator_first_step_epoch_boost=3,
+    start_training(predictor_epochs=50, generator_epochs=40, train_steps=100,
+                   predictor_first_step_epoch_boost=150,
+                   generator_first_step_epoch_boost=10,
                    predictor_loss_func='binary_crossentropy',
                    generator_loss_func='binary_crossentropy',
                    base_dir='generative_model_new')
