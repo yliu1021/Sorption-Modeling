@@ -107,7 +107,7 @@ def get_all_data_files(matching=None, get_all_files=False):
 
 _cached_grids = dict()
 _cached_densities = dict()
-def get_all_data(matching=None):
+def get_all_data(matching=None, augment_factor=1):
     data = list()
     all_files = get_all_data_files(matching=matching)
     
@@ -123,15 +123,22 @@ def get_all_data(matching=None):
             else:
                 print('\rLoading {}/{} - caching'.format(i+1, num_files), end='')
                 grid = np.genfromtxt(grid_file, delimiter=',')
-                grids.append(grid)
+                for _ in range(augment_factor):
+                    rolled_v = np.roll(grid, randint(0, GRID_SIZE), axis=0)
+                    rolled_hv = np.roll(rolled_v, randint(0, GRID_SIZE), axis=1)
+                    if randint(0, 1) == 0:
+                        rolled_hv = np.transpose(rolled_hv)
+                    grids.append(rolled_hv)
                 _cached_grids[grid_file] = grid
+
             if density_file in _cached_densities:
                 print('\rLoading {}/{} - found cache'.format(i+1, num_files), end='')
                 densities.append(_cached_densities[density_file])
             else:
                 print('\rLoading {}/{} - caching'.format(i+1, num_files), end='')
                 density = np.genfromtxt(density_file, delimiter=',', skip_header=1, max_rows=N_ADSORP)
-                densities.append(density)
+                for _ in range(augment_factor):
+                    densities.append(density)
                 _cached_densities[density_file] = density
         data.extend(zip(grids, densities))
     print()

@@ -61,7 +61,7 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     # Train predictor on dataset
     # --------------------------
     # Get our training data
-    train_grids, train_curves = data.get_all_data(matching=base_dir)
+    train_grids, train_curves = data.get_all_data(matching=base_dir, augment_factor=20)
 
     num_train_samples = kwargs.get('num_train_samples', 600)
     random_train_samples = train_curves[:num_train_samples] # Used for later
