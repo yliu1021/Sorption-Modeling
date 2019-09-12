@@ -20,6 +20,7 @@ base_dir = 'generative_model_default'
 # base_dir = 'generative_model_3_cpu'
 # base_dir = 'generative_model_seed_grids'
 base_dir = 'generative_model_new'
+base_dir = 'generative_model_pure'
 step_index = -1
 index = 0
 run = True

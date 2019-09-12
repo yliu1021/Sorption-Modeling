@@ -171,7 +171,6 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     print('Evaluating candidate grids')
     os.system('./fast_dft {}'.format(step_dir))
     
-    target_densities_dir
     for i, artificial_curve in enumerate(artificial_curves):
         path = os.path.join(target_densities_dir, 'artificial_curve_%04d.csv'%i)
         np.savetxt(path, artificial_curve, fmt='%f', delimiter=',')

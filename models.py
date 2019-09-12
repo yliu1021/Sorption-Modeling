@@ -85,17 +85,19 @@ def make_generator_model(**kwargs):
     post_deconv2_depth = kwargs.get('post_deconv2_depth', 32)
     last_filter_size = kwargs.get('last_filter_size', 6)
     boost_dim = kwargs.get('boost_dim', 5)
-
-    lc_merge_depth = 128
+    generator_activation = kwargs.get('generator_activation', binary_sigmoid)
+    
+    lc_merge_depth = 512
     
     latent_code_inp = Input(shape=(boost_dim,))
-    latent_code = Dense(512, use_bias=True, activation='relu')(latent_code_inp)
-    latent_code = Dense(lc_merge_depth, use_bias=False)(latent_code)
+    latent_code_processed = Dense(512, use_bias=True, activation='relu')(latent_code_inp)
+
     inp = Input(shape=(N_ADSORP,))
+    x = Concatenate()([inp, latent_code_inp])
 
     Q_GRID_SIZE = GRID_SIZE // 4
 
-    x = Dense(2048, name='fc1')(inp)
+    x = Dense(2048, name='fc1')(x)
 
     x = Dense(2048, name='fc2')(x)
     x = LeakyReLU()(x)
@@ -114,7 +116,8 @@ def make_generator_model(**kwargs):
     x = Conv2DTranspose(lc_merge_depth, 3, strides=2, padding='same', name='deconv_expand1')(x)
     x = LeakyReLU()(x)
 
-    x = Multiply()([x, latent_code])
+    latent_code_merge = Dense(lc_merge_depth, use_bias=True)(latent_code_processed)
+    x = Multiply()([x, latent_code_merge])
 
     x = Conv2DTranspose(64, 3, strides=2, padding='same', name='deconv_expand2')(x)
     x = LeakyReLU()(x)
@@ -126,10 +129,35 @@ def make_generator_model(**kwargs):
     x = LeakyReLU()(x)
     
     out = Conv2D(1, last_filter_size, strides=1, padding='same',
-                 activation=binary_sigmoid, name='generator_conv')(x)
+                 activation=generator_activation, name='generator_conv')(x)
     out = Reshape((GRID_SIZE, GRID_SIZE))(out)
 
     model = Model(inputs=[inp, latent_code_inp], outputs=[out],
                   name='generator_model')
     
+    return model
+
+
+# Generator auxiliary latent code decoder
+def make_generator_lc_decoder(**kwargs):
+    boost_dim = kwargs.get('boost_dim', 5)
+    decoder_depth = kwargs.get('decoder_depth', 512)
+
+    inp = Input(shape=(GRID_SIZE, GRID_SIZE), name='generator_lc_decoder_input')
+    x = Reshape((GRID_SIZE, GRID_SIZE, 1))(inp)
+    x = Conv2D(8, 3, strides=1, padding='valid', name='preconv')(x)
+    x = Flatten()(x)
+
+    x = Dense(decoder_depth, activation='relu', name='decoder_intermediate_layer')(x)
+    x = Dropout(0.5)(x)
+    x = Dense(2048, activation='relu', name='decoder_final_layer0')(x)
+    x = Dropout(0.5)(x)
+    x = Dense(2048, activation='relu', name='decoder_final_layer1')(x)
+    x = Dropout(0.5)(x)
+    x = Dense(2048, activation='relu', name='decoder_final_layer2')(x)
+    x = Dropout(0.5)(x)
+
+    x = Dense(boost_dim, activation='sigmoid')(x)
+
+    model = Model(inputs=inp, outputs=x, name='generator_lc_decoder')
     return model
