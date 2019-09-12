@@ -310,9 +310,9 @@ def start_training(**kwargs):
 
 
 if __name__ == '__main__':
-    start_training(predictor_epochs=50, generator_epochs=40, train_steps=100,
-                   predictor_first_step_epoch_boost=150,
-                   generator_first_step_epoch_boost=10,
+    start_training(predictor_epochs=50, generator_epochs=40, train_steps=20,
+                   predictor_first_step_epoch_boost=0,
+                   generator_first_step_epoch_boost=0,
                    predictor_loss_func='binary_crossentropy',
                    generator_loss_func='binary_crossentropy',
                    base_dir='generative_model_new')
