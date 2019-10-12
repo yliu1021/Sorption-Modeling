@@ -3,10 +3,10 @@ import os
 import glob
 
 import tensorflow as tf
-from tensorflow.keras.layers import *
-from tensorflow.keras.models import *
-from tensorflow.keras.optimizers import *
-from tensorflow.keras.callbacks import *
+from tensorflow.keras.layers import Dense, Conv2D, Conv2DTranspose, LeakyReLU, Reshape, Lambda
+from tensorflow.keras import Input, Model
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.callbacks import TensorBoard
 from tensorflow.keras import backend as K
 import numpy as np
 
@@ -62,7 +62,7 @@ def make_generator_input(n_grids, use_generator=False, batchsize=generator_batch
             diffs /= np.sum(diffs, axis=0)
             artificial_metrics.append(diffs)
         artificial_metrics = np.array(artificial_metrics)
-        return artificial_metrics, uniform_latent_code
+        return artificial_metrics #, uniform_latent_code
 
 
 def inverse_dft_model():

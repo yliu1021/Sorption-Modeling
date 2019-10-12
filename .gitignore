@@ -2,6 +2,7 @@
 *~
 
 # Python
+env/
 venv/
 __pycache__
 
@@ -9,8 +10,8 @@ __pycache__
 generative_model_*
 evol_iter_grids*
 
-# Hoffman scripts
-run.sh
+# # Hoffman scripts
+# run.sh
 
 # Mathematica notebooks
 *.nb
