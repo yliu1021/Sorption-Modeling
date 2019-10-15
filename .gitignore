@@ -17,6 +17,7 @@ run.sh
 
 # MacOS
 .DS_Store
+Icon*
 
 # VSCode
 .vscode/
@@ -37,3 +38,4 @@ test_grids
 
 # Misc
 Project Description.gslides
+Project Ideas.pdf
