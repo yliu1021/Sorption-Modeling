@@ -64,7 +64,7 @@ array<double,N_ITER+1> load_density(const string &path) {
         exit(1);
 	}
 	
-    array<double,N_ITER+1> densities;
+  array<double,N_ITER+1> densities;
 	string line;
 	while (getline(density_file, line)) {
 		if (line[0] == ',') continue;
