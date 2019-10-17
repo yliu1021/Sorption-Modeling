@@ -56,27 +56,25 @@ array<double,N_SQUARES> load_grid(const string &path) {
 	return grid;
 }
 
-array<double,N_ITER+1> load_density(const string &path) {
-	ifstream density_file;
-	density_file.open(path);
-	if (!density_file.is_open()) {
-		cerr << "File " << path << " doesn't exist" << endl;
-        exit(1);
-	}
-	
-  array<double,N_ITER+1> densities;
-	string line;
-	while (getline(density_file, line)) {
-		if (line[0] == ',') continue;
-		size_t pos;
-		int ind = stoi(line, &pos);
-		string den_str = line.substr(pos + 1);
-		double density = stod(den_str);
-		densities[ind] = density;
-	}
-	
-	density_file.close();
-	return densities;
+array<double,N_ADSORP+1> load_density(const string &path) {
+  ifstream density_file;
+  density_file.open(path);
+  if (!density_file.is_open()) {
+    cerr << "File " << path << " doesn't exist" << endl;
+    exit(1);
+  }
+
+  array<double,N_ADSORP+1> densities;
+  for (int i = 0; i <= N_ADSORP; ++i) {
+    double density;
+    density_file >> density;
+    densities[i] = density;
+    density_file.ignore();
+  }
+
+  density_file.close();
+
+  return densities;
 }
 
 void write_grid(array<double,N_SQUARES> grid, ostream &grid_file) {
@@ -99,14 +97,14 @@ bool write_grid(array<double,N_SQUARES> grid, const string &path) {
 	return true;
 }
 
-void write_density(array<double,N_ITER+1> density, ostream &density_file) {
-	density_file << ",0" << endl;
-	for (int i = 0; i <= N_ITER; ++i) {
-		density_file << i << "," << setprecision(17) << density[i] << endl;
+void write_density(array<double,N_ADSORP+1> density, ostream &density_file) {
+  density_file << setprecision(17) << density[0];
+	for (int i = 1; i <= N_ADSORP; ++i) {
+		density_file << "," << setprecision(17) << density[i];
 	}
 }
 
-bool write_density(array<double,N_ITER+1> density, const string &path) {
+bool write_density(array<double,N_ADSORP+1> density, const string &path) {
 	ofstream density_file;
 	density_file.open(path);
 	if (!density_file.is_open()) {
@@ -320,8 +318,9 @@ void setup_NL() {
 	}
 }
 
-array<double,N_ITER+1> run_dft(array<double,N_SQUARES> grid) {
-    array<double,N_ITER+1> density;
+array<double,N_ADSORP+1> run_dft(array<double,N_SQUARES> grid) {
+    array<double,N_ADSORP+1> density;
+
     double r[2][N_SQUARES + 1];
     r[0][0] = 0.0;
     r[1][0] = 0.0;
@@ -334,8 +333,9 @@ array<double,N_ITER+1> run_dft(array<double,N_SQUARES> grid) {
     }
     if (Ntotal_pores < 0.1) {
       // no pores, return all 0's
-      for (int i = 0; i <= N_ITER; ++i) {
-	density[i] = 1.0;
+      density[0] = 0.0;
+      for (int i = 1; i <= N_ADSORP; ++i) {
+      	density[i] = 1.0;
       }
       return density;
     }
@@ -344,111 +344,45 @@ array<double,N_ITER+1> run_dft(array<double,N_SQUARES> grid) {
       r[1][i] = grid[i - 1];
     }
     
-    for (int jj = 0; jj <= N_ITER; ++jj) {
+    for (int jj = 0; jj < N_ADSORP; ++jj) {
       double muu = muu_lookup[jj];
       for (int c = 1; c < 100000000; ++c) {
-	// vi = veff(r,muu,NL)
-	double vi[N_SQUARES + 1];
-	for (int i = 1; i <= N_SQUARES; ++i) {
-	  int a1 = NL[i][1];
-	  int a2 = NL[i][2];
-	  int a3 = NL[i][3];
-	  int a4 = NL[i][4];
-	  vi[i] = WFF * (r[1][a1] + Y * (1 - r[0][a1])) +
-	    WFF * (r[1][a2] + Y * (1 - r[0][a2])) +
-	    WFF * (r[1][a3] + Y * (1 - r[0][a3])) +
-	    WFF * (r[1][a4] + Y * (1 - r[0][a4])) +
-	    muu;
-	}
-	// rounew = rou(vi,r)
-	double power_drou = 0.0;
-	double rounew[N_SQUARES + 1];
+      	// vi = veff(r,muu,NL)
+      	double vi[N_SQUARES + 1];
+      	for (int i = 1; i <= N_SQUARES; ++i) {
+      	  int a1 = NL[i][1];
+      	  int a2 = NL[i][2];
+      	  int a3 = NL[i][3];
+      	  int a4 = NL[i][4];
+      	  vi[i] = WFF * (r[1][a1] + Y * (1 - r[0][a1])) +
+      	    WFF * (r[1][a2] + Y * (1 - r[0][a2])) +
+      	    WFF * (r[1][a3] + Y * (1 - r[0][a3])) +
+      	    WFF * (r[1][a4] + Y * (1 - r[0][a4])) +
+      	    muu;
+      	}
+      	// rounew = rou(vi,r)
+      	double power_drou = 0.0;
+      	double rounew[N_SQUARES + 1];
 	
-	for (int i = 0; i <= N_SQUARES; ++i) {
-	  rounew[i] = r[0][i] / (1 + exp(-BETA * vi[i]));
-	}
-	for (int i = 0; i <= N_SQUARES; ++i) {
-	  double diff = rounew[i] - r[1][i];
-	  power_drou += diff * diff;
-	  r[1][i] = rounew[i];
-	}
-	if (power_drou < 1e-10 * N_SQUARES || isnan(power_drou)) {
-	  break;
-	}
+      	for (int i = 0; i <= N_SQUARES; ++i) {
+      	  rounew[i] = r[0][i] / (1 + exp(-BETA * vi[i]));
+      	}
+      	for (int i = 0; i <= N_SQUARES; ++i) {
+      	  double diff = rounew[i] - r[1][i];
+      	  power_drou += diff * diff;
+      	  r[1][i] = rounew[i];
+      	}
+      	if (power_drou < 1e-10 * N_SQUARES || isnan(power_drou)) {
+      	  break;
+      	}
       }
       density[jj] = r[1][0];
       for (int i = 1; i <= N_SQUARES; ++i) {
-	density[jj] += r[1][i];
+      	density[jj] += r[1][i];
       }
       density[jj] /= Ntotal_pores;
     }
+    density[0] = 0.0;
+    density[N_ADSORP] = 1.0;
     return density;
-}
-
-// This is a "faster"-ish dft but it's for experimental benchmarking.
-// It's best to just use the normal run_dft function.
-array<double,N_ITER+1> run_dft_fast(array<double,N_SQUARES> grid) {
-    array<double,N_ITER+1> density;
-	double r[2][N_SQUARES + 1];
-	r[0][0] = 0.0;
-	r[1][0] = 0.0;
-	
-	double Ntotal_pores = 0.0;
-	for (int i = 1; i <= N_SQUARES; ++i) {
-		double g = grid[i - 1];
-		Ntotal_pores += g;
-		r[0][i] = g;
-	}
-	if (Ntotal_pores < 0.1) {
-		// no pores, return all 0's
-		for (int i = 0; i <= N_ITER; ++i) {
-			density[i] = 0.0;
-		}
-		return density;
-	}
-	
-	for (int i = 1; i <= N_SQUARES; ++i) {
-		r[1][i] = grid[i - 1];
-	}
-	
-	for (int jj = 0; jj <= N_ITER; ++jj) {
-		double muu = muu_lookup[jj];
-		
-		for (int c = 1; c < 100000000; ++c) {
-            // vi = veff(r,muu,NL)
-			double vi[N_SQUARES + 1];
-			for (int i = 1; i <= N_SQUARES; ++i) {
-				int a1 = NL[i][1];
-				int a2 = NL[i][2];
-				int a3 = NL[i][3];
-				int a4 = NL[i][4];
-				double vi1 = WFF * (r[1][a1] + Y * (1 - r[0][a1]));
-				double vi2 = WFF * (r[1][a2] + Y * (1 - r[0][a2]));
-				double vi3 = WFF * (r[1][a3] + Y * (1 - r[0][a3]));
-				double vi4 = WFF * (r[1][a4] + Y * (1 - r[0][a4]));
-				vi[i] = vi1 + vi2 + vi3 + vi4 + muu;
-			}
-			// rounew = rou(vi,r)
-			double power_drou = 0.0;
-			double rounew[N_SQUARES + 1];
-			
-			for (int i = 0; i <= N_SQUARES; ++i) {
-				rounew[i] = r[0][i] / (1 + exp(-BETA * vi[i]));
-			}
-			for (int i = 0; i <= N_SQUARES; ++i) {
-				double diff = rounew[i] - r[1][i];
-				power_drou += diff * diff;
-				r[1][i] = rounew[i];
-			}
-			if (power_drou < 1e-10 * N_SQUARES) {
-				break;
-			}
-		}
-		density[jj] = r[1][0];
-		for (int i = 1; i <= N_SQUARES; ++i) {
-			density[jj] += r[1][i];
-		}
-		density[jj] /= Ntotal_pores;
-	}
-	return density;
 }

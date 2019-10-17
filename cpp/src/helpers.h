@@ -17,11 +17,11 @@
 */
 std::array<double, N_SQUARES> load_grid(std::istream &grid_file);
 std::array<double, N_SQUARES> load_grid(const std::string &path);
-std::array<double, N_ITER+1> load_density(const std::string &path);
+std::array<double, N_ADSORP+1> load_density(const std::string &path);
 void write_grid(std::array<double,N_SQUARES> grid, std::ostream &grid_file);
 bool write_grid(std::array<double,N_SQUARES> grid, const std::string &path);
-void write_density(std::array<double, N_ITER+1> density, std::ostream &density_file);
-bool write_density(std::array<double, N_ITER+1> density, const std::string &path);
+void write_density(std::array<double, N_ADSORP+1> density, std::ostream &density_file);
+bool write_density(std::array<double, N_ADSORP+1> density, const std::string &path);
 
 // ============================================================================
 // Grid Mutators
@@ -92,7 +92,6 @@ void setup_NL();
   @param grid a N_SQUARES long array of doubles
   @return a N_ITER+1 long array of doubles
  */
-std::array<double, N_ITER + 1> run_dft(std::array<double, N_SQUARES> grid);
-std::array<double, N_ITER + 1> run_dft_fast(std::array<double, N_SQUARES> grid);
+std::array<double, N_ADSORP+1> run_dft(std::array<double, N_SQUARES> grid);
 
 #endif // HELPERS_H_
