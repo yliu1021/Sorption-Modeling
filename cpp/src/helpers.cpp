@@ -20,7 +20,7 @@ using namespace std;
 // ============================================================================
 
 array<double,N_SQUARES> load_grid(istream &grid_file) {
-    array<double,N_SQUARES> grid;
+  array<double,N_SQUARES> grid;
 	int pos = 0;
 	string line;
 	while (getline(grid_file, line) && pos < N_SQUARES) {
@@ -43,11 +43,11 @@ array<double,N_SQUARES> load_grid(istream &grid_file) {
 }
 
 array<double,N_SQUARES> load_grid(const string &path) {
-    ifstream grid_file;
-    grid_file.open(path);
+  ifstream grid_file;
+  grid_file.open(path);
 	if (!grid_file.is_open()) {
 		cerr << "File " << path << " doesn't exist" << endl;
-        exit(1);
+    exit(1);
 	}
 	
 	array<double,N_SQUARES> grid = load_grid(grid_file);
