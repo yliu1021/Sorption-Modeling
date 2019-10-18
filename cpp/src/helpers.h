@@ -27,6 +27,8 @@ bool write_density(std::array<double, N_ITER+1> density, const std::string &path
 // Grid Mutators
 // ============================================================================
 
+std::array<double, N_SQUARES> random_grid();
+
 /*
   Randomly toggle one square in the grid.
  */

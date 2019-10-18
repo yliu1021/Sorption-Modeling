@@ -10,7 +10,7 @@ from itertools import cycle
 from constants import *
 
 
-base_dir = 'generative_model_3'
+base_dir = 'generative_model_2'
 
 def press(event):
     if event.key != 'q':
@@ -36,7 +36,7 @@ def show_grids(v):
         fig.suptitle('{}, {}'.format('/'.join(grid_file.split('/')[-3:]), '/'.join(density_file.split('/')[-3:])))
 
         ax = plt.subplot(211)
-        ax.pcolor(grid, cmap='Greys', vmin=0.0, vmax=1.0)
+        ax.pcolor(grid, cmap='Greys_r', vmin=0.0, vmax=1.0)
         ax.set_aspect('equal')
 
         ax = plt.subplot(212)

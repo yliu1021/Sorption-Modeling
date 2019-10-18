@@ -22,17 +22,29 @@ int main(int argc, char *argv[]) {
     int ITERS = 300;
 
     if (argc == 2) {
-        // array<double, N_ADSORP+1> target_curve = linear_curve();
+        array<double,N_SQUARES> target_grid;
+        for (int i = 0; i < N_SQUARES; i++) { target_grid[i] = 1; }
+        // for (int i = 0; i < 20; i++) {
+        //     for (int j = 0; j < 20; j++) {
+        //         if (i == 0 || j == 0 || i == 19 || j == 19) {
+        //             target_grid[20*i+j] = 0;
+        //         } else {
+        //             target_grid[20*i+j] = 1;
+        //         }
+        //     }
+        // }
+        array<double,N_ITER+1> dft_den = run_dft(target_grid);
         array<double, N_ADSORP+1> target_curve;
-
-        string path = "./bigpore.csv";
-        array<double,N_ITER+1> whole_curve = load_density(path);
-        for (int i = 0; i < N_ADSORP+1; ++i) {
-            target_curve[i] = whole_curve[i];
+        for (int i = 0; i < N_ADSORP+1; i++) {
+            target_curve[i] = dft_den[i];
         }
 
+        // array<double, N_ADSORP+1> target_curve = linear_curve();
+
         string grid_path(argv[1]);
-        array<double, N_SQUARES> start_grid = load_grid(grid_path);
+        // array<double, N_SQUARES> start_grid = load_grid(grid_path);
+        srand(time(NULL)); // Generate random seed for random number generation
+        array<double, N_SQUARES> start_grid = random_grid();
 
         array<array<double, N_SQUARES>, N_SQUARES> grids;
         grids.fill(start_grid);
@@ -53,7 +65,7 @@ int main(int argc, char *argv[]) {
             sprintf(grid_name, "grid_%04d.csv", i);
             char density_name[20];
             sprintf(density_name, "density_%04d.csv", i);
-            string save_folder = "./evol_iter_grids/2/";
+            string save_folder = "./evol_iter_grids/empty_steepest/";
             string grid_file = save_folder + grid_name;
             string density_file = save_folder + density_name;
 

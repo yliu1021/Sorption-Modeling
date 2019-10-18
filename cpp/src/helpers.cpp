@@ -121,6 +121,18 @@ bool write_density(array<double,N_ITER+1> density, const string &path) {
 // Grid Mutators
 // ============================================================================
 
+array<double, N_SQUARES> random_grid() {
+    array<double,N_SQUARES> grid;
+    for (int i = 0; i < N_SQUARES; ++i) {
+        if (((double)rand()/(RAND_MAX)) < 0.5) {
+            grid[i] = 0;
+        } else {
+            grid[i] = 1;
+        }
+    }
+    return grid;
+}
+
 void toggle_random(array<double, N_SQUARES> &grid) {
     int sq = rand() % N_SQUARES;
     grid[sq] = 1- grid[sq];

@@ -9,6 +9,9 @@
 #ifndef Constants_h
 #define Constants_h
 
+// Command to run on linux server:
+// g++ *.cpp -pthread -O3 -funroll-loops -march=native -static-libstdc++
+
 constexpr int GRID_SIZE = 20;
 constexpr int N_SQUARES = (GRID_SIZE * GRID_SIZE);
 constexpr int N_ITER = 80;
