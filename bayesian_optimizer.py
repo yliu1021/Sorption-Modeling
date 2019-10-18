@@ -1,14 +1,19 @@
 import os
 import glob
 import json # for pretty printing dict
+import shutil
 
-import generate
+import targeted_generate
 
+from tensorflow.keras import backend as K
+from tensorflow.keras.optimizers import Adam
 import numpy as np
 import matplotlib.pyplot as plt
 from skopt import gp_minimize
 
 from constants import *
+import models
+import data
 
 '''
 The target metric that we minimize is the worst abs difference between the
@@ -18,57 +23,42 @@ across all grids/curves in the last step of the training process.
 
 # Min max are inclusive
 training_hyperparameters = {
-    'learning_rate_damper': {
-        'type': float,
-        'min' : 0.1,
-        'max' : 0.5
-    }
 }
 
-proxy_enforcer_hyperparameters = {
+predictor_hyperparameters = {
     'first_filter_size': {
         'type': int,
         'min' : 3,
-        'max' : 9
+        'max' : 5
     },
     'last_conv_depth': {
         'type': int,
-        'min' : 128,
+        'min' : 100,
         'max' : 400
     },
     'dense_layer_size': {
         'type': int,
-        'min' : 1024,
-        'max' : 2700
+        'min' : 500,
+        'max' : 4000
+    },
+    'num_convs': {
+        'type': int,
+        'min' : 1,
+        'max' : 5
+    },
+    'boundary_expand': {
+        'type': int,
+        'min' : 4,
+        'max' : 20
     }
 }
 
 generator_hyperparameters = {
-    'first_conv_depth': {
-        'type': int,
-        'min' : 32,
-        'max' : 64
-    },
-    'pre_deconv1_depth': {
-        'type': int,
-        'min' : 90,
-        'max' : 130
-    },
-    'post_deconv2_depth': {
-        'type': int,
-        'min' : 32,
-        'max' : 96
-    },
-    'last_filter_size': {
-        'type': int,
-        'min' : 3,
-        'max' : 9
-    }
 }
 
 all_hyperparameters = dict()
 all_hyperparameters.update(training_hyperparameters)
-all_hyperparameters.update(proxy_enforcer_hyperparameters)
+all_hyperparameters.update(predictor_hyperparameters)
 all_hyperparameters.update(generator_hyperparameters)
 all_hyperparameter_keys = list(all_hyperparameters.keys())
 print(all_hyperparameter_keys)
@@ -84,36 +74,28 @@ def get_base_dir(step):
     return 'generative_model_optimization_{}'.format(step)
 
 
-def evaluate_step(step):
-    base_dir = get_base_dir(step)
-    steps_dir = glob.glob(os.path.join(base_dir, 'step[0-9]*'))
-    steps_dir.sort(key=lambda x: int(x.split('/')[-1][4:]))
-    last_step_dir = steps_dir[-1]
-    
-    artificial_metrics_dir = os.path.join(last_step_dir, 'artificial_metrics')
-    density_dir = os.path.join(last_step_dir, 'results')
-    
-    artificial_metrics_files = glob.glob(os.path.join(artificial_metrics_dir, 'artificial_metric_*.csv'))
-    density_files = glob.glob(os.path.join(density_dir, 'density_*.csv'))
-    artificial_metrics_files.sort()
-    density_files.sort()
-    
-    densities = [np.genfromtxt(density_file, delimiter=',', skip_header=1,
-                               max_rows=N_ADSORP) for density_file in density_files]
-    artificial_metrics = [np.genfromtxt(metrics_file) for metrics_file in artificial_metrics_files]
-    densities = np.insert(np.array(densities)[:, 1:, 1], N_ADSORP-1, 1, axis=1)
-    artificial_metrics = np.cumsum(np.array(artificial_metrics), axis=1)
-    densities = np.insert(densities, 0, 0, axis=1)
-    artificial_metrics = np.insert(artificial_metrics, 0, 0, axis=1)
-
-    diffs = np.max(np.abs(densities - artificial_metrics), axis=1)
-    return diffs.mean()
-
-
 def train_network(step, hyperparameters):
-    generate.base_dir = get_base_dir(step)
-    generate.start_training(start=1, end=6, **hyperparameters)
-    return evaluate_step(step)
+    # hyperparameters['base_dir'] = get_base_dir(step)
+    # hyperparameters['train_steps'] = 6
+    # accuracy = targeted_generate.start_training(**hyperparameters)
+    K.clear_session()
+
+    predictor_model, _ = models.make_predictor_model(**hyperparameters)
+    train_grids, train_curves = data.get_all_data(matching='none')
+    # Define our loss function and compile our model
+    loss_func = hyperparameters.get('loss_func', 'kullback_leibler_divergence')
+    models.unfreeze(predictor_model)
+    learning_rate = 10**-3
+    optimizer = Adam(learning_rate, clipnorm=1.0)
+    predictor_model.compile(optimizer, loss=loss_func, metrics=['mae', models.worst_abs_loss])
+    # Fit our model to the dataset
+    predictor_batch_size = hyperparameters.get('predictor_batch_size', 64)
+    predictor_epochs = 15
+    h = predictor_model.fit(x=train_grids, y=train_curves, batch_size=predictor_batch_size,
+                            epochs=predictor_epochs, validation_split=0.1)
+    mae = h.history['val_mae'][-1] + h.history['val_mae'][-2] + h.history['val_mae'][-3]
+    mae /= 3
+    return mae
 
 
 def minimize(parameters):
@@ -136,7 +118,8 @@ def minimize(parameters):
     return result
 
 
-res = gp_minimize(minimize, parameter_bounds, n_calls=20,
+res = gp_minimize(minimize, parameter_bounds, n_calls=50,
+                  n_random_starts=10,
                   verbose=True)
 print(all_hyperparameter_keys)
 print(res.x)

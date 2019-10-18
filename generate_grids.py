@@ -5,6 +5,7 @@ from keras.models import load_model
 from keras import backend as K
 import numpy as np
 
+
 def round_through(x):
     rounded = K.round(x)
     return x + K.stop_gradient(rounded - x)
@@ -33,10 +34,10 @@ if __name__ == '__main__':
     diffs = np.diff(density, append=1.0)
 
     model = load_model(args.model_path, custom_objects={'binary_sigmoid': binary_sigmoid})
-    uniform_latent_code = np.clip(np.random.normal(loc=0.5, scale=args.variance,
+    latent_code = np.clip(np.random.normal(loc=0.5, scale=args.variance,
                                                    size=(args.num_grids, 5)), 0, 1)
 
-    grids = model.predict([diffs, uniform_latent_code])
+    grids = model.predict([diffs, latent_code])
     grids = grids.astype('int')
     
     for i, grid in enumerate(grids):
