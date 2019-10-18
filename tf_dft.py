@@ -65,7 +65,6 @@ def run_dft(grids, batch_size=None):
 
     densities = list()
     for jj in range(N_ADSORP + 1):
-        print('loading density {}'.format(jj))
         bias = (wffyr0_conv + muu_lookup[jj]) * BETA
         for i in range(10):
             vi = tf.nn.conv2d(r1, strides=[1, 1, 1, 1], filter=_filter_wff, padding='VALID',
@@ -76,27 +75,26 @@ def run_dft(grids, batch_size=None):
             r1 = tf.tile(rounew, [1, 3, 3, 1])
             r1 = r1[:, GRID_SIZE-1:2*GRID_SIZE+1, GRID_SIZE-1:2*GRID_SIZE+1, :]
 
-        density = tf.clip_by_value(tf.reduce_sum(r1, axis=[1, 2, 3]), 0, 1)
+        density = tf.clip_by_value(tf.reduce_mean(r1, axis=[1, 2, 3]), 0, 1)
         densities.append(density)
     diffs = list()
     last = densities[0]
     for density in densities[1:]:
         diffs.append(density - last)
         last = density
-    return tf.stack(diffs, axis=1)
+    return tf.stack(densities, axis=1)
 
-# grid_tf = tf.placeholder(tf.float32, shape=[1000, GRID_SIZE, GRID_SIZE], name='input_grid')
-# density_tf = run_dft(grid_tf)
-#
-# base_dir = '/Users/yuhanliu/Google Drive/1st year/Research/sorption_modeling/generative_model_0/step0/grids'
-# grid_files = glob.glob(os.path.join(base_dir, 'grid_*.csv'))
-# grid_files.sort()
-# grids = [np.genfromtxt(grid_file, delimiter=',') for grid_file in grid_files]
-#
-# sess = tf.Session()
-# start = time.time()
-# densities = sess.run(density_tf, feed_dict={grid_tf: grids})
-# end = time.time()
-# print(end - start)
-# print(densities[0])
-# print(densities.shape)
+grid_tf = tf.compat.v1.placeholder(tf.float32, shape=[10, GRID_SIZE, GRID_SIZE], name='input_grid')
+density_tf = run_dft(grid_tf)
+
+base_dir = '/Users/yuhanliu/Google Drive/1st year/Research/sorption_modeling/test_grids/step0/grids'
+grid_files = glob.glob(os.path.join(base_dir, 'grid_*.csv'))
+grid_files.sort()
+grids = [np.genfromtxt(grid_file, delimiter=',') for grid_file in grid_files]
+print(len(grids))
+sess = tf.compat.v1.Session()
+start = time.time()
+densities = sess.run(density_tf, feed_dict={grid_tf: grids})
+end = time.time()
+print(end - start)
+print(densities)
