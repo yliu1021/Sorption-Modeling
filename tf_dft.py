@@ -27,14 +27,14 @@ _filter_wffy = tf.constant(
     [[[[0]], [[WFF * Y]], [[0]]],
      [[[WFF * Y]], [[0]], [[WFF * Y]]],
      [[[0]], [[WFF * Y]], [[0]]]],
-    dtype=tf.float32
+    dtype=tf.float64
 )
 
 _filter_wff = tf.constant(
     [[[[0]], [[WFF * BETA]], [[0]]],
      [[[WFF * BETA]], [[0]], [[WFF * BETA]]],
      [[[0]], [[WFF * BETA]], [[0]]]],
-    dtype=tf.float32
+    dtype=tf.float64
 )
 
 def run_dft(grids, batch_size=None):
@@ -47,7 +47,7 @@ def run_dft(grids, batch_size=None):
     
     # we tile the grid and then crop it so that the boundaries
     # from one side will also exist on the other side
-    batch_size = grids.shape[0] if batch_size is None else batch_size
+    batch_size = len(grids) if batch_size is None else batch_size
     Ntotal_pores = tf.clip_by_value(tf.reduce_sum(grids, axis=[1, 2]), 1, 400)
 
     r0 = tf.tile(grids, [1, 3, 3])
@@ -64,7 +64,7 @@ def run_dft(grids, batch_size=None):
 
     wffyr0_conv = tf.nn.conv2d(rneg, strides=[1, 1, 1, 1], filters=_filter_wffy, padding='VALID')
 
-    densities = [tf.zeros(batch_size)]
+    densities = [tf.zeros(batch_size, dtype=tf.float64)]
     for jj in range(1, N_ADSORP):
         bias = (wffyr0_conv + muu_lookup[jj]) * BETA
         for i in range(10):
@@ -78,7 +78,7 @@ def run_dft(grids, batch_size=None):
 
         density = tf.clip_by_value(tf.reduce_mean(r1, axis=[1, 2, 3]), 0, 1)
         densities.append(density)
-    densities.append(tf.ones(batch_size))
+    densities.append(tf.ones(batch_size, dtype=tf.float64))
     diffs = list()
     last = densities[0]
     for density in densities[1:]:
@@ -88,18 +88,17 @@ def run_dft(grids, batch_size=None):
 
 
 if __name__ == '__main__':
-    # replace diffs with densities
-    grid_tf = tf.compat.v1.placeholder(tf.float32, shape=[462, GRID_SIZE, GRID_SIZE], name='input_grid')
-    density_tf = run_dft(grid_tf)
+    # grid_tf = tf.compat.v1.placeholder(tf.float32, shape=[462, GRID_SIZE, GRID_SIZE], name='input_grid')
+    # density_tf = run_dft(grid_tf)
 
     base_dir = '/Users/yuhanliu/Google Drive/1st year/Research/sorption_modeling/test_grids/step4'
     grid_files = glob.glob(os.path.join(base_dir, 'grids', 'grid_*.csv'))
     grid_files.sort()
     grids = [np.genfromtxt(grid_file, delimiter=',') for grid_file in grid_files]
     print(len(grids))
-    sess = tf.compat.v1.Session()
     start = time.time()
-    densities = sess.run(density_tf, feed_dict={grid_tf: grids})
+    densities = run_dft(grids)
+    # densities = sess.run(density_tf, feed_dict={grid_tf: grids})
     end = time.time()
     print(densities)
     print(end - start)
@@ -111,7 +110,7 @@ if __name__ == '__main__':
     for i, (d, t) in enumerate(zip(densities, true_densities)):
         x = np.linspace(0, 1, N_ADSORP + 1)
         plt.title('{}'.format(i+1))
-        plt.plot(x, d, label='tf')
+        plt.plot(x, np.cumsum(np.insert(d, 0, 0)), label='tf')
         plt.plot(x, t, label='dft')
         plt.legend()
         plt.show()
