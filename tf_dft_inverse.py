@@ -171,7 +171,7 @@ generator_out = generator(inp)
 dft_out = dft_model(generator_out)
 
 training_model = Model(inputs=inp, outputs=dft_out)
-optimizer = SGD(lr=0.001, clipnorm=1.0)
+optimizer = SGD(lr=0.0001, clipnorm=1.0)
 training_model.compile(optimizer, loss='categorical_crossentropy', metrics=['mae', worst_abs_loss])
 training_model.summary()
 
