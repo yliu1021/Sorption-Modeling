@@ -9,6 +9,7 @@ import tensorflow as tf
 from constants import *
 import simul_dft
 
+import matplotlib.pyplot as plt
 
 muu_lookup = list()
 for jj in range(N_ITER + 1):
@@ -63,8 +64,8 @@ def run_dft(grids, batch_size=None):
 
     wffyr0_conv = tf.nn.conv2d(rneg, strides=[1, 1, 1, 1], filter=_filter_wffy, padding='VALID')
 
-    densities = list()
-    for jj in range(N_ADSORP + 1):
+    densities = [tf.zeros(batch_size)]
+    for jj in range(1, N_ADSORP):
         bias = (wffyr0_conv + muu_lookup[jj]) * BETA
         for i in range(10):
             vi = tf.nn.conv2d(r1, strides=[1, 1, 1, 1], filter=_filter_wff, padding='VALID',
@@ -77,24 +78,40 @@ def run_dft(grids, batch_size=None):
 
         density = tf.clip_by_value(tf.reduce_mean(r1, axis=[1, 2, 3]), 0, 1)
         densities.append(density)
+    densities.append(tf.ones(batch_size))
     diffs = list()
     last = densities[0]
     for density in densities[1:]:
         diffs.append(density - last)
         last = density
-    return tf.stack(densities, axis=1)
+    return tf.stack(diffs, axis=1)
 
-grid_tf = tf.compat.v1.placeholder(tf.float32, shape=[10, GRID_SIZE, GRID_SIZE], name='input_grid')
-density_tf = run_dft(grid_tf)
 
-base_dir = '/Users/yuhanliu/Google Drive/1st year/Research/sorption_modeling/test_grids/step0/grids'
-grid_files = glob.glob(os.path.join(base_dir, 'grid_*.csv'))
-grid_files.sort()
-grids = [np.genfromtxt(grid_file, delimiter=',') for grid_file in grid_files]
-print(len(grids))
-sess = tf.compat.v1.Session()
-start = time.time()
-densities = sess.run(density_tf, feed_dict={grid_tf: grids})
-end = time.time()
-print(end - start)
-print(densities)
+if __name__ == '__main__':
+    # replace diffs with densities
+    grid_tf = tf.compat.v1.placeholder(tf.float32, shape=[462, GRID_SIZE, GRID_SIZE], name='input_grid')
+    density_tf = run_dft(grid_tf)
+
+    base_dir = '/Users/yuhanliu/Google Drive/1st year/Research/sorption_modeling/test_grids/step4'
+    grid_files = glob.glob(os.path.join(base_dir, 'grids', 'grid_*.csv'))
+    grid_files.sort()
+    grids = [np.genfromtxt(grid_file, delimiter=',') for grid_file in grid_files]
+    print(len(grids))
+    sess = tf.compat.v1.Session()
+    start = time.time()
+    densities = sess.run(density_tf, feed_dict={grid_tf: grids})
+    end = time.time()
+    print(densities)
+    print(end - start)
+
+    density_files = glob.glob(os.path.join(base_dir, 'results', 'density_*.csv'))
+    density_files.sort()
+    true_densities = [np.genfromtxt(density_file, delimiter=',') for density_file in density_files]
+
+    for i, (d, t) in enumerate(zip(densities, true_densities)):
+        x = np.linspace(0, 1, N_ADSORP + 1)
+        plt.title('{}'.format(i+1))
+        plt.plot(x, d, label='tf')
+        plt.plot(x, t, label='dft')
+        plt.legend()
+        plt.show()

@@ -13,10 +13,14 @@ import numpy as np
 from constants import *
 from tf_dft import run_dft
 
+import matplotlib.pyplot as plt
 
-model_loc = './generative_model_4/generator.hdf5'
 
-generator_train_size = 100
+base_dir = './generative_model_4'
+model_loc = os.path.join(base_dir, 'generator.hdf5')
+log_loc = os.path.join(base_dir, 'logs')
+
+generator_train_size = 500
 generator_epochs = 25
 generator_batchsize = 32
 generator_train_size //= generator_batchsize
@@ -112,22 +116,54 @@ def dft_model():
     return model
 
 
-# generator = load_model(model_loc, custom_objects={'binary_sigmoid': binary_sigmoid})
-# diff = np.ones(N_ADSORP)
-# diff[0] = 100
-# diff /= np.sum(diff)
-# input_np = np.tile(diff, (32, 1))
-# print(input_np.shape)
-# grid = generator.predict(input_np)
-# print(grid[0])
-# exit(0)
-
-generator = inverse_dft_model()
-dft_model = dft_model()
-
 generator_train_generator = make_generator_input(n_grids=generator_train_size,
                                                  use_generator=True,
                                                  batchsize=generator_batchsize)
+
+# Visualization
+visualize=False
+if visualize:
+    grid_tf = tf.compat.v1.placeholder(tf.float32, shape=[generator_batchsize, GRID_SIZE, GRID_SIZE], name='input_grid')
+    density_tf = run_dft(grid_tf)
+    sess = K.get_session()
+    generator = load_model(model_loc, custom_objects={'binary_sigmoid': binary_sigmoid})
+    relative_humidity = np.arange(41) * STEP_SIZE
+    for c, _ in generator_train_generator:
+        grids = generator.predict(c)
+        densities = sess.run(density_tf, feed_dict={grid_tf: grids})
+
+        for diffs, grid, diffs_dft in zip(c, grids, densities):
+            curve = np.cumsum(np.insert(diffs, 0, 0))
+            curve_dft = np.cumsum(np.insert(diffs_dft, 0, 0))
+        
+            fig = plt.figure(figsize=(10, 4))
+            fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+            ax = plt.subplot(1, 2, 1)
+            ax.clear()
+            ax.set_title('Grid (Black = Solid, White = Pore)')
+            ax.set_yticks(np.linspace(0, 20, 5))
+            ax.set_xticks(np.linspace(0, 20, 5))
+            ax.pcolor(1 - grid, cmap='Greys', vmin=0.0, vmax=1.0)
+            ax.set_aspect('equal')
+
+            ax = plt.subplot(1, 2, 2)
+            ax.clear()
+            ax.set_title('Adsorption Curve')
+            ax.plot(relative_humidity, curve, label='Target')
+            ax.plot(relative_humidity, curve_dft, label='DFT')
+            ax.set_xlim(0, 1)
+            ax.set_ylim(0, 1)
+            ax.set_xlabel('Relative Humidity')
+            ax.set_ylabel('Proportion of Pores filled')
+            ax.set_aspect('equal')
+            ax.legend()
+    
+            plt.show()
+    exit(0)
+
+generator = inverse_dft_model()
+dft_model = dft_model()
 
 generator.compile('adam', loss='mse')
 inp = Input(shape=(N_ADSORP,), name='target_metric')
@@ -135,14 +171,14 @@ generator_out = generator(inp)
 dft_out = dft_model(generator_out)
 
 training_model = Model(inputs=inp, outputs=dft_out)
-optimizer = Adam(lr=0.0001, clipvalue=1.0)
-training_model.compile(optimizer, loss='kullback_leibler_divergence', metrics=['mae', worst_abs_loss])
+optimizer = SGD(lr=0.001, clipnorm=1.0)
+training_model.compile(optimizer, loss='categorical_crossentropy', metrics=['mae', worst_abs_loss])
 training_model.summary()
 
 training_model.fit_generator(generator_train_generator, steps_per_epoch=generator_train_size,
                              epochs=generator_epochs,
                              max_queue_size=32, shuffle=False,
-                             callbacks=[TensorBoard(log_dir='./logs',
+                             callbacks=[TensorBoard(log_dir=log_loc,
                                                     write_graph=True, write_grads=True,
                                                     write_images=True)])
 
