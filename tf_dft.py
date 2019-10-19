@@ -27,14 +27,14 @@ _filter_wffy = tf.constant(
     [[[[0]], [[WFF * Y]], [[0]]],
      [[[WFF * Y]], [[0]], [[WFF * Y]]],
      [[[0]], [[WFF * Y]], [[0]]]],
-    dtype=tf.float64
+    dtype=tf.float32
 )
 
 _filter_wff = tf.constant(
     [[[[0]], [[WFF * BETA]], [[0]]],
      [[[WFF * BETA]], [[0]], [[WFF * BETA]]],
      [[[0]], [[WFF * BETA]], [[0]]]],
-    dtype=tf.float64
+    dtype=tf.float32
 )
 
 def run_dft(grids, batch_size=None):
@@ -64,7 +64,7 @@ def run_dft(grids, batch_size=None):
 
     wffyr0_conv = tf.nn.conv2d(rneg, strides=[1, 1, 1, 1], filters=_filter_wffy, padding='VALID')
 
-    densities = [tf.zeros(batch_size, dtype=tf.float64)]
+    densities = [tf.zeros(batch_size)]
     for jj in range(1, N_ADSORP):
         bias = (wffyr0_conv + muu_lookup[jj]) * BETA
         for i in range(10):
@@ -78,7 +78,7 @@ def run_dft(grids, batch_size=None):
 
         density = tf.clip_by_value(tf.reduce_mean(r1, axis=[1, 2, 3]), 0, 1)
         densities.append(density)
-    densities.append(tf.ones(batch_size, dtype=tf.float64))
+    densities.append(tf.ones(batch_size))
     diffs = list()
     last = densities[0]
     for density in densities[1:]:
@@ -94,7 +94,7 @@ if __name__ == '__main__':
     base_dir = '/Users/yuhanliu/Google Drive/1st year/Research/sorption_modeling/test_grids/step4'
     grid_files = glob.glob(os.path.join(base_dir, 'grids', 'grid_*.csv'))
     grid_files.sort()
-    grids = [np.genfromtxt(grid_file, delimiter=',') for grid_file in grid_files]
+    grids = [np.genfromtxt(grid_file, delimiter=',', dtype=np.float32) for grid_file in grid_files]
     print(len(grids))
     start = time.time()
     densities = run_dft(grids)
