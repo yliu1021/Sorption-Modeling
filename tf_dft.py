@@ -62,13 +62,13 @@ def run_dft(grids, batch_size=None):
     r1 = tf.reshape(r1, [batch_size, GRID_SIZE+2, GRID_SIZE+2, 1])
     rneg = tf.reshape(rneg, [batch_size, GRID_SIZE+2, GRID_SIZE+2, 1])
 
-    wffyr0_conv = tf.nn.conv2d(rneg, strides=[1, 1, 1, 1], filter=_filter_wffy, padding='VALID')
+    wffyr0_conv = tf.nn.conv2d(rneg, strides=[1, 1, 1, 1], filters=_filter_wffy, padding='VALID')
 
     densities = [tf.zeros(batch_size)]
     for jj in range(1, N_ADSORP):
         bias = (wffyr0_conv + muu_lookup[jj]) * BETA
         for i in range(10):
-            vi = tf.nn.conv2d(r1, strides=[1, 1, 1, 1], filter=_filter_wff, padding='VALID',
+            vi = tf.nn.conv2d(r1, strides=[1, 1, 1, 1], filters=_filter_wff, padding='VALID',
                               name='vi_conv_%04d'%i)
             vi += bias
             
