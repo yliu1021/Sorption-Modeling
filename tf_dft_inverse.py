@@ -20,7 +20,7 @@ base_dir = './generative_model_4'
 model_loc = os.path.join(base_dir, 'generator.hdf5')
 log_loc = os.path.join(base_dir, 'logs')
 
-generator_train_size = 500
+generator_train_size = 5000
 generator_epochs = 25
 generator_batchsize = 32
 generator_train_size //= generator_batchsize
