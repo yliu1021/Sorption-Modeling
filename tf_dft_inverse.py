@@ -77,30 +77,30 @@ def inverse_dft_model():
     x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 64, name='fc1')(inp)
     x = LeakyReLU()(x)
 
-    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 64, name='fc3')(x)
+    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 128, name='fc3')(x)
     x = LeakyReLU()(x)
 
-    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 128, name='fc4')(x)
+    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 256, name='fc4')(x)
     x = LeakyReLU()(x)
 
-    x = Reshape((Q_GRID_SIZE, Q_GRID_SIZE, 128))(x)
+    x = Reshape((Q_GRID_SIZE, Q_GRID_SIZE, 256))(x)
 
-    x = Conv2DTranspose(128, 5, strides=1, padding='same', name='pre_deconv1')(x)
+    x = Conv2DTranspose(256, 5, strides=1, padding='same', name='pre_deconv1')(x)
     x = LeakyReLU()(x)
     
-    x = Conv2DTranspose(128, 3, strides=1, padding='same', name='pre_deconv2')(x)
+    x = Conv2DTranspose(128, 4, strides=1, padding='same', name='pre_deconv2')(x)
     x = LeakyReLU()(x)
 
-    x = Conv2DTranspose(128, 3, strides=2, padding='same', name='deconv_expand1')(x)
+    x = Conv2DTranspose(64, 4, strides=2, padding='same', name='deconv_expand1')(x)
     x = LeakyReLU()(x)
     
-    x = Conv2DTranspose(64, 3, strides=2, padding='same', name='deconv_expand2')(x)
+    x = Conv2DTranspose(32, 4, strides=2, padding='same', name='deconv_expand2')(x)
     x = LeakyReLU()(x)
 
-    x = Conv2DTranspose(32, 3, strides=1, padding='same', name='post_deconv1')(x)
+    x = Conv2DTranspose(16, 3, strides=1, padding='same', name='post_deconv1')(x)
     x = LeakyReLU()(x)
 
-    out = Conv2D(1, 3, strides=1, padding='same', activation=binary_sigmoid, name='generator_conv')(x)
+    out = Conv2D(1, 1, strides=1, padding='same', activation=binary_sigmoid, name='generator_conv')(x)
     out = Reshape((GRID_SIZE, GRID_SIZE))(out)
 
     model = Model(inputs=inp, outputs=out, name='generator_model')
