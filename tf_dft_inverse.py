@@ -121,7 +121,7 @@ generator_train_generator = make_generator_input(n_grids=generator_train_size,
                                                  batchsize=generator_batchsize)
 
 # Visualization
-visualize=True
+visualize=False
 if visualize:
     # grid_tf = tf.compat.v1.placeholder(tf.float32, shape=[generator_batchsize, GRID_SIZE, GRID_SIZE], name='input_grid')
     # density_tf = run_dft(grid_tf)
