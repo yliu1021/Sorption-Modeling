@@ -121,17 +121,17 @@ generator_train_generator = make_generator_input(n_grids=generator_train_size,
                                                  batchsize=generator_batchsize)
 
 # Visualization
-visualize=False
+visualize=True
 if visualize:
-    grid_tf = tf.compat.v1.placeholder(tf.float32, shape=[generator_batchsize, GRID_SIZE, GRID_SIZE], name='input_grid')
-    density_tf = run_dft(grid_tf)
-    sess = K.get_session()
+    # grid_tf = tf.compat.v1.placeholder(tf.float32, shape=[generator_batchsize, GRID_SIZE, GRID_SIZE], name='input_grid')
+    # density_tf = run_dft(grid_tf)
+    # sess = K.get_session()
     generator = load_model(model_loc, custom_objects={'binary_sigmoid': binary_sigmoid})
     relative_humidity = np.arange(41) * STEP_SIZE
     for c, _ in generator_train_generator:
         grids = generator.predict(c)
-        densities = sess.run(density_tf, feed_dict={grid_tf: grids})
-
+        # densities = sess.run(density_tf, feed_dict={grid_tf: grids})
+        densities = run_dft(grids)
         for diffs, grid, diffs_dft in zip(c, grids, densities):
             curve = np.cumsum(np.insert(diffs, 0, 0))
             curve_dft = np.cumsum(np.insert(diffs_dft, 0, 0))

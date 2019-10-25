@@ -67,7 +67,7 @@ def run_dft(grids, batch_size=None):
     densities = [tf.zeros(batch_size)]
     for jj in range(1, N_ADSORP):
         bias = (wffyr0_conv + muu_lookup[jj]) * BETA
-        for i in range(10):
+        for i in range(160):
             vi = tf.nn.conv2d(r1, strides=[1, 1, 1, 1], filters=_filter_wff, padding='VALID',
                               name='vi_conv_%04d'%i)
             vi += bias
@@ -93,7 +93,7 @@ if __name__ == '__main__':
 
     base_dir = '/Users/yuhanliu/Google Drive/1st year/Research/sorption_modeling/test_grids/step4'
     grid_files = glob.glob(os.path.join(base_dir, 'grids', 'grid_*.csv'))
-    grid_files.sort()
+    grid_files.sort(reverse=True)
     grids = [np.genfromtxt(grid_file, delimiter=',', dtype=np.float32) for grid_file in grid_files]
     print(len(grids))
     start = time.time()
@@ -104,7 +104,7 @@ if __name__ == '__main__':
     print(end - start)
 
     density_files = glob.glob(os.path.join(base_dir, 'results', 'density_*.csv'))
-    density_files.sort()
+    density_files.sort(reverse=True)
     true_densities = [np.genfromtxt(density_file, delimiter=',') for density_file in density_files]
 
     for i, (d, t) in enumerate(zip(densities, true_densities)):
