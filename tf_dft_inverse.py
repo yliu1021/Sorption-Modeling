@@ -23,6 +23,10 @@ log_loc = os.path.join(base_dir, 'logs')
 
 generator_train_size = 5000
 generator_epochs = 20
+try:
+    generator_epochs = int(sys.argv[1])
+except:
+    pass
 generator_batchsize = 32
 generator_train_size //= generator_batchsize
 
@@ -110,7 +114,11 @@ generator_train_generator = make_generator_input(n_grids=generator_train_size,
                                                  batchsize=generator_batchsize)
 
 # Visualization
-visualize=len(sys.argv) > 1
+visualize = False
+try:
+    visualize = sys.argv[1] == 'v'
+except:
+    pass
 if visualize:
     # grid_tf = tf.compat.v1.placeholder(tf.float32, shape=[generator_batchsize, GRID_SIZE, GRID_SIZE], name='input_grid')
     # density_tf = run_dft(grid_tf)
