@@ -176,7 +176,7 @@ training_model.fit_generator(generator_train_generator, steps_per_epoch=generato
                              epochs=generator_epochs,
                              max_queue_size=32, shuffle=False,
                              callbacks=[TensorBoard(log_dir=log_loc,
-                                                    write_graph=True, write_grads=True,
+                                                    write_graph=True,
                                                     write_images=True),
                                         ReduceLROnPlateau(factor=0.2, patience=30)])
 
