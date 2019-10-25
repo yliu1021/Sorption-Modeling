@@ -21,7 +21,7 @@ model_loc = os.path.join(base_dir, 'generator.hdf5')
 log_loc = os.path.join(base_dir, 'logs')
 
 generator_train_size = 5000
-generator_epochs = 25
+generator_epochs = 200
 generator_batchsize = 32
 generator_train_size //= generator_batchsize
 
@@ -180,6 +180,7 @@ training_model.fit_generator(generator_train_generator, steps_per_epoch=generato
                              max_queue_size=32, shuffle=False,
                              callbacks=[TensorBoard(log_dir=log_loc,
                                                     write_graph=True, write_grads=True,
-                                                    write_images=True)])
+                                                    write_images=True),
+                                        ReduceLROnPlateau(factor=0.2, patience=30)])
 
 generator.save(model_loc)
