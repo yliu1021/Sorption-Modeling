@@ -1,6 +1,7 @@
 import time
 import os
 import glob
+import sys
 
 import tensorflow as tf
 from tensorflow.keras.layers import *
@@ -77,21 +78,15 @@ def inverse_dft_model():
     x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 64, name='fc1')(inp)
     x = LeakyReLU()(x)
 
-    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 128, name='fc2')(x)
-    x = LeakyReLU()(x)
+    x = Reshape((Q_GRID_SIZE, Q_GRID_SIZE, 64))(x)
 
-    x = Reshape((Q_GRID_SIZE, Q_GRID_SIZE, 128))(x)
-
-    x = Conv2DTranspose(128, 3, strides=1, padding='same', name='pre_deconv1')(x)
+    x = Conv2DTranspose(64, 4, strides=2, padding='same', name='deconv1')(x)
     x = LeakyReLU()(x)
     
-    x = Conv2DTranspose(64, 3, strides=1, padding='same', name='pre_deconv2')(x)
-    x = LeakyReLU()(x)
-
-    x = Conv2DTranspose(64, 4, strides=2, padding='same', name='deconv_expand1')(x)
+    x = Conv2DTranspose(64, 4, strides=2, padding='same', name='deconv2')(x)
     x = LeakyReLU()(x)
     
-    x = Conv2DTranspose(32, 4, strides=2, padding='same', name='deconv_expand2')(x)
+    x = Conv2DTranspose(64, 3, strides=1, padding='same', name='deconv3')(x)
     x = LeakyReLU()(x)
 
     out = Conv2D(1, 3, strides=1, padding='same', activation=binary_sigmoid, name='generator_conv')(x)
@@ -115,7 +110,7 @@ generator_train_generator = make_generator_input(n_grids=generator_train_size,
                                                  batchsize=generator_batchsize)
 
 # Visualization
-visualize=False
+visualize=len(sys.argv) > 1
 if visualize:
     # grid_tf = tf.compat.v1.placeholder(tf.float32, shape=[generator_batchsize, GRID_SIZE, GRID_SIZE], name='input_grid')
     # density_tf = run_dft(grid_tf)
@@ -175,6 +170,8 @@ training_model.fit_generator(generator_train_generator, steps_per_epoch=generato
                              callbacks=[TensorBoard(log_dir=log_loc,
                                                     write_graph=True,
                                                     write_images=True),
-                                        ReduceLROnPlateau(factor=0.2, patience=30)])
+                                        ReduceLROnPlateau(monitor='loss',
+                                                          factor=0.2,
+                                                          patience=30)])
 
 generator.save(model_loc)
