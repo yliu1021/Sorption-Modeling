@@ -79,7 +79,7 @@ def inverse_dft_model():
 
     Q_GRID_SIZE = GRID_SIZE // 4
 
-    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 32, name='fc1')(inp)
+    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 64, name='fc1')(inp)
     x = LeakyReLU()(x)
 
     x = Reshape((Q_GRID_SIZE, Q_GRID_SIZE, 64))(x)
