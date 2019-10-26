@@ -79,7 +79,7 @@ def inverse_dft_model():
 
     Q_GRID_SIZE = GRID_SIZE // 4
 
-    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 64, name='fc1')(inp)
+    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 32, name='fc1')(inp)
     x = LeakyReLU()(x)
 
     x = Reshape((Q_GRID_SIZE, Q_GRID_SIZE, 64))(x)
@@ -87,10 +87,10 @@ def inverse_dft_model():
     x = Conv2DTranspose(64, 4, strides=2, padding='same', name='deconv1')(x)
     x = LeakyReLU()(x)
     
-    x = Conv2DTranspose(64, 4, strides=2, padding='same', name='deconv2')(x)
+    x = Conv2DTranspose(32, 4, strides=2, padding='same', name='deconv2')(x)
     x = LeakyReLU()(x)
     
-    x = Conv2DTranspose(64, 3, strides=1, padding='same', name='deconv3')(x)
+    x = Conv2DTranspose(16, 3, strides=1, padding='same', name='deconv3')(x)
     x = LeakyReLU()(x)
 
     out = Conv2D(1, 3, strides=1, padding='same', activation=binary_sigmoid, name='generator_conv')(x)
@@ -155,7 +155,7 @@ if visualize:
             ax.set_ylabel('Proportion of Pores filled')
             ax.set_aspect('equal')
             ax.legend()
-    
+
             plt.show()
     exit(0)
 
