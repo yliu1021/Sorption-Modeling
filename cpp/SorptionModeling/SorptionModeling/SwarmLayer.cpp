@@ -34,7 +34,7 @@ void SwarmLayer::optimize() {
     
     cout << "Running swarm on grid with a maximum of " << options_.max_iters << " iterations..." << endl;
 
-    int orig_population = grids().size();
+    int orig_population = int(grids().size());
     while (grids().size() < options_.bees) {
         Grid g = random_grid();
         grids().push_back(g);

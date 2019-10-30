@@ -70,19 +70,6 @@ int main(int argc, char *argv[]) {
     }
 
     for (int iteration = 0; iteration < ITERS; ++iteration) {
-        // Update costs
-        for (int i = 0; i < BEES; ++i) {
-            costs[i] = mean_abs_error(target_curve, run_dft(positions[i]));
-            if (costs[i] < personal_min_cost[i]) {
-                personal_min_cost[i] = costs[i];
-                personal_best_grids[i] = positions[i];
-            }
-            if (costs[i] < global_min_cost) {
-                global_min_cost = costs[i];
-                global_best_grid = positions[i];
-            }
-        }
-        cout << "Minimum cost at iteration " << iteration << ": " << global_min_cost << endl;
 
         double vsum = 0;
         // Update velocities
@@ -130,6 +117,21 @@ int main(int argc, char *argv[]) {
             if (!write_grid(global_best_grid, grid_file)) { return 1; }
             if (!write_density(pred_density, density_file)) { return 1; }
         }
+
+        // Update costs
+        for (int i = 0; i < BEES; ++i) {
+            costs[i] = mean_abs_error(target_curve, run_dft(positions[i]));
+            if (costs[i] < personal_min_cost[i]) {
+                personal_min_cost[i] = costs[i];
+                personal_best_grids[i] = positions[i];
+            }
+            if (costs[i] < global_min_cost) {
+                global_min_cost = costs[i];
+                global_best_grid = positions[i];
+            }
+        }
+        cout << "Minimum cost at iteration " << iteration << ": " << global_min_cost << endl;
+
     }
 
     // array<array<double, N_SQUARES>, N_SQUARES> grids;

@@ -11,8 +11,6 @@ using namespace std;
 #include "constants.h"
 #include "helpers.h"
 
-// TODO: Multithread
-
 constexpr int population_size = 1000;
 constexpr int max_iters = 250;
 constexpr double mutation_rate = 1.0; // Mutation rate 0.0-1.0
