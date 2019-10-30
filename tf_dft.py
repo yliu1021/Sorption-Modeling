@@ -48,7 +48,6 @@ def run_dft(grids, batch_size=None):
     # we tile the grid and then crop it so that the boundaries
     # from one side will also exist on the other side
     batch_size = len(grids) if batch_size is None else batch_size
-    Ntotal_pores = tf.clip_by_value(tf.reduce_sum(grids, axis=[1, 2]), 1, 400)
 
     r0 = tf.tile(grids, [1, 3, 3])
     r1 = tf.tile(grids, [1, 3, 3])
