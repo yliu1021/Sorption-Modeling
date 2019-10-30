@@ -33,7 +33,7 @@ def make_generator_input(amount, boost_dim, allow_squeeze=False, as_generator=Fa
         return diffs / np.sum(diffs) * up_to
 
     def gen_func():
-        if random() < 0.25:
+        if random() < 0.1:
             f = np.zeros(N_ADSORP + 1)
             i = randint(1, N_ADSORP)
             f[-i:] = 1.0

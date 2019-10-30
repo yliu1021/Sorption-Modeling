@@ -96,12 +96,11 @@ if __name__ == '__main__':
     grid_files.sort(reverse=True)
     grids = [np.genfromtxt(grid_file, delimiter=',', dtype=np.float32) for grid_file in grid_files]
     print(len(grids))
-    start = time.time()
+    start_time = time.time()
     densities = run_dft(grids)
-    # densities = sess.run(density_tf, feed_dict={grid_tf: grids})
-    end = time.time()
-    print(densities)
-    print(end - start)
+    end_time = time.time()
+    print(end_time - start_time)
+    print(len(grids) / (end_time - start_time))
 
     density_files = glob.glob(os.path.join(base_dir, 'results', 'density_*.csv'))
     density_files.sort(reverse=True)
