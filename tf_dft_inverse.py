@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 
 
 base_dir = './generative_model_4'
-model_loc = os.path.join(base_dir, 'generator.hdf5')
+model_loc = os.path.join(base_dir, 'generator_old.hdf5')
 log_loc = os.path.join(base_dir, 'logs')
 
 generator_train_size = 5000
@@ -86,10 +86,10 @@ def inverse_dft_model():
 
     x = Conv2DTranspose(64, 4, strides=2, padding='same', name='deconv1')(x)
     x = LeakyReLU()(x)
-    
+
     x = Conv2DTranspose(32, 4, strides=2, padding='same', name='deconv2')(x)
     x = LeakyReLU()(x)
-    
+
     x = Conv2DTranspose(16, 3, strides=1, padding='same', name='deconv3')(x)
     x = LeakyReLU()(x)
 
@@ -97,7 +97,7 @@ def inverse_dft_model():
     out = Reshape((GRID_SIZE, GRID_SIZE))(out)
 
     model = Model(inputs=inp, outputs=out, name='generator_model')
-    
+
     return model
 
 
@@ -105,7 +105,7 @@ def dft_model():
     inp = Input(shape=(GRID_SIZE, GRID_SIZE), batch_size=generator_batchsize, name='dft_input')
     x = Lambda(lambda x: run_dft(x, batch_size=generator_batchsize))(inp)
     model = Model(inputs=inp, outputs=x, name='dft_model')
-    
+
     return model
 
 
@@ -125,38 +125,48 @@ if visualize:
     # sess = K.get_session()
     generator = load_model(model_loc, custom_objects={'binary_sigmoid': binary_sigmoid})
     relative_humidity = np.arange(41) * STEP_SIZE
-    for c, _ in generator_train_generator:
+
+    errors = list()
+    for c, _ in [next(generator_train_generator) for _ in range(20)]:
+        print('computing...')
         grids = generator.predict(c)
         # densities = sess.run(density_tf, feed_dict={grid_tf: grids})
         densities = run_dft(grids)
         for diffs, grid, diffs_dft in zip(c, grids, densities):
             curve = np.cumsum(np.insert(diffs, 0, 0))
             curve_dft = np.cumsum(np.insert(diffs_dft, 0, 0))
-        
-            fig = plt.figure(figsize=(10, 4))
-            fig.tight_layout(rect=[0, 0.03, 1, 0.95])
 
-            ax = plt.subplot(1, 2, 1)
-            ax.clear()
-            ax.set_title('Grid (Black = Solid, White = Pore)')
-            ax.set_yticks(np.linspace(0, 20, 5))
-            ax.set_xticks(np.linspace(0, 20, 5))
-            ax.pcolor(1 - grid, cmap='Greys', vmin=0.0, vmax=1.0)
-            ax.set_aspect('equal')
+            error = np.sum(np.abs(curve - curve_dft)) / len(curve)
+            errors.append(error)
 
-            ax = plt.subplot(1, 2, 2)
-            ax.clear()
-            ax.set_title('Adsorption Curve')
-            ax.plot(relative_humidity, curve, label='Target')
-            ax.plot(relative_humidity, curve_dft, label='DFT')
-            ax.set_xlim(0, 1)
-            ax.set_ylim(0, 1)
-            ax.set_xlabel('Relative Humidity')
-            ax.set_ylabel('Proportion of Pores filled')
-            ax.set_aspect('equal')
-            ax.legend()
-
-            plt.show()
+            # fig = plt.figure(figsize=(10, 4))
+            # fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+            #
+            # ax = plt.subplot(1, 2, 1)
+            # ax.clear()
+            # ax.set_title('Grid (Black = Solid, White = Pore)')
+            # ax.set_yticks(np.linspace(0, 20, 5))
+            # ax.set_xticks(np.linspace(0, 20, 5))
+            # ax.pcolor(1 - grid, cmap='Greys', vmin=0.0, vmax=1.0)
+            # ax.set_aspect('equal')
+            #
+            # ax = plt.subplot(1, 2, 2)
+            # ax.clear()
+            # ax.set_title('Adsorption Curve')
+            # ax.plot(relative_humidity, curve, label='Target')
+            # ax.plot(relative_humidity, curve_dft, label='DFT')
+            # ax.set_xlim(0, 1)
+            # ax.set_ylim(0, 1)
+            # ax.set_xlabel('Relative Humidity')
+            # ax.set_ylabel('Proportion of Pores filled')
+            # ax.set_aspect('equal')
+            # ax.legend()
+            #
+            # plt.show()
+    plt.hist(errors, bins=20)
+    plt.xlabel('Abs error')
+    plt.xlim(0, 1)
+    plt.show()
     exit(0)
 
 generator = inverse_dft_model()

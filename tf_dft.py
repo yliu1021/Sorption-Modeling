@@ -66,7 +66,7 @@ def run_dft(grids, batch_size=None):
     densities = [tf.zeros(batch_size)]
     for jj in range(1, N_ADSORP):
         bias = (wffyr0_conv + muu_lookup[jj]) * BETA
-        for i in range(160):
+        for i in range(10):
             vi = tf.nn.conv2d(r1, strides=[1, 1, 1, 1], filters=_filter_wff, padding='VALID',
                               name='vi_conv_%04d'%i)
             vi += bias
@@ -75,10 +75,12 @@ def run_dft(grids, batch_size=None):
             r1 = tf.tile(rounew, [1, 3, 3, 1])
             r1 = r1[:, GRID_SIZE-1:2*GRID_SIZE+1, GRID_SIZE-1:2*GRID_SIZE+1, :]
 
-        density = tf.clip_by_value(tf.reduce_mean(r1, axis=[1, 2, 3]), 0, 1)
+        density = tf.reduce_mean(r1, axis=[1, 2, 3])
         densities.append(density)
     densities.append(tf.ones(batch_size))
+    
     diffs = list()
+    # last = tf.zeros_like(densities[0])
     last = densities[0]
     for density in densities[1:]:
         diffs.append(density - last)
@@ -93,6 +95,9 @@ if __name__ == '__main__':
     base_dir = '/Users/yuhanliu/Google Drive/1st year/Research/sorption_modeling/test_grids/step4'
     grid_files = glob.glob(os.path.join(base_dir, 'grids', 'grid_*.csv'))
     grid_files.sort(reverse=True)
+    
+    grid_files = grid_files[:10]
+    
     grids = [np.genfromtxt(grid_file, delimiter=',', dtype=np.float32) for grid_file in grid_files]
     print(len(grids))
     start_time = time.time()
@@ -103,12 +108,27 @@ if __name__ == '__main__':
 
     density_files = glob.glob(os.path.join(base_dir, 'results', 'density_*.csv'))
     density_files.sort(reverse=True)
+    density_files = density_files[:10]
     true_densities = [np.genfromtxt(density_file, delimiter=',') for density_file in density_files]
 
+    areas = list()
+    errors = list()
     for i, (d, t) in enumerate(zip(densities, true_densities)):
         x = np.linspace(0, 1, N_ADSORP + 1)
+        area = np.sum(t) / len(t)
+        error = np.sum(np.abs(np.cumsum(np.insert(d, 0, 0)) - t)) / len(t)
+        areas.append(area)
+        errors.append(error)
+
         plt.title('{}'.format(i+1))
         plt.plot(x, np.cumsum(np.insert(d, 0, 0)), label='tf')
         plt.plot(x, t, label='dft')
         plt.legend()
         plt.show()
+    # plt.scatter(*zip(*points))
+    plt.scatter(areas, errors)
+    plt.ylim(0, 1)
+    plt.xlim(0, 1)
+    plt.xlabel('Area under actual DFT curve')
+    plt.ylabel('Abs area between TensorFlow-DFT curve and DFT curve')
+    plt.show()

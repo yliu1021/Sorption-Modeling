@@ -376,7 +376,7 @@ array<double,N_ADSORP+1> run_dft(array<double,N_SQUARES> grid) {
       	  break;
       	}
       }
-      density[jj] = r[1][0];
+      // density[jj] = r[1][0];
       for (int i = 1; i <= N_SQUARES; ++i) {
       	density[jj] += r[1][i];
       }
