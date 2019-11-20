@@ -34,7 +34,7 @@ max_var = 12
 
 
 def area_between(y_true, y_pred):
-    return K.mean(K.abs(K.cumsum(y_true) - K.cumsum(y_pred)))
+    return K.mean(K.abs(K.cumsum(y_true, axis=-1) - K.cumsum(y_pred, axis=-1)))
 
 
 def round_through(x):
