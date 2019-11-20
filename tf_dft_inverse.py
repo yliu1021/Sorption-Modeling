@@ -192,12 +192,12 @@ training_model.summary()
 training_model.fit_generator(generator_train_generator,
                              steps_per_epoch=generator_train_size,
                              epochs=generator_epochs,
-                             max_queue_size=512, shuffle=False,
+                             max_queue_size=256, shuffle=False,
                              callbacks=[TensorBoard(log_dir=log_loc,
                                                     write_graph=True,
                                                     write_images=True),
                                         ReduceLROnPlateau(monitor='loss',
                                                           factor=0.5,
-                                                          patience=15)])
+                                                          patience=30)])
 
 generator.save(model_loc)
