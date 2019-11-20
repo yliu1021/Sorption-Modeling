@@ -80,7 +80,7 @@ def run_dft(grids, batch_size=None):
     densities = [tf.zeros(batch_size)]
     for jj in range(1, N_ADSORP):
         # bias = (wffyr0_conv + muu_lookup[jj]) * BETA
-        for i in range(100):
+        for i in range(10):
             # vi = tf.nn.conv2d(r1, strides=[1, 1, 1, 1], filters=_filter_wff, padding='VALID',
             #                   name='vi_conv_%04d'%i)
             # vi += bias
