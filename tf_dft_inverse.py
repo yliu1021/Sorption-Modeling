@@ -182,7 +182,7 @@ dft_out = dft_model(generator_out)
 
 training_model = Model(inputs=inp, outputs=dft_out)
 # optimizer = SGD(lr=0.0001, clipnorm=1.0)
-optimizer = SGD(lr=0.0001)
+optimizer = SGD(lr=0.00001)
 training_model.compile(optimizer,
                        loss='categorical_crossentropy',
                        metrics=['mae', worst_abs_loss])
@@ -191,7 +191,7 @@ training_model.summary()
 training_model.fit_generator(generator_train_generator,
                              steps_per_epoch=generator_train_size,
                              epochs=generator_epochs,
-                             max_queue_size=32, shuffle=False,
+                             max_queue_size=128, shuffle=False,
                              callbacks=[TensorBoard(log_dir=log_loc,
                                                     write_graph=True,
                                                     write_images=True),
