@@ -197,7 +197,7 @@ training_model.fit_generator(generator_train_generator,
                                                     write_graph=True,
                                                     write_images=True),
                                         ReduceLROnPlateau(monitor='loss',
-                                                          factor=0.2,
-                                                          patience=10)])
+                                                          factor=0.5,
+                                                          patience=15)])
 
 generator.save(model_loc)
