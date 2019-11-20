@@ -21,15 +21,15 @@ base_dir = './generative_model_4'
 model_loc = os.path.join(base_dir, 'generator_old.hdf5')
 log_loc = os.path.join(base_dir, 'logs')
 
-generator_train_size = 5000
+generator_train_size = 500000
 generator_epochs = 20
 try:
     generator_epochs = int(sys.argv[1])
 except:
     pass
-generator_batchsize = 32
+generator_batchsize = 256
 generator_train_size //= generator_batchsize
-
+lr = 1e-7
 max_var = 12
 
 
@@ -182,10 +182,10 @@ dft_out = dft_model(generator_out)
 
 training_model = Model(inputs=inp, outputs=dft_out)
 # optimizer = SGD(lr=0.0001, clipnorm=1.0)
-optimizer = SGD(lr=1e-6)
+optimizer = SGD(lr=lr)
 loss = 'categorical_crossentropy'
 training_model.compile(optimizer,
-                       loss=area_between,
+                       loss=loss,
                        metrics=[area_between])
 training_model.summary()
 
