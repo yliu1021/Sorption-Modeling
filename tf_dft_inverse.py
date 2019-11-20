@@ -33,8 +33,8 @@ generator_train_size //= generator_batchsize
 max_var = 12
 
 
-def worst_abs_loss(y_true, y_pred):
-    return K.max(K.abs(y_true - y_pred))
+def area_between(y_true, y_pred):
+    return K.mean(K.abs(K.cumsum(y_true) - K.cumsum(y_pred)))
 
 
 def round_through(x):
@@ -182,16 +182,17 @@ dft_out = dft_model(generator_out)
 
 training_model = Model(inputs=inp, outputs=dft_out)
 # optimizer = SGD(lr=0.0001, clipnorm=1.0)
-optimizer = SGD(lr=0.00001)
+optimizer = SGD(lr=3e-6)
+loss = 'categorical_crossentropy'
 training_model.compile(optimizer,
-                       loss='categorical_crossentropy',
-                       metrics=['mae', worst_abs_loss])
+                       loss=loss,
+                       metrics=[area_between])
 training_model.summary()
 
 training_model.fit_generator(generator_train_generator,
                              steps_per_epoch=generator_train_size,
                              epochs=generator_epochs,
-                             max_queue_size=128, shuffle=False,
+                             max_queue_size=512, shuffle=False,
                              callbacks=[TensorBoard(log_dir=log_loc,
                                                     write_graph=True,
                                                     write_images=True),
