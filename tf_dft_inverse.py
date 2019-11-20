@@ -182,10 +182,10 @@ dft_out = dft_model(generator_out)
 
 training_model = Model(inputs=inp, outputs=dft_out)
 # optimizer = SGD(lr=0.0001, clipnorm=1.0)
-optimizer = SGD(lr=3e-6)
+optimizer = SGD(lr=1e-6)
 loss = 'categorical_crossentropy'
 training_model.compile(optimizer,
-                       loss=loss,
+                       loss=area_between,
                        metrics=[area_between])
 training_model.summary()
 
