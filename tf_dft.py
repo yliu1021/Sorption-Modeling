@@ -75,12 +75,14 @@ def run_dft(grids, batch_size=None):
     r1 = tf.reshape(r1, [batch_size, GRID_SIZE+2, GRID_SIZE+2, 1])
     rneg = tf.reshape(rneg, [batch_size, GRID_SIZE+2, GRID_SIZE+2, 1])
 
+    total_pores = tf.maximum(tf.reduce_sum(grids, [1, 2]), 1)
+
     # wffyr0_conv = tf.nn.conv2d(rneg, strides=[1, 1, 1, 1], filters=_filter_wffy, padding='VALID')
 
     densities = [tf.zeros(batch_size)]
     for jj in range(1, N_ADSORP):
         # bias = (wffyr0_conv + muu_lookup[jj]) * BETA
-        for i in range(10):
+        for i in range(5):
             # vi = tf.nn.conv2d(r1, strides=[1, 1, 1, 1], filters=_filter_wff, padding='VALID',
             #                   name='vi_conv_%04d'%i)
             # vi += bias
@@ -93,7 +95,7 @@ def run_dft(grids, batch_size=None):
             r1 = tf.tile(rounew, [1, 3, 3, 1])
             r1 = r1[:, GRID_SIZE-1:2*GRID_SIZE+1, GRID_SIZE-1:2*GRID_SIZE+1, :]
 
-        density = tf.truediv(tf.reduce_sum(r1[:, 1:GRID_SIZE+1, 1:GRID_SIZE+1, :], axis=[1, 2, 3]), tf.reduce_sum(grids, [1, 2]))
+        density = tf.truediv(tf.reduce_sum(r1[:, 1:GRID_SIZE+1, 1:GRID_SIZE+1, :], axis=[1, 2, 3]), total_pores)
         densities.append(density)
     densities.append(tf.ones(batch_size))
     
@@ -121,8 +123,8 @@ if __name__ == '__main__':
     start_time = time.time()
     densities = run_dft(np.array(grids))
     end_time = time.time()
-    print(end_time - start_time)
-    print(len(grids) / (end_time - start_time))
+    print('Time: ', end_time - start_time)
+    print('Grids per second: ', len(grids) / (end_time - start_time))
 
     density_files = glob.glob(os.path.join(base_dir, 'results', 'density_*.csv'))
     density_files.sort(reverse=False)
@@ -145,8 +147,8 @@ if __name__ == '__main__':
         # plt.show()
 
     # plt.scatter(*zip(*points))
-    print(np.array(errors).mean())
-    print(np.array(errors).std())
+    print('Error: ', np.array(errors).mean())
+    print('Error std dev: ', np.array(errors).std())
     plt.scatter(areas, errors)
     plt.ylim(0, 1)
     plt.xlim(0, 1)
