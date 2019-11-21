@@ -139,12 +139,12 @@ if __name__ == '__main__':
         error = np.sum(np.abs(np.cumsum(np.insert(d, 0, 0)) - t)) / len(t)
         areas.append(area)
         errors.append(error)
-        #
-        # plt.title('{}'.format(i+1))
-        # plt.plot(x, np.cumsum(np.insert(d, 0, 0)), label='tf')
-        # plt.plot(x, t, label='dft')
-        # plt.legend()
-        # plt.show()
+
+        plt.title('{}'.format(i+1))
+        plt.plot(x, np.cumsum(np.insert(d, 0, 0)), label='tf')
+        plt.plot(x, t, label='dft')
+        plt.legend()
+        plt.show()
 
     # plt.scatter(*zip(*points))
     print('Error: ', np.array(errors).mean())
