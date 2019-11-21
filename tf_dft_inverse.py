@@ -79,33 +79,36 @@ def inverse_dft_model():
 
     Q_GRID_SIZE = GRID_SIZE // 4
 
-    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 512, name='fc1')(inp)
+    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 1024, name='fc1')(inp)
     x = LeakyReLU()(x)
 
-    x = Reshape((Q_GRID_SIZE, Q_GRID_SIZE, 512))(x)
+    x = Reshape((Q_GRID_SIZE, Q_GRID_SIZE, 1024))(x)
+
+    x = Conv2DTranspose(1024, 3, strides=1, padding='same')(x)
+    x = LeakyReLU()(x)
 
     x = Conv2DTranspose(512, 3, strides=1, padding='same')(x)
     x = LeakyReLU()(x)
 
+    x = Conv2DTranspose(512, 3, strides=2, padding='same')(x)
+    x = LeakyReLU()(x)
+
     x = Conv2DTranspose(512, 3, strides=1, padding='same')(x)
+    x = LeakyReLU()(x)
+
+    x = Conv2DTranspose(256, 3, strides=1, padding='same')(x)
     x = LeakyReLU()(x)
 
     x = Conv2DTranspose(256, 3, strides=2, padding='same')(x)
     x = LeakyReLU()(x)
 
-    x = Conv2DTranspose(128, 3, strides=1, padding='same')(x)
+    x = Conv2DTranspose(256, 3, strides=1, padding='same')(x)
     x = LeakyReLU()(x)
 
     x = Conv2DTranspose(128, 3, strides=1, padding='same')(x)
     x = LeakyReLU()(x)
 
-    x = Conv2DTranspose(64, 3, strides=2, padding='same')(x)
-    x = LeakyReLU()(x)
-
-    x = Conv2DTranspose(32, 3, strides=1, padding='same')(x)
-    x = LeakyReLU()(x)
-
-    x = Conv2DTranspose(32, 3, strides=1, padding='same')(x)
+    x = Conv2DTranspose(64, 3, strides=1, padding='same')(x)
     x = LeakyReLU()(x)
 
     out = Conv2D(1, 3, strides=1, padding='same', activation=binary_sigmoid, name='generator_conv')(x)
@@ -154,30 +157,30 @@ if visualize:
             error = np.sum(np.abs(curve - curve_dft)) / len(curve)
             errors.append(error)
 
-            # fig = plt.figure(figsize=(10, 4))
-            # fig.tight_layout(rect=[0, 0.03, 1, 0.95])
-            #
-            # ax = plt.subplot(1, 2, 1)
-            # ax.clear()
-            # ax.set_title('Grid (Black = Solid, White = Pore)')
-            # ax.set_yticks(np.linspace(0, 20, 5))
-            # ax.set_xticks(np.linspace(0, 20, 5))
-            # ax.pcolor(1 - grid, cmap='Greys', vmin=0.0, vmax=1.0)
-            # ax.set_aspect('equal')
-            #
-            # ax = plt.subplot(1, 2, 2)
-            # ax.clear()
-            # ax.set_title('Adsorption Curve')
-            # ax.plot(relative_humidity, curve, label='Target')
-            # ax.plot(relative_humidity, curve_dft, label='DFT')
-            # ax.set_xlim(0, 1)
-            # ax.set_ylim(0, 1)
-            # ax.set_xlabel('Relative Humidity')
-            # ax.set_ylabel('Proportion of Pores filled')
-            # ax.set_aspect('equal')
-            # ax.legend()
-            #
-            # plt.show()
+            fig = plt.figure(figsize=(10, 4))
+            fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+            ax = plt.subplot(1, 2, 1)
+            ax.clear()
+            ax.set_title('Grid (Black = Solid, White = Pore)')
+            ax.set_yticks(np.linspace(0, 20, 5))
+            ax.set_xticks(np.linspace(0, 20, 5))
+            ax.pcolor(1 - grid, cmap='Greys', vmin=0.0, vmax=1.0)
+            ax.set_aspect('equal')
+
+            ax = plt.subplot(1, 2, 2)
+            ax.clear()
+            ax.set_title('Adsorption Curve')
+            ax.plot(relative_humidity, curve, label='Target')
+            ax.plot(relative_humidity, curve_dft, label='DFT')
+            ax.set_xlim(0, 1)
+            ax.set_ylim(0, 1)
+            ax.set_xlabel('Relative Humidity')
+            ax.set_ylabel('Proportion of Pores filled')
+            ax.set_aspect('equal')
+            ax.legend()
+
+            plt.show()
     plt.hist(errors, bins=20)
     plt.xlabel('Abs error')
     plt.xlim(0, 1)
