@@ -282,8 +282,8 @@ training_model.fit_generator(generator_train_generator,
                                                           patience=100),
                                         ModelCheckpoint(filepath,
                                                         monitor='area_between',
-                                                        save_best_only=False,
-                                                        mode='auto',
-                                                        save_freq=save_freq)])
+                                                        save_best_only=True,
+                                                        mode='min',
+                                                        save_freq='epoch')])
 
 generator.save(model_loc)
