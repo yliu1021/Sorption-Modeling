@@ -38,7 +38,7 @@ except:
 generator_batchsize = 128
 generator_train_size //= generator_batchsize
 loss = squared_area_between
-lr = 1e-4
+lr = 1e-3
 max_var = 24
 inner_loops = 5
 
@@ -111,7 +111,7 @@ def inverse_dft_model():
     x = Conv2DTranspose(64, 20, strides=2, padding='same')(x)
     x = LeakyReLU()(x)
 
-    out = Conv2D(1, 3, strides=1, padding='same', activation=binary_sigmoid, name='generator_conv')(x)
+    out = Conv2D(1, 1, strides=1, padding='same', activation=binary_sigmoid, name='generator_conv')(x)
     out = Reshape((GRID_SIZE, GRID_SIZE))(out)
 
     model = Model(inputs=inp, outputs=out, name='generator_model')
