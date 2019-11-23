@@ -27,11 +27,11 @@ try:
     generator_epochs = int(sys.argv[1])
 except:
     pass
-generator_batchsize = N_ADSORP * 2
+generator_batchsize = 128
 generator_train_size //= generator_batchsize
-lr = 1e-5
-max_var = 12
-
+lr = 1e-6
+max_var = 16
+inner_loops = 5
 
 def area_between(y_true, y_pred):
     return K.mean(K.abs(K.cumsum(y_true, axis=-1) - K.cumsum(y_pred, axis=-1)))
@@ -138,7 +138,7 @@ def dft_model():
     inp = Input(shape=(GRID_SIZE, GRID_SIZE), batch_size=generator_batchsize, name='dft_input')
     x = Lambda(lambda x: run_dft(x,
                                  batch_size=generator_batchsize,
-                                 inner_loops=50))(inp)
+                                 inner_loops=inner_loops))(inp)
     model = Model(inputs=inp, outputs=x, name='dft_model')
 
     return model
