@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 
 
 base_dir = './generative_model_4'
-model_loc = os.path.join(base_dir, 'generator_old.hdf5')
+model_loc = os.path.join(base_dir, 'generator.hdf5')
 log_loc = os.path.join(base_dir, 'logs')
 
 generator_train_size = 50000
@@ -138,7 +138,7 @@ def dft_model():
     inp = Input(shape=(GRID_SIZE, GRID_SIZE), batch_size=generator_batchsize, name='dft_input')
     x = Lambda(lambda x: run_dft(x,
                                  batch_size=generator_batchsize,
-                                 inner_loops=100))(inp)
+                                 inner_loops=50))(inp)
     model = Model(inputs=inp, outputs=x, name='dft_model')
 
     return model
