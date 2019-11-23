@@ -29,7 +29,7 @@ except:
     pass
 generator_batchsize = 64
 generator_train_size //= generator_batchsize
-lr = 1e-4
+lr = 1e-5
 max_var = 12
 
 
