@@ -29,7 +29,7 @@ except:
     pass
 generator_batchsize = 256
 generator_train_size //= generator_batchsize
-lr = 1e-6
+lr = 1e-5
 max_var = 12
 
 
@@ -147,8 +147,10 @@ generator_train_generator = make_generator_input(n_grids=generator_train_size,
 
 # Visualization
 visualize = False
+see_grids = False
 try:
     visualize = sys.argv[1] == 'v'
+    see_grids = 's' in sys.argv
 except:
     pass
 if visualize:
@@ -160,7 +162,7 @@ if visualize:
 
     errors = list()
 
-    c = make_steps()[0]
+    c = make_steps()[0][::-1]
     grids = generator.predict(c)
     # densities = sess.run(density_tf, feed_dict={grid_tf: grids})
     densities = run_dft(grids)
@@ -171,44 +173,7 @@ if visualize:
         error = np.sum(np.abs(curve - curve_dft)) / len(curve)
         errors.append(error)
 
-        fig = plt.figure(figsize=(10, 4))
-        fig.tight_layout(rect=[0, 0.03, 1, 0.95])
-
-        ax = plt.subplot(1, 2, 1)
-        ax.clear()
-        ax.set_title('Grid (Black = Solid, White = Pore)')
-        ax.set_yticks(np.linspace(0, 20, 5))
-        ax.set_xticks(np.linspace(0, 20, 5))
-        ax.pcolor(1 - grid, cmap='Greys', vmin=0.0, vmax=1.0)
-        ax.set_aspect('equal')
-
-        ax = plt.subplot(1, 2, 2)
-        ax.clear()
-        ax.set_title('Adsorption Curve')
-        ax.plot(relative_humidity, curve, label='Target')
-        ax.plot(relative_humidity, curve_dft, label='DFT')
-        ax.set_xlim(0, 1)
-        ax.set_ylim(0, 1)
-        ax.set_xlabel('Relative Humidity')
-        ax.set_ylabel('Proportion of Pores filled')
-        ax.set_aspect('equal')
-        ax.legend()
-
-        plt.show()
-
-    curves = [next(generator_train_generator) for _ in range(5)]
-    for c, _ in curves:
-        print('computing...')
-        grids = generator.predict(c)
-        # densities = sess.run(density_tf, feed_dict={grid_tf: grids})
-        densities = run_dft(grids)
-        for diffs, grid, diffs_dft in zip(c, grids, densities):
-            curve = np.cumsum(np.insert(diffs, 0, 0))
-            curve_dft = np.cumsum(np.insert(diffs_dft, 0, 0))
-
-            error = np.sum(np.abs(curve - curve_dft)) / len(curve)
-            errors.append(error)
-
+        if see_grids:
             fig = plt.figure(figsize=(10, 4))
             fig.tight_layout(rect=[0, 0.03, 1, 0.95])
 
@@ -233,6 +198,45 @@ if visualize:
             ax.legend()
 
             plt.show()
+
+    curves = [next(generator_train_generator) for _ in range(5)]
+    for c, _ in curves:
+        print('computing...')
+        grids = generator.predict(c)
+        # densities = sess.run(density_tf, feed_dict={grid_tf: grids})
+        densities = run_dft(grids)
+        for diffs, grid, diffs_dft in zip(c, grids, densities):
+            curve = np.cumsum(np.insert(diffs, 0, 0))
+            curve_dft = np.cumsum(np.insert(diffs_dft, 0, 0))
+
+            error = np.sum(np.abs(curve - curve_dft)) / len(curve)
+            errors.append(error)
+
+            if see_grids:
+                fig = plt.figure(figsize=(10, 4))
+                fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+                ax = plt.subplot(1, 2, 1)
+                ax.clear()
+                ax.set_title('Grid (Black = Solid, White = Pore)')
+                ax.set_yticks(np.linspace(0, 20, 5))
+                ax.set_xticks(np.linspace(0, 20, 5))
+                ax.pcolor(1 - grid, cmap='Greys', vmin=0.0, vmax=1.0)
+                ax.set_aspect('equal')
+
+                ax = plt.subplot(1, 2, 2)
+                ax.clear()
+                ax.set_title('Adsorption Curve')
+                ax.plot(relative_humidity, curve, label='Target')
+                ax.plot(relative_humidity, curve_dft, label='DFT')
+                ax.set_xlim(0, 1)
+                ax.set_ylim(0, 1)
+                ax.set_xlabel('Relative Humidity')
+                ax.set_ylabel('Proportion of Pores filled')
+                ax.set_aspect('equal')
+                ax.legend()
+
+                plt.show()
     print('Mean: ', np.array(errors).mean())
     print('Std: ', np.array(errors).std())
     plt.hist(errors, bins=20)
@@ -259,6 +263,7 @@ training_model.compile(optimizer,
 training_model.summary()
 
 filepath = os.path.join(base_dir, 'generator_{epoch:03d}.hdf5')
+save_freq=generator_train_size*5*generator_batchsize
 training_model.fit_generator(generator_train_generator,
                              steps_per_epoch=generator_train_size,
                              epochs=generator_epochs,
@@ -268,11 +273,11 @@ training_model.fit_generator(generator_train_generator,
                                                     write_images=True),
                                         ReduceLROnPlateau(monitor='loss',
                                                           factor=0.1,
-                                                          patience=90),
+                                                          patience=100),
                                         ModelCheckpoint(filepath,
                                                         monitor='area_between',
                                                         save_best_only=False,
                                                         mode='auto',
-                                                        save_freq=5)])
+                                                        save_freq=save_freq)])
 
 generator.save(model_loc)

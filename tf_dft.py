@@ -1,3 +1,4 @@
+import sys
 import time
 import math
 import glob
@@ -51,7 +52,7 @@ _filter_1 = tf.constant(
     dtype=tf.float32
 )
 
-def run_dft(grids, batch_size=None):
+def run_dft(grids, batch_size=None, inner_loops=5):
     """Runs the DFT simulation on a batch of grids
     
     Parameters
@@ -82,7 +83,7 @@ def run_dft(grids, batch_size=None):
     densities = [tf.zeros(batch_size)]
     for jj in range(1, N_ADSORP):
         # bias = (wffyr0_conv + muu_lookup[jj]) * BETA
-        for i in range(5):
+        for i in range(inner_loops):
             # vi = tf.nn.conv2d(r1, strides=[1, 1, 1, 1], filters=_filter_wff, padding='VALID',
             #                   name='vi_conv_%04d'%i)
             # vi += bias
@@ -111,6 +112,11 @@ def run_dft(grids, batch_size=None):
 if __name__ == '__main__':
     # grid_tf = tf.compat.v1.placeholder(tf.float32, shape=[462, GRID_SIZE, GRID_SIZE], name='input_grid')
     # density_tf = run_dft(grid_tf)
+    inner_loops = 5
+    try:
+        inner_loops = int(sys.argv[1])
+    except:
+        pass
 
     base_dir = '/Users/yuhanliu/Google Drive/1st year/Research/sorption_modeling/test_grids/step4'
     grid_files = glob.glob(os.path.join(base_dir, 'grids', 'grid_*.csv'))
@@ -119,9 +125,9 @@ if __name__ == '__main__':
     grid_files = grid_files[:]
     
     grids = [np.genfromtxt(grid_file, delimiter=',', dtype=np.float32) for grid_file in grid_files]
-    print(len(grids))
+    print('Num grids: ', len(grids))
     start_time = time.time()
-    densities = run_dft(np.array(grids))
+    densities = run_dft(np.array(grids), inner_loops=inner_loops)
     end_time = time.time()
     print('Time: ', end_time - start_time)
     print('Grids per second: ', len(grids) / (end_time - start_time))
@@ -150,6 +156,7 @@ if __name__ == '__main__':
     print('Error: ', np.array(errors).mean())
     print('Error std dev: ', np.array(errors).std())
     plt.scatter(areas, errors)
+    plt.title('Inner loops: {}', inner_loops)
     plt.ylim(0, 1)
     plt.xlim(0, 1)
     plt.xlabel('Area under actual DFT curve')
