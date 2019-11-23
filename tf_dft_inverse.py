@@ -108,7 +108,7 @@ def inverse_dft_model():
     x = Conv2DTranspose(128, 20, strides=2, padding='same')(x)
     x = LeakyReLU()(x)
 
-    x = Conv2DTranspose(64, 20, strides=2, padding='same')(x)
+    x = Conv2DTranspose(128, 20, strides=2, padding='same')(x)
     x = LeakyReLU()(x)
 
     out = Conv2D(1, 1, strides=1, padding='same', activation=binary_sigmoid, name='generator_conv')(x)
