@@ -17,6 +17,14 @@ from tf_dft import run_dft
 import matplotlib.pyplot as plt
 
 
+def area_between(y_true, y_pred):
+    return K.mean(K.abs(K.cumsum(y_true, axis=-1) - K.cumsum(y_pred, axis=-1)))
+
+
+def squared_area_between(y_true, y_pred):
+    return K.mean(K.square(K.cumsum(y_true, axis=-1) - K.cumsum(y_pred, axis=-1)))
+
+
 base_dir = './generative_model_4'
 model_loc = os.path.join(base_dir, 'generator.hdf5')
 log_loc = os.path.join(base_dir, 'logs')
@@ -29,12 +37,10 @@ except:
     pass
 generator_batchsize = 128
 generator_train_size //= generator_batchsize
+loss = squared_area_between
 lr = 1e-6
 max_var = 16
 inner_loops = 5
-
-def area_between(y_true, y_pred):
-    return K.mean(K.abs(K.cumsum(y_true, axis=-1) - K.cumsum(y_pred, axis=-1)))
 
 
 def round_through(x):
@@ -257,7 +263,6 @@ dft_out = dft_model(generator_out)
 
 training_model = Model(inputs=inp, outputs=dft_out)
 optimizer = Adam(lr=lr)
-loss = 'categorical_crossentropy'
 training_model.compile(optimizer,
                        loss=loss,
                        metrics=[area_between])
