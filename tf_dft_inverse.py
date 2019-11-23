@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 
 
 base_dir = './generative_model_4'
-model_loc = os.path.join(base_dir, 'generator.hdf5')
+model_loc = os.path.join(base_dir, 'generator_old.hdf5')
 log_loc = os.path.join(base_dir, 'logs')
 
 generator_train_size = 50000
@@ -27,7 +27,7 @@ try:
     generator_epochs = int(sys.argv[1])
 except:
     pass
-generator_batchsize = 64
+generator_batchsize = N_ADSORP * 2
 generator_train_size //= generator_batchsize
 lr = 1e-5
 max_var = 12
@@ -136,7 +136,9 @@ def inverse_dft_model():
 
 def dft_model():
     inp = Input(shape=(GRID_SIZE, GRID_SIZE), batch_size=generator_batchsize, name='dft_input')
-    x = Lambda(lambda x: run_dft(x, batch_size=generator_batchsize))(inp)
+    x = Lambda(lambda x: run_dft(x,
+                                 batch_size=generator_batchsize,
+                                 inner_loops=100))(inp)
     model = Model(inputs=inp, outputs=x, name='dft_model')
 
     return model
@@ -145,6 +147,8 @@ def dft_model():
 generator_train_generator = make_generator_input(n_grids=generator_train_size,
                                                  use_generator=True,
                                                  batchsize=generator_batchsize)
+
+generator = inverse_dft_model()
 
 # Visualization
 visualize = False
@@ -155,24 +159,22 @@ try:
 except:
     pass
 if visualize:
-    # grid_tf = tf.compat.v1.placeholder(tf.float32, shape=[generator_batchsize, GRID_SIZE, GRID_SIZE], name='input_grid')
-    # density_tf = run_dft(grid_tf)
-    # sess = K.get_session()
-    generator = load_model(model_loc, custom_objects={'binary_sigmoid': binary_sigmoid})
+    generator = load_model(model_loc, custom_objects={'binary_sigmoid': binary_sigmoid,
+                                                      'area_between': area_between})
+    # generator.load_weights(model_loc)
     relative_humidity = np.arange(41) * STEP_SIZE
 
     errors = list()
 
     c = make_steps()[0][::-1]
     grids = generator.predict(c)
-    # densities = sess.run(density_tf, feed_dict={grid_tf: grids})
     densities = run_dft(grids)
     for diffs, grid, diffs_dft in zip(c, grids, densities):
         curve = np.cumsum(np.insert(diffs, 0, 0))
         curve_dft = np.cumsum(np.insert(diffs_dft, 0, 0))
 
         error = np.sum(np.abs(curve - curve_dft)) / len(curve)
-        errors.append(error)
+        # errors.append(error)
 
         if see_grids:
             fig = plt.figure(figsize=(10, 4))
@@ -204,7 +206,6 @@ if visualize:
     for c, _ in curves:
         print('computing...')
         grids = generator.predict(c)
-        # densities = sess.run(density_tf, feed_dict={grid_tf: grids})
         densities = run_dft(grids)
         for diffs, grid, diffs_dft in zip(c, grids, densities):
             curve = np.cumsum(np.insert(diffs, 0, 0))
@@ -240,13 +241,13 @@ if visualize:
                 plt.show()
     print('Mean: ', np.array(errors).mean())
     print('Std: ', np.array(errors).std())
-    plt.hist(errors, bins=20)
+    plt.hist(errors, bins=10)
+    plt.title('Error Distribution')
     plt.xlabel('Abs error')
     plt.xlim(0, 1)
     plt.show()
     exit(0)
 
-generator = inverse_dft_model()
 dft_model = dft_model()
 
 generator.compile('adam', loss='mse')
@@ -255,7 +256,6 @@ generator_out = generator(inp)
 dft_out = dft_model(generator_out)
 
 training_model = Model(inputs=inp, outputs=dft_out)
-# optimizer = SGD(lr=0.0001, clipnorm=1.0)
 optimizer = Adam(lr=lr)
 loss = 'categorical_crossentropy'
 training_model.compile(optimizer,
