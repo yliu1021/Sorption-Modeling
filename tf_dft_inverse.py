@@ -38,7 +38,7 @@ except:
 generator_batchsize = 128
 generator_train_size //= generator_batchsize
 loss = squared_area_between
-lr = 1e-6
+lr = 1e-4
 max_var = 24
 inner_loops = 5
 
@@ -241,7 +241,7 @@ generator_out = generator(inp)
 dft_out = dft_model(generator_out)
 
 training_model = Model(inputs=inp, outputs=dft_out)
-optimizer = Adam(lr=lr)
+optimizer = Adam(lr=lr, clipnorm=1.0)
 training_model.compile(optimizer,
                        loss=loss,
                        metrics=[area_between])
