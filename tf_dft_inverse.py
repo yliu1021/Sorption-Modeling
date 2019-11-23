@@ -27,9 +27,9 @@ try:
     generator_epochs = int(sys.argv[1])
 except:
     pass
-generator_batchsize = 256
+generator_batchsize = 64
 generator_train_size //= generator_batchsize
-lr = 1e-5
+lr = 1e-4
 max_var = 12
 
 
@@ -66,8 +66,9 @@ def make_generator_input(n_grids, use_generator=False, batchsize=generator_batch
         def gen():
             while True:
                 artificial_metrics = list()
-                for i in range(batchsize - N_ADSORP):
-                    diffs = np.exp(np.random.normal(0, np.sqrt(i/batchsize) * max_var, N_ADSORP))
+                rand_curve_size = batch_size - N_ADSORP
+                for i in range(rand_curve_size):
+                    diffs = np.exp(np.random.normal(0, (i/rand_curve_size)**1.2 * max_var, N_ADSORP))
                     diffs /= np.sum(diffs, axis=0)
                     artificial_metrics.append(diffs)
                 for i in range(N_ADSORP):
