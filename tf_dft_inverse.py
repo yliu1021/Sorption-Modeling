@@ -100,30 +100,15 @@ def inverse_dft_model():
 
     Q_GRID_SIZE = GRID_SIZE // 4
 
-    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 2048, name='fc1')(inp)
+    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 512, name='fc1')(inp)
     x = LeakyReLU()(x)
 
-    x = Reshape((Q_GRID_SIZE, Q_GRID_SIZE, 2048))(x)
+    x = Reshape((Q_GRID_SIZE, Q_GRID_SIZE, 512))(x)
 
-    x = Conv2DTranspose(2048, 3, strides=2, padding='same')(x)
-    x = LeakyReLU()(x)
-
-    x = Conv2DTranspose(2048, 3, strides=2, padding='same')(x)
-    x = LeakyReLU()(x)
-    
-    x = Conv2DTranspose(1024, 3, strides=1, padding='same')(x)
-    x = LeakyReLU()(x)
-    
-    x = Conv2DTranspose(512, 3, strides=1, padding='same')(x)
+    x = Conv2DTranspose(512, 20, strides=2, padding='same')(x)
     x = LeakyReLU()(x)
 
-    x = Conv2DTranspose(256, 3, strides=1, padding='same')(x)
-    x = LeakyReLU()(x)
-
-    x = Conv2DTranspose(128, 3, strides=1, padding='same')(x)
-    x = LeakyReLU()(x)
-
-    x = Conv2DTranspose(64, 3, strides=1, padding='same')(x)
+    x = Conv2DTranspose(256, 20, strides=2, padding='same')(x)
     x = LeakyReLU()(x)
 
     out = Conv2D(1, 3, strides=1, padding='same', activation=binary_sigmoid, name='generator_conv')(x)
