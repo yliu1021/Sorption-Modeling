@@ -100,27 +100,21 @@ def inverse_dft_model():
 
     Q_GRID_SIZE = GRID_SIZE // 4
 
-    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 1024, name='fc1')(inp)
+    x = Dense(Q_GRID_SIZE * Q_GRID_SIZE * 2048, name='fc1')(inp)
     x = LeakyReLU()(x)
 
-    x = Reshape((Q_GRID_SIZE, Q_GRID_SIZE, 1024))(x)
+    x = Reshape((Q_GRID_SIZE, Q_GRID_SIZE, 2048))(x)
 
+    x = Conv2DTranspose(2048, 3, strides=2, padding='same')(x)
+    x = LeakyReLU()(x)
+
+    x = Conv2DTranspose(2048, 3, strides=2, padding='same')(x)
+    x = LeakyReLU()(x)
+    
     x = Conv2DTranspose(1024, 3, strides=1, padding='same')(x)
     x = LeakyReLU()(x)
-
+    
     x = Conv2DTranspose(512, 3, strides=1, padding='same')(x)
-    x = LeakyReLU()(x)
-
-    x = Conv2DTranspose(512, 3, strides=2, padding='same')(x)
-    x = LeakyReLU()(x)
-
-    x = Conv2DTranspose(512, 3, strides=1, padding='same')(x)
-    x = LeakyReLU()(x)
-
-    x = Conv2DTranspose(256, 3, strides=1, padding='same')(x)
-    x = LeakyReLU()(x)
-
-    x = Conv2DTranspose(256, 3, strides=2, padding='same')(x)
     x = LeakyReLU()(x)
 
     x = Conv2DTranspose(256, 3, strides=1, padding='same')(x)
