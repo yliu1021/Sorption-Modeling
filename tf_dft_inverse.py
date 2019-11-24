@@ -105,10 +105,10 @@ def inverse_dft_model():
 
     x = Reshape((Q_GRID_SIZE, Q_GRID_SIZE, 128))(x)
 
-    x = Conv2DTranspose(128, 20, strides=2, padding='same')(x)
+    x = Conv2DTranspose(128, 40, strides=2, padding='same')(x)
     x = LeakyReLU()(x)
 
-    x = Conv2DTranspose(128, 20, strides=2, padding='same')(x)
+    x = Conv2DTranspose(64, 40, strides=2, padding='same')(x)
     x = LeakyReLU()(x)
 
     out = Conv2D(1, 1, strides=1, padding='same', activation=binary_sigmoid, name='generator_conv')(x)
@@ -153,7 +153,7 @@ if visualize:
 
     c = make_steps()[0][::-1]
     grids = generator.predict(c)
-    densities = run_dft(grids)
+    densities = run_dft(grids, inner_loops=100)
     for diffs, grid, diffs_dft in zip(c, grids, densities):
         curve = np.cumsum(np.insert(diffs, 0, 0))
         curve_dft = np.cumsum(np.insert(diffs_dft, 0, 0))
