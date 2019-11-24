@@ -105,7 +105,7 @@ def inverse_dft_model():
 
     x = Reshape((Q_GRID_SIZE, Q_GRID_SIZE, 128))(x)
 
-    x = Conv2DTranspose(128, 40, strides=2, padding='same')(x)
+    x = Conv2DTranspose(128, Q_GRID_SIZE*4, strides=2, padding='same')(x)
     x = LeakyReLU()(x)
 
     x = Conv2DTranspose(64, 40, strides=2, padding='same')(x)
