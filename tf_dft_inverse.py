@@ -105,10 +105,10 @@ def inverse_dft_model():
 
     x = Reshape((GRID_SIZE, GRID_SIZE, 128))(x)
 
-    x = Conv2DTranspose(128, 10, strides=1, padding='same')(x)
+    x = Conv2DTranspose(128, 20, strides=1, padding='same')(x)
     x = LeakyReLU()(x)
 
-    x = Conv2DTranspose(64, 10, strides=1, padding='same')(x)
+    x = Conv2DTranspose(64, 20, strides=1, padding='same')(x)
     x = LeakyReLU()(x)
 
     out = Conv2D(1, 1, strides=1, padding='same', activation=binary_sigmoid, name='generator_conv')(x)
