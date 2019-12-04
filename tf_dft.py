@@ -20,7 +20,7 @@ for jj in range(N_ITER + 1):
         RH = N_ADSORP*STEP_SIZE - (jj-N_ADSORP)*STEP_SIZE
     if RH == 0:
         muu = -90.0
-    else:                                      
+    else:
         muu = MUSAT+KB*T*math.log(RH)
     muu_lookup.append(muu)
 
@@ -54,12 +54,12 @@ _filter_1 = tf.constant(
 
 def run_dft(grids, batch_size=None, inner_loops=5):
     """Runs the DFT simulation on a batch of grids
-    
+
     Parameters
     ----------
     grids : This must be a tensor of shape [batch_size, GRID_SIZE, GRID_SIZE]
     """
-    
+
     # we tile the grid and then crop it so that the boundaries
     # from one side will also exist on the other side
     batch_size = len(grids) if batch_size is None else batch_size
@@ -99,7 +99,7 @@ def run_dft(grids, batch_size=None, inner_loops=5):
         density = tf.truediv(tf.reduce_sum(r1[:, 1:GRID_SIZE+1, 1:GRID_SIZE+1, :], axis=[1, 2, 3]), total_pores)
         densities.append(density)
     densities.append(tf.ones(batch_size))
-    
+
     diffs = list()
     # last = tf.zeros_like(densities[0])
     last = densities[0]
@@ -121,9 +121,9 @@ if __name__ == '__main__':
     base_dir = '/Users/yuhanliu/Google Drive/1st year/Research/sorption_modeling/test_grids/step4'
     grid_files = glob.glob(os.path.join(base_dir, 'grids', 'grid_*.csv'))
     grid_files.sort(reverse=False)
-    
+
     grid_files = grid_files[:]
-    
+
     grids = [np.genfromtxt(grid_file, delimiter=',', dtype=np.float32) for grid_file in grid_files]
     print('Num grids: ', len(grids))
     start_time = time.time()
@@ -158,6 +158,13 @@ if __name__ == '__main__':
     plt.scatter(areas, errors)
     plt.title('Inner loops: {}'.format(inner_loops))
     plt.ylim(0, 1)
+    plt.xlim(0, 1)
+    plt.xlabel('Area under actual DFT curve')
+    plt.ylabel('Abs area between TensorFlow-DFT curve and DFT curve')
+    plt.show()
+
+    plt.scatter(areas, errors)
+    plt.title('Inner loops: {}'.format(inner_loops))
     plt.xlim(0, 1)
     plt.xlabel('Area under actual DFT curve')
     plt.ylabel('Abs area between TensorFlow-DFT curve and DFT curve')

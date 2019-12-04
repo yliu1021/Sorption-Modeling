@@ -2,6 +2,7 @@ import time
 import os
 import glob
 import sys
+from random import shuffle, random, randint
 
 import tensorflow as tf
 from tensorflow.keras.layers import *
@@ -15,6 +16,12 @@ from constants import *
 from tf_dft import run_dft
 
 import matplotlib.pyplot as plt
+
+
+def batch(iterable, n=1):
+    l = len(iterable)
+    for ndx in range(0, l, n):
+        yield iterable[ndx:min(ndx + n, l)]
 
 
 def area_between(y_true, y_pred):
@@ -68,31 +75,39 @@ def make_steps():
 
 
 def make_generator_input(n_grids, use_generator=False, batchsize=generator_batchsize):
+    n = N_ADSORP
+    def gen_diffs(mean, var, _n=n, up_to=1):
+        diffs = np.clip(np.exp(np.random.normal(mean, var, _n)), -10, 10)
+        diffs = np.exp(np.random.normal(mean, var, _n))
+        return diffs / np.sum(diffs) * up_to
+
+    def gen_func():
+        if random() < 0.1:
+            f = np.zeros(N_ADSORP + 1)
+            i = randint(1, N_ADSORP)
+            f[-i:] = 1.0
+            return f
+        else:
+            anchor = np.random.uniform(0, 1)
+            x = np.random.uniform(0.05, 0.95)
+            ind = int(n*x)
+            f_1 = np.insert(np.cumsum(gen_diffs(0, 4, ind, anchor)), 0, 0)
+            f_2 = np.insert(np.cumsum(gen_diffs(0, 4, n - ind - 2, 1-anchor)), 0, 0) + anchor
+            f = np.concatenate((f_1, np.array([anchor]), f_2))
+            f[-1] = 1.0
+            return f
+
     if use_generator:
         def gen():
             while True:
-                artificial_metrics = list()
-                rand_curve_size = batchsize - N_ADSORP
-                for i in range(rand_curve_size):
-                    diffs = np.exp(np.random.normal(0, (i/rand_curve_size)**1.2 * max_var, N_ADSORP))
-                    diffs /= np.sum(diffs, axis=0)
-                    artificial_metrics.append(diffs)
-                for i in range(N_ADSORP):
-                    diffs = np.zeros(N_ADSORP)
-                    diffs[i] = 1.0
-                    artificial_metrics.append(diffs)
-                artificial_metrics = np.array(artificial_metrics)
-                out = artificial_metrics
-                yield out, out
+                funcs = [gen_func() for _ in range(batchsize)]
+                artificial_curves = np.array([np.diff(f) for f in funcs])
+                yield artificial_curves, artificial_curves
         return gen()
     else:
-        artificial_metrics = list()
-        for i in range(n_grids):
-            diffs = np.exp(np.random.normal(0, np.sqrt(i/n_grids) * max_var, N_ADSORP))
-            diffs /= np.sum(diffs, axis=0)
-            artificial_metrics.append(diffs)
-        artificial_metrics = np.array(artificial_metrics)
-        return artificial_metrics, uniform_latent_code
+        funcs = [gen_func() for _ in range(batchsize)]
+        artificial_curves = np.array([np.diff(f) for f in funcs])
+        return artificial_curves, artificial_curves
 
 
 def inverse_dft_model():
@@ -187,43 +202,56 @@ if visualize:
 
             plt.show()
 
+    def vis_curves(curves):
+        for c, _ in curves:
+            print('computing...')
+            grids = generator.predict(np.array(c))
+            densities = run_dft(grids, inner_loops=100)
+            for diffs, grid, diffs_dft in zip(c, grids, densities):
+                curve = np.cumsum(np.insert(diffs, 0, 0))
+                curve_dft = np.cumsum(np.insert(diffs_dft, 0, 0))
+
+                error = np.sum(np.abs(curve - curve_dft)) / len(curve)
+                errors.append(error)
+
+                if see_grids:
+                    fig = plt.figure(figsize=(10, 4))
+                    fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+                    ax = plt.subplot(1, 2, 1)
+                    ax.clear()
+                    ax.set_title('Grid (Black = Solid, White = Pore)')
+                    ax.set_yticks(np.linspace(0, 20, 5))
+                    ax.set_xticks(np.linspace(0, 20, 5))
+                    ax.pcolor(1 - grid, cmap='Greys', vmin=0.0, vmax=1.0)
+                    ax.set_aspect('equal')
+
+                    ax = plt.subplot(1, 2, 2)
+                    ax.clear()
+                    ax.set_title('Adsorption Curve')
+                    ax.plot(relative_humidity, curve, label='Target')
+                    ax.plot(relative_humidity, curve_dft, label='DFT')
+                    ax.set_xlim(0, 1)
+                    ax.set_ylim(0, 1)
+                    ax.set_xlabel('Relative Humidity')
+                    ax.set_ylabel('Proportion of Pores filled')
+                    ax.set_aspect('equal')
+                    ax.legend()
+
+                    plt.show()
+
     curves = [next(generator_train_generator) for _ in range(5)]
-    for c, _ in curves:
-        print('computing...')
-        grids = generator.predict(c)
-        densities = run_dft(grids)
-        for diffs, grid, diffs_dft in zip(c, grids, densities):
-            curve = np.cumsum(np.insert(diffs, 0, 0))
-            curve_dft = np.cumsum(np.insert(diffs_dft, 0, 0))
+    # vis_curves(curves)
 
-            error = np.sum(np.abs(curve - curve_dft)) / len(curve)
-            errors.append(error)
+    base_dir = '/Users/yuhanliu/Google Drive/1st year/Research/sorption_modeling/test_grids/step4'
+    density_files = glob.glob(os.path.join(base_dir, 'results', 'density_*.csv'))
+    density_files.sort(reverse=False)
+    density_files = density_files[:]
+    true_densities = [np.diff(np.genfromtxt(density_file, delimiter=',')) for density_file in density_files]
+    shuffle(true_densities)
+    true_densities = batch(true_densities, 64)
+    vis_curves(zip(true_densities, true_densities))
 
-            if see_grids:
-                fig = plt.figure(figsize=(10, 4))
-                fig.tight_layout(rect=[0, 0.03, 1, 0.95])
-
-                ax = plt.subplot(1, 2, 1)
-                ax.clear()
-                ax.set_title('Grid (Black = Solid, White = Pore)')
-                ax.set_yticks(np.linspace(0, 20, 5))
-                ax.set_xticks(np.linspace(0, 20, 5))
-                ax.pcolor(1 - grid, cmap='Greys', vmin=0.0, vmax=1.0)
-                ax.set_aspect('equal')
-
-                ax = plt.subplot(1, 2, 2)
-                ax.clear()
-                ax.set_title('Adsorption Curve')
-                ax.plot(relative_humidity, curve, label='Target')
-                ax.plot(relative_humidity, curve_dft, label='DFT')
-                ax.set_xlim(0, 1)
-                ax.set_ylim(0, 1)
-                ax.set_xlabel('Relative Humidity')
-                ax.set_ylabel('Proportion of Pores filled')
-                ax.set_aspect('equal')
-                ax.legend()
-
-                plt.show()
     print('Mean: ', np.array(errors).mean())
     print('Std: ', np.array(errors).std())
     plt.hist(errors, bins=10)
