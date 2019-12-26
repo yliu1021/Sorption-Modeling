@@ -112,13 +112,13 @@ def run_dft(grids, batch_size=None, inner_loops=5):
 if __name__ == '__main__':
     # grid_tf = tf.compat.v1.placeholder(tf.float32, shape=[462, GRID_SIZE, GRID_SIZE], name='input_grid')
     # density_tf = run_dft(grid_tf)
-    inner_loops = 5
+    inner_loops = 30
     try:
         inner_loops = int(sys.argv[1])
     except:
         pass
 
-    base_dir = '/Users/yuhanliu/Google Drive/1st year/Research/sorption_modeling/test_grids/step4'
+    base_dir = '/Users/yuhanliu/Google Drive/Research/sorption_modeling/test_grids/step4'
     grid_files = glob.glob(os.path.join(base_dir, 'grids', 'grid_*.csv'))
     grid_files.sort(reverse=False)
 
@@ -146,11 +146,11 @@ if __name__ == '__main__':
         areas.append(area)
         errors.append(error)
 
-        # plt.title('{}'.format(i+1))
-        # plt.plot(x, np.cumsum(np.insert(d, 0, 0)), label='tf')
-        # plt.plot(x, t, label='dft')
-        # plt.legend()
-        # plt.show()
+        plt.title('{}'.format(i+1))
+        plt.plot(x, np.cumsum(np.insert(d, 0, 0)), label='tf')
+        plt.plot(x, t, label='dft')
+        plt.legend()
+        plt.show()
 
     # plt.scatter(*zip(*points))
     print('Error: ', np.array(errors).mean())

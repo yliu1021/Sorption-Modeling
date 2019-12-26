@@ -18,6 +18,35 @@ from tf_dft import run_dft
 import matplotlib.pyplot as plt
 
 
+def show_grid(grid, target_curve, dft_curve):
+    relative_humidity = np.arange(41) * STEP_SIZE
+
+    fig = plt.figure(figsize=(10, 4))
+    fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+    ax = plt.subplot(1, 2, 1)
+    ax.clear()
+    ax.set_title('Grid (Black = Solid, White = Pore)')
+    ax.set_yticks(np.linspace(0, 20, 5))
+    ax.set_xticks(np.linspace(0, 20, 5))
+    ax.pcolor(1 - grid, cmap='Greys', vmin=0.0, vmax=1.0)
+    ax.set_aspect('equal')
+
+    ax = plt.subplot(1, 2, 2)
+    ax.clear()
+    ax.set_title('Adsorption Curve')
+    ax.plot(relative_humidity, target_curve, label='Target')
+    ax.plot(relative_humidity, dft_curve, label='DFT')
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.set_xlabel('Relative Humidity')
+    ax.set_ylabel('Proportion of Pores filled')
+    ax.set_aspect('equal')
+    ax.legend()
+
+    plt.show()
+
+
 def batch(iterable, n=1):
     l = len(iterable)
     for ndx in range(0, l, n):
@@ -33,7 +62,7 @@ def squared_area_between(y_true, y_pred):
 
 
 base_dir = './generative_model_4'
-model_loc = os.path.join(base_dir, 'generator.hdf5')
+model_loc = os.path.join(base_dir, 'generator_v2.hdf5')
 log_loc = os.path.join(base_dir, 'logs')
 
 generator_train_size = 50000
@@ -45,9 +74,10 @@ except:
 generator_batchsize = 128
 generator_train_size //= generator_batchsize
 loss = squared_area_between
-lr = 1e-5
+loss = area_between
+lr = 1e-3
 max_var = 24
-inner_loops = 30
+inner_loops = 5
 
 
 def round_through(x):
@@ -123,7 +153,7 @@ def inverse_dft_model():
     x = Conv2DTranspose(128, 20, strides=1, padding='same')(x)
     x = LeakyReLU()(x)
 
-    x = Conv2DTranspose(64, 20, strides=1, padding='same')(x)
+    x = Conv2DTranspose(128, 20, strides=1, padding='same')(x)
     x = LeakyReLU()(x)
 
     out = Conv2D(1, 1, strides=1, padding='same', activation=binary_sigmoid, name='generator_conv')(x)
@@ -164,6 +194,7 @@ if visualize:
     # generator.load_weights(model_loc)
     relative_humidity = np.arange(41) * STEP_SIZE
 
+    areas = list()
     errors = list()
 
     c = make_steps()[0][::-1]
@@ -172,35 +203,8 @@ if visualize:
     for diffs, grid, diffs_dft in zip(c, grids, densities):
         curve = np.cumsum(np.insert(diffs, 0, 0))
         curve_dft = np.cumsum(np.insert(diffs_dft, 0, 0))
-
-        error = np.sum(np.abs(curve - curve_dft)) / len(curve)
-        # errors.append(error)
-
         if see_grids:
-            fig = plt.figure(figsize=(10, 4))
-            fig.tight_layout(rect=[0, 0.03, 1, 0.95])
-
-            ax = plt.subplot(1, 2, 1)
-            ax.clear()
-            ax.set_title('Grid (Black = Solid, White = Pore)')
-            ax.set_yticks(np.linspace(0, 20, 5))
-            ax.set_xticks(np.linspace(0, 20, 5))
-            ax.pcolor(1 - grid, cmap='Greys', vmin=0.0, vmax=1.0)
-            ax.set_aspect('equal')
-
-            ax = plt.subplot(1, 2, 2)
-            ax.clear()
-            ax.set_title('Adsorption Curve')
-            ax.plot(relative_humidity, curve, label='Target')
-            ax.plot(relative_humidity, curve_dft, label='DFT')
-            ax.set_xlim(0, 1)
-            ax.set_ylim(0, 1)
-            ax.set_xlabel('Relative Humidity')
-            ax.set_ylabel('Proportion of Pores filled')
-            ax.set_aspect('equal')
-            ax.legend()
-
-            plt.show()
+            show_grid(grid, curve, curve_dft)
 
     def vis_curves(curves):
         for c, _ in curves:
@@ -213,37 +217,17 @@ if visualize:
 
                 error = np.sum(np.abs(curve - curve_dft)) / len(curve)
                 errors.append(error)
-
+                
+                area = np.sum(curve_dft) / len(curve_dft)
+                areas.append(area)
+                
                 if see_grids:
-                    fig = plt.figure(figsize=(10, 4))
-                    fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+                    show_grid(grid, curve, curve_dft)
 
-                    ax = plt.subplot(1, 2, 1)
-                    ax.clear()
-                    ax.set_title('Grid (Black = Solid, White = Pore)')
-                    ax.set_yticks(np.linspace(0, 20, 5))
-                    ax.set_xticks(np.linspace(0, 20, 5))
-                    ax.pcolor(1 - grid, cmap='Greys', vmin=0.0, vmax=1.0)
-                    ax.set_aspect('equal')
-
-                    ax = plt.subplot(1, 2, 2)
-                    ax.clear()
-                    ax.set_title('Adsorption Curve')
-                    ax.plot(relative_humidity, curve, label='Target')
-                    ax.plot(relative_humidity, curve_dft, label='DFT')
-                    ax.set_xlim(0, 1)
-                    ax.set_ylim(0, 1)
-                    ax.set_xlabel('Relative Humidity')
-                    ax.set_ylabel('Proportion of Pores filled')
-                    ax.set_aspect('equal')
-                    ax.legend()
-
-                    plt.show()
-
-    curves = [next(generator_train_generator) for _ in range(5)]
+    # curves = [next(generator_train_generator) for _ in range(5)]
     # vis_curves(curves)
 
-    base_dir = '/Users/yuhanliu/Google Drive/1st year/Research/sorption_modeling/test_grids/step4'
+    base_dir = '/Users/yuhanliu/Google Drive/Research/sorption_modeling/test_grids/step4'
     density_files = glob.glob(os.path.join(base_dir, 'results', 'density_*.csv'))
     density_files.sort(reverse=False)
     density_files = density_files[:]
@@ -259,6 +243,15 @@ if visualize:
     plt.xlabel('Abs error')
     plt.xlim(0, 1)
     plt.show()
+    
+    plt.scatter(areas, errors)
+    plt.title('Error w.r.t. area under curve')
+    plt.xlabel('Area under DFT curve')
+    plt.ylabel('Abs error')
+    # plt.xlim(0, 1)
+    plt.ylim(0, 1)
+    plt.show()
+    
     exit(0)
 
 dft_model = dft_model()
@@ -269,7 +262,7 @@ generator_out = generator(inp)
 dft_out = dft_model(generator_out)
 
 training_model = Model(inputs=inp, outputs=dft_out)
-optimizer = Adam(lr=lr, clipnorm=1.0)
+optimizer = Adam(lr=lr)
 training_model.compile(optimizer,
                        loss=loss,
                        metrics=[area_between])
