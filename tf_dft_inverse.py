@@ -61,12 +61,12 @@ def squared_area_between(y_true, y_pred):
     return K.mean(K.square(K.cumsum(y_true, axis=-1) - K.cumsum(y_pred, axis=-1)))
 
 
-base_dir = './generative_model_4'
+base_dir = './generative_model_tf'
 model_loc = os.path.join(base_dir, 'generator_v2.hdf5')
 log_loc = os.path.join(base_dir, 'logs')
 
 generator_train_size = 50000
-generator_epochs = 20
+generator_epochs = 100
 try:
     generator_epochs = int(sys.argv[1])
 except:
@@ -77,7 +77,7 @@ loss = squared_area_between
 loss = area_between
 lr = 1e-3
 max_var = 24
-inner_loops = 5
+inner_loops = 30
 
 
 def round_through(x):
