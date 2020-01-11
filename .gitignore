@@ -8,7 +8,7 @@ __pycache__
 # Data files
 generative_model_*
 cpp/iterative_grids
-vae_cnn*
+vae/vae_*
 
 # Images/Graphs
 visualizations/
