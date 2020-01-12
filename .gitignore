@@ -7,7 +7,11 @@ __pycache__
 
 # Data files
 generative_model_*
-iterative_grids/
+cpp/iterative_grids
+vae/vae_*
+
+# Images/Graphs
+visualizations/
 
 # Hoffman scripts
 run.sh
@@ -43,3 +47,4 @@ test_grids
 # Misc
 Project Description.gslides
 Project Ideas.pdf
+paper/

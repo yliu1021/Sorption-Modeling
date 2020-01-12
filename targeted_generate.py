@@ -62,23 +62,8 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     # --------------------------
     # Get our training data
     train_grids, train_curves = data.get_all_data(matching=base_dir, augment_factor=20)
-
-    num_train_samples = kwargs.get('num_train_samples', 600)
-    random_train_samples = train_curves[:num_train_samples] # Used for later
-    random_train_samples = [np.insert(np.cumsum(train_sample), 0, 0) for train_sample in random_train_samples]
-
-    def divergence(curve, all_curves=random_train_samples):
-        # Define the average distance from a curve to some samples in our training set
-        distances = list(map(lambda x: np.sum(np.abs(curve - x)), all_curves))
-        distances.sort()
-        k = 5
-        top_k = distances[:k]
-        # If we have too many curves already in the dataset close to the input curve
-        # it'll get rejected
-        return sum(top_k) / len(top_k)
-
     # Define our loss function and compile our model
-    predictor_loss_func = kwargs.get('predictor_loss_func', 'kullback_leibler_divergence') # or binary_crossentropy
+    predictor_loss_func = kwargs.get('predictor_loss_func', 'binary_crossentropy') # or binary_crossentropy
     models.unfreeze(predictor_model)
     learning_rate = 10**-2
     optimizer = SGD(learning_rate, clipnorm=1.0)
@@ -107,20 +92,8 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     # Get our training data
     print('Picking random curves ', end='... ', flush=True)
     num_curves = 10000
-    train_upscale_factor = kwargs.get('train_upscale_factor', 1.0)
-    gen_curves = int(num_curves * train_upscale_factor)
     boost_dim = kwargs.get('boost_dim', 5)
-    random_curves = data.make_generator_input(gen_curves, boost_dim, allow_squeeze=True, as_generator=False)
-#    random_curves = list(zip(*random_curves))
-#    divergences = np.fromiter(map(lambda x: divergence(np.insert(np.cumsum(x[0]), 0, 0)), random_curves), dtype=float)
-#    divergences = divergences ** 0.5
-#    divergences /= np.sum(divergences)
-#    random_curve_inds = np.random.choice(len(random_curves), num_curves, replace=False, p=divergences)
-#    random_curves = [random_curves[i] for i in random_curve_inds]
-#    random_curves, latent_codes = list(zip(*random_curves))
-#    random_curves = np.array(random_curves)
-#    latent_codes = np.array(latent_codes)
-#    random_curves = [random_curves, latent_codes]
+    random_curves = data.make_generator_input(num_curves, boost_dim, allow_squeeze=True, as_generator=False)
     print('Done')
 
     # Create the training model
@@ -132,7 +105,7 @@ def train_step(step, predictor_model, lc_model, generator_model, **kwargs):
     lc_out = lc_model(generator_out)
     training_model = Model(inputs=[curve_inp, lc_inp], outputs=[predictor_out, lc_out])
     # Define our loss function and compile our model
-    generator_loss_func = kwargs.get('generator_loss_func', 'kullback_leibler_divergence') # or binary_crossentropy
+    generator_loss_func = kwargs.get('generator_loss_func', 'binary_crossentropy') # or binary_crossentropy
     loss_weights = kwargs.get('loss_weights', [1.0, 0.6])
     learning_rate = 10**-2
     optimizer = Adam(learning_rate)
