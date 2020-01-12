@@ -9,6 +9,7 @@ __pycache__
 generative_model_*
 cpp/iterative_grids
 vae/vae_*
+data_generation/results/
 
 # Images/Graphs
 visualizations/
