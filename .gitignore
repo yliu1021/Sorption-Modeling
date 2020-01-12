@@ -8,6 +8,10 @@ __pycache__
 # Data files
 generative_model_*
 cpp/iterative_grids
+vae/vae_*
+
+# Images/Graphs
+visualizations/
 
 # Hoffman scripts
 run.sh

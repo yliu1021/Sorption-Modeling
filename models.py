@@ -34,7 +34,6 @@ def unfreeze(model):
     for layer in model.layers:
         layer.trainable = True
 
-
 # Predictor model
 def make_predictor_model(**kwargs):
     first_filter_size = kwargs.get('first_filter_size', 3)
