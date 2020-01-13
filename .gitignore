@@ -8,7 +8,7 @@ __pycache__
 # Data files
 generative_model_*
 cpp/iterative_grids
-vae/vae_*
+vae/vae_*/
 data_generation/grids/
 data_generation/results/
 
