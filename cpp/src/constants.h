@@ -7,4 +7,6 @@ constexpr int N_ITER = 80;
 constexpr int N_ADSORP = 40;
 constexpr double STEP_SIZE = 0.025;
 
+typedef std::array<double, N_SQUARES> Grid;
+
 #endif // CONSTANTS_H_
