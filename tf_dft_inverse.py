@@ -73,7 +73,7 @@ generator_batchsize = 128
 generator_train_size //= generator_batchsize
 loss = squared_area_between
 # loss = area_between
-lr = 1e-1
+lr = 1e-2
 max_var = 24
 inner_loops = 30
 
@@ -110,7 +110,7 @@ def make_generator_input(n_grids, use_generator=False, batchsize=generator_batch
         return diffs / np.sum(diffs) * up_to
 
     def gen_func():
-        if random() < 0.1:
+        if random() < 0.2:
             f = np.zeros(N_ADSORP + 1)
             i = randint(1, N_ADSORP)
             f[-i:] = 1.0
@@ -179,7 +179,6 @@ def train():
     dft_model = make_dft_model()
 
     optimizer = SGD(lr, momentum=0.9, nesterov=True)
-    generator.compile(optimizer, loss='mse')
     inp = Input(shape=(N_ADSORP,), name='target_metric')
     generator_out = generator(inp)
     dft_out = dft_model(generator_out)
