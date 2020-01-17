@@ -189,8 +189,9 @@ try:
 except:
     pass
 if visualize:
-    generator = load_model(model_loc, custom_objects={'binary_sigmoid': binary_sigmoid,
-                                                      'area_between': area_between})
+    # generator = load_model(model_loc, custom_objects={'binary_sigmoid': binary_sigmoid,
+    #                                                   'area_between': area_between})
+    generator.load_weights(model_loc)
     # generator.load_weights(model_loc)
     relative_humidity = np.arange(41) * STEP_SIZE
 
@@ -198,6 +199,7 @@ if visualize:
     errors = list()
 
     c = make_steps()[0][::-1]
+    print(len(c))
     grids = generator.predict(c)
     densities = run_dft(grids, inner_loops=100)
     for diffs, grid, diffs_dft in zip(c, grids, densities):
@@ -233,7 +235,7 @@ if visualize:
     density_files = density_files[:]
     true_densities = [np.diff(np.genfromtxt(density_file, delimiter=',')) for density_file in density_files]
     shuffle(true_densities)
-    true_densities = batch(true_densities, 64)
+    true_densities = batch(true_densities, generator_batchsize)
     vis_curves(zip(true_densities, true_densities))
 
     print('Mean: ', np.array(errors).mean())
