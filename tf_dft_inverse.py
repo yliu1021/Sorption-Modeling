@@ -146,9 +146,12 @@ def inverse_dft_model():
 
     x = Dense(GRID_SIZE * GRID_SIZE * 128, name='fc1', activation='relu')(inp)
     x = Reshape((GRID_SIZE, GRID_SIZE, 128))(x)
+    x = BatchNormalization()(x)
 
     x = Conv2DTranspose(128, 20, strides=1, padding='same', activation='relu')(x)
+    x = BatchNormalization()(x)
     x = Conv2DTranspose(128, 20, strides=1, padding='same', activation='relu')(x)
+    x = BatchNormalization()(x)
 
     out = Conv2D(1, 1, strides=1, padding='same', activation=binary_sigmoid, name='generator_conv')(x)
     out = Reshape((GRID_SIZE, GRID_SIZE))(out)
