@@ -78,15 +78,9 @@ def run_dft(grids, batch_size=None, inner_loops=5):
 
     total_pores = tf.maximum(tf.reduce_sum(grids, [1, 2]), 1)
 
-    # wffyr0_conv = tf.nn.conv2d(rneg, strides=[1, 1, 1, 1], filters=_filter_wffy, padding='VALID')
-
     densities = [tf.zeros(batch_size)]
     for jj in range(1, N_ADSORP):
-        # bias = (wffyr0_conv + muu_lookup[jj]) * BETA
         for i in range(inner_loops):
-            # vi = tf.nn.conv2d(r1, strides=[1, 1, 1, 1], filters=_filter_wff, padding='VALID',
-            #                   name='vi_conv_%04d'%i)
-            # vi += bias
             vir1 = tf.nn.conv2d(r1, strides=[1,1,1,1], filters=_filter_1, padding='VALID')
             vir0 = tf.nn.conv2d(rneg, strides=[1,1,1,1], filters=_filter_y, padding='VALID')
             vi = WFF * (vir1 + vir0) + muu_lookup[jj];
@@ -101,7 +95,6 @@ def run_dft(grids, batch_size=None, inner_loops=5):
     densities.append(tf.ones(batch_size))
 
     diffs = list()
-    # last = tf.zeros_like(densities[0])
     last = densities[0]
     for density in densities[1:]:
         diffs.append(density - last)
