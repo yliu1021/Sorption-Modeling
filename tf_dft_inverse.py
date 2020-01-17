@@ -73,7 +73,7 @@ generator_batchsize = 128
 generator_train_size //= generator_batchsize
 loss = squared_area_between
 # loss = area_between
-lr = 1e-2
+lr = 1e-3
 max_var = 24
 inner_loops = 30
 
