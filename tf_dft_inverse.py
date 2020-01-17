@@ -183,7 +183,7 @@ generator = inverse_dft_model()
 def train():
     dft_model = make_dft_model()
 
-    generator.compile('adam', loss='mse')
+    generator.compile(SGD(0.001, momentum=0.9, nesterov=True), loss='mse')
     inp = Input(shape=(N_ADSORP,), name='target_metric')
     generator_out = generator(inp)
     dft_out = dft_model(generator_out)
@@ -197,21 +197,21 @@ def train():
 
     filepath = os.path.join(base_dir, 'generator_{epoch:03d}.hdf5')
     save_freq=generator_train_size*5*generator_batchsize
-    training_model.fit_generator(generator_train_generator,
-                                 steps_per_epoch=generator_train_size,
-                                 epochs=generator_epochs,
-                                 max_queue_size=64, shuffle=False,
-                                 callbacks=[TensorBoard(log_dir=log_loc,
-                                                        write_graph=True,
-                                                        write_images=True),
-                                            ReduceLROnPlateau(monitor='loss',
-                                                              factor=0.1,
-                                                              patience=10),
-                                            ModelCheckpoint(filepath,
-                                                            monitor='area_between',
-                                                            save_best_only=True,
-                                                            mode='min',
-                                                            save_freq='epoch')])
+    training_model.fit(generator_train_generator,
+                       steps_per_epoch=generator_train_size,
+                       epochs=generator_epochs,
+                       max_queue_size=64, shuffle=False,
+                       callbacks=[TensorBoard(log_dir=log_loc,
+                                              write_graph=True,
+                                              write_images=True),
+                                  ReduceLROnPlateau(monitor='loss',
+                                                    factor=0.1,
+                                                    patience=10),
+                                  ModelCheckpoint(filepath,
+                                                  monitor='area_between',
+                                                  save_best_only=True,
+                                                  mode='min',
+                                                  save_freq='epoch')])
 
     generator.save(model_loc)
 
