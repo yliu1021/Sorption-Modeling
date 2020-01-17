@@ -183,13 +183,14 @@ generator = inverse_dft_model()
 def train():
     dft_model = make_dft_model()
 
-    generator.compile(SGD(0.001, momentum=0.9, nesterov=True), loss='mse')
+    optimizer = SGD(lr, momentum=0.9, nesterov=True)
+    generator.compile(optimizer, loss='mse')
     inp = Input(shape=(N_ADSORP,), name='target_metric')
     generator_out = generator(inp)
     dft_out = dft_model(generator_out)
 
     training_model = Model(inputs=inp, outputs=dft_out)
-    optimizer = Adam(lr=lr)
+
     training_model.compile(optimizer,
                            loss=loss,
                            metrics=[area_between])
