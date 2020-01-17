@@ -69,7 +69,7 @@ try:
     generator_epochs = int(sys.argv[1])
 except:
     pass
-generator_batchsize = 128
+generator_batchsize = 32
 generator_train_size //= generator_batchsize
 loss = squared_area_between
 loss = area_between
@@ -181,7 +181,7 @@ generator = inverse_dft_model()
 def train():
     dft_model = make_dft_model()
 
-    optimizer = Adam(lr)
+    optimizer = SGD(lr, momentum=0.9, nesterov=True)
     generator.compile(optimizer, loss='mse')
     inp = Input(shape=(N_ADSORP,), name='target_metric')
     generator_out = generator(inp)
@@ -217,9 +217,13 @@ def train():
 
 def visualize(see_grids, intermediate_layers):
     generator.load_weights(model_loc, by_name=True)
+    
+    vis_layers = list()
     for layer in generator.layers:
         print(layer.name)
-    return
+        if 'conv' in layer.name:
+            vis_layers.append(Model(generator.input, layer.output))
+
     relative_humidity = np.arange(41) * STEP_SIZE
 
     areas = list()
@@ -238,7 +242,18 @@ def visualize(see_grids, intermediate_layers):
     def vis_curves(curves):
         for c, _ in curves:
             print('computing...')
-            grids = generator.predict(np.array(c))
+            curve_batch = np.array(c)
+            grids = generator.predict(curve_batch)
+            
+            for layer in vis_layers:
+                intermediate = layer.predict(curve_batch)
+                print(intermediate.shape)
+                
+                sample = intermediate[0]
+                fig, ax = plt.subplots(8, 16, figsize=(20, 10))
+                for i in range(128):
+                    ax[i//16, i % 16].matshow(sample[:, :, i])
+            
             densities = run_dft(grids, inner_loops=100)
             for diffs, grid, diffs_dft in zip(c, grids, densities):
                 curve = np.cumsum(np.insert(diffs, 0, 0))
