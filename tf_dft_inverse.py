@@ -44,8 +44,6 @@ def show_grid(grid, target_curve, dft_curve):
     ax.set_aspect('equal')
     ax.legend()
 
-    plt.show()
-
 
 def batch(iterable, n=1):
     l = len(iterable)
@@ -183,7 +181,7 @@ generator = inverse_dft_model()
 def train():
     dft_model = make_dft_model()
 
-    optimizer = SGD(lr, momentum=0.9, nesterov=True)
+    optimizer = Adam(lr, momentum=0.9, nesterov=True)
     generator.compile(optimizer, loss='mse')
     inp = Input(shape=(N_ADSORP,), name='target_metric')
     generator_out = generator(inp)
@@ -219,6 +217,9 @@ def train():
 
 def visualize(see_grids, intermediate_layers):
     generator.load_weights(model_loc)
+    for layer in generator.layers:
+        print(layer.name)
+    return
     relative_humidity = np.arange(41) * STEP_SIZE
 
     areas = list()
@@ -251,6 +252,7 @@ def visualize(see_grids, intermediate_layers):
                 
                 if see_grids:
                     show_grid(grid, curve, curve_dft)
+                    plt.show()
 
     curves = [next(generator_train_generator) for _ in range(5)]
     vis_curves(curves)
