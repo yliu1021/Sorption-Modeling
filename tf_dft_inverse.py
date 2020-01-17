@@ -69,11 +69,11 @@ try:
     generator_epochs = int(sys.argv[1])
 except:
     pass
-generator_batchsize = 32
+generator_batchsize = 128
 generator_train_size //= generator_batchsize
 loss = squared_area_between
 # loss = area_between
-lr = 1e-2
+lr = 1e-1
 max_var = 24
 inner_loops = 30
 
