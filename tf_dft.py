@@ -62,7 +62,7 @@ def run_dft(grids, batch_size=None, inner_loops=5):
 
     # we tile the grid and then crop it so that the boundaries
     # from one side will also exist on the other side
-    batch_size = len(grids) if batch_size is None else batch_size
+    batch_size = grids.shape[0]
 
     r0 = tf.tile(grids, [1, 3, 3])
     r1 = tf.tile(grids, [1, 3, 3])

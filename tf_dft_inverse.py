@@ -141,20 +141,19 @@ def make_generator_input(n_grids, use_generator=False, batchsize=generator_batch
 
 
 def inverse_dft_model():
-    inp = Input(shape=(N_ADSORP,), name='generator_input', batch_size=generator_batchsize)
+    # inp = Input(shape=(N_ADSORP,), name='generator_input', batch_size=generator_batchsize)
+    inp = Input(shape=(N_ADSORP,), name='generator_input')
 
     Q_GRID_SIZE = GRID_SIZE // 4
 
-    x = Dense(GRID_SIZE * GRID_SIZE * 128, name='fc1')(inp)
-    x = LeakyReLU()(x)
-
+    x = Dense(GRID_SIZE * GRID_SIZE * 128, name='fc1', activation='relu')(inp)
     x = Reshape((GRID_SIZE, GRID_SIZE, 128))(x)
+    x = BatchNormalization()(x)
 
-    x = Conv2DTranspose(128, 20, strides=1, padding='same')(x)
-    x = LeakyReLU()(x)
-
-    x = Conv2DTranspose(128, 20, strides=1, padding='same')(x)
-    x = LeakyReLU()(x)
+    x = Conv2DTranspose(128, 20, strides=1, padding='same', activation='relu')(x)
+    x = BatchNormalization()(x)
+    x = Conv2DTranspose(128, 20, strides=1, padding='same', activation='relu')(x)
+    x = BatchNormalization()(x)
 
     out = Conv2D(1, 1, strides=1, padding='same', activation=binary_sigmoid, name='generator_conv')(x)
     out = Reshape((GRID_SIZE, GRID_SIZE))(out)
@@ -164,10 +163,10 @@ def inverse_dft_model():
     return model
 
 
-def dft_model():
+def make_dft_model():
     inp = Input(shape=(GRID_SIZE, GRID_SIZE), batch_size=generator_batchsize, name='dft_input')
     x = Lambda(lambda x: run_dft(x,
-                                 batch_size=generator_batchsize,
+                                 # batch_size=generator_batchsize,
                                  inner_loops=inner_loops))(inp)
     model = Model(inputs=inp, outputs=x, name='dft_model')
 
@@ -180,19 +179,45 @@ generator_train_generator = make_generator_input(n_grids=generator_train_size,
 
 generator = inverse_dft_model()
 
-# Visualization
-visualize = False
-see_grids = False
-try:
-    visualize = sys.argv[1] == 'v'
-    see_grids = 's' in sys.argv
-except:
-    pass
-if visualize:
-    # generator = load_model(model_loc, custom_objects={'binary_sigmoid': binary_sigmoid,
-    #                                                   'area_between': area_between})
+
+def train():
+    dft_model = make_dft_model()
+
+    generator.compile('adam', loss='mse')
+    inp = Input(shape=(N_ADSORP,), name='target_metric')
+    generator_out = generator(inp)
+    dft_out = dft_model(generator_out)
+
+    training_model = Model(inputs=inp, outputs=dft_out)
+    optimizer = Adam(lr=lr)
+    training_model.compile(optimizer,
+                           loss=loss,
+                           metrics=[area_between])
+    training_model.summary()
+
+    filepath = os.path.join(base_dir, 'generator_{epoch:03d}.hdf5')
+    save_freq=generator_train_size*5*generator_batchsize
+    training_model.fit_generator(generator_train_generator,
+                                 steps_per_epoch=generator_train_size,
+                                 epochs=generator_epochs,
+                                 max_queue_size=64, shuffle=False,
+                                 callbacks=[TensorBoard(log_dir=log_loc,
+                                                        write_graph=True,
+                                                        write_images=True),
+                                            ReduceLROnPlateau(monitor='loss',
+                                                              factor=0.1,
+                                                              patience=10),
+                                            ModelCheckpoint(filepath,
+                                                            monitor='area_between',
+                                                            save_best_only=True,
+                                                            mode='min',
+                                                            save_freq='epoch')])
+
+    generator.save(model_loc)
+
+
+def visualize(see_grids, intermediate_layers):
     generator.load_weights(model_loc)
-    # generator.load_weights(model_loc)
     relative_humidity = np.arange(41) * STEP_SIZE
 
     areas = list()
@@ -226,8 +251,8 @@ if visualize:
                 if see_grids:
                     show_grid(grid, curve, curve_dft)
 
-    # curves = [next(generator_train_generator) for _ in range(5)]
-    # vis_curves(curves)
+    curves = [next(generator_train_generator) for _ in range(5)]
+    vis_curves(curves)
 
     base_dir = '/Users/yuhanliu/Google Drive/Research/sorption_modeling/test_grids/step4'
     density_files = glob.glob(os.path.join(base_dir, 'results', 'density_*.csv'))
@@ -253,39 +278,12 @@ if visualize:
     # plt.xlim(0, 1)
     plt.ylim(0, 1)
     plt.show()
-    
-    exit(0)
 
-dft_model = dft_model()
 
-generator.compile('adam', loss='mse')
-inp = Input(shape=(N_ADSORP,), name='target_metric')
-generator_out = generator(inp)
-dft_out = dft_model(generator_out)
-
-training_model = Model(inputs=inp, outputs=dft_out)
-optimizer = Adam(lr=lr)
-training_model.compile(optimizer,
-                       loss=loss,
-                       metrics=[area_between])
-training_model.summary()
-
-filepath = os.path.join(base_dir, 'generator_{epoch:03d}.hdf5')
-save_freq=generator_train_size*5*generator_batchsize
-training_model.fit_generator(generator_train_generator,
-                             steps_per_epoch=generator_train_size,
-                             epochs=generator_epochs,
-                             max_queue_size=64, shuffle=False,
-                             callbacks=[TensorBoard(log_dir=log_loc,
-                                                    write_graph=True,
-                                                    write_images=True),
-                                        ReduceLROnPlateau(monitor='loss',
-                                                          factor=0.1,
-                                                          patience=10),
-                                        ModelCheckpoint(filepath,
-                                                        monitor='area_between',
-                                                        save_best_only=True,
-                                                        mode='min',
-                                                        save_freq='epoch')])
-
-generator.save(model_loc)
+if __name__ == '__main__':
+    if len(sys.argv) > 1:
+        see_grids = len(sys.argv) >= 3
+        intermediate_layers = len(sys.argv) >= 4
+        visualize(see_grids, intermediate_layers)
+    else:
+        train()
