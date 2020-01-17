@@ -146,12 +146,9 @@ def inverse_dft_model():
 
     x = Dense(GRID_SIZE * GRID_SIZE * 128, name='fc1', activation='relu')(inp)
     x = Reshape((GRID_SIZE, GRID_SIZE, 128))(x)
-    x = BatchNormalization()(x)
 
     x = Conv2DTranspose(128, 20, strides=1, padding='same', activation='relu')(x)
-    x = BatchNormalization()(x)
     x = Conv2DTranspose(128, 20, strides=1, padding='same', activation='relu')(x)
-    x = BatchNormalization()(x)
 
     out = Conv2D(1, 1, strides=1, padding='same', activation=binary_sigmoid, name='generator_conv')(x)
     out = Reshape((GRID_SIZE, GRID_SIZE))(out)
@@ -221,7 +218,7 @@ def visualize(see_grids, intermediate_layers):
     vis_layers = list()
     for layer in generator.layers:
         print(layer.name)
-        if 'conv' in layer.name:
+        if 'conv2d' in layer.name:
             vis_layers.append(Model(generator.input, layer.output))
 
     relative_humidity = np.arange(41) * STEP_SIZE
@@ -238,6 +235,7 @@ def visualize(see_grids, intermediate_layers):
         curve_dft = np.cumsum(np.insert(diffs_dft, 0, 0))
         if see_grids:
             show_grid(grid, curve, curve_dft)
+            plt.show()
 
     def vis_curves(curves):
         for c, _ in curves:
@@ -245,17 +243,16 @@ def visualize(see_grids, intermediate_layers):
             curve_batch = np.array(c)
             grids = generator.predict(curve_batch)
             
+            intermediate_layer_outputs = list()
             for layer in vis_layers:
                 intermediate = layer.predict(curve_batch)
                 print(intermediate.shape)
+                intermediate_layer_outputs.append(intermediate)
                 
-                sample = intermediate[0]
-                fig, ax = plt.subplots(8, 16, figsize=(20, 10))
-                for i in range(128):
-                    ax[i//16, i % 16].matshow(sample[:, :, i])
+                # sample = intermediate[0]
             
             densities = run_dft(grids, inner_loops=100)
-            for diffs, grid, diffs_dft in zip(c, grids, densities):
+            for diffs, grid, diffs_dft, sample1, sample2 in zip(c, grids, densities, *intermediate_layer_outputs):
                 curve = np.cumsum(np.insert(diffs, 0, 0))
                 curve_dft = np.cumsum(np.insert(diffs_dft, 0, 0))
 
@@ -267,6 +264,15 @@ def visualize(see_grids, intermediate_layers):
                 
                 if see_grids:
                     show_grid(grid, curve, curve_dft)
+                    plt.show()
+
+                    fig, ax = plt.subplots(8, 16, figsize=(16, 8))
+                    for i in range(128):
+                        ax[i//16, i % 16].matshow(sample1[:, :, i])
+                    plt.show()
+                    fig, ax = plt.subplots(8, 16, figsize=(16, 8))
+                    for i in range(128):
+                        ax[i//16, i % 16].matshow(sample2[:, :, i])
                     plt.show()
 
     curves = [next(generator_train_generator) for _ in range(5)]
