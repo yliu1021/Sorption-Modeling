@@ -181,7 +181,7 @@ generator = inverse_dft_model()
 def train():
     dft_model = make_dft_model()
 
-    optimizer = Adam(lr, momentum=0.9, nesterov=True)
+    optimizer = Adam(lr)
     generator.compile(optimizer, loss='mse')
     inp = Input(shape=(N_ADSORP,), name='target_metric')
     generator_out = generator(inp)
@@ -216,7 +216,7 @@ def train():
 
 
 def visualize(see_grids, intermediate_layers):
-    generator.load_weights(model_loc)
+    generator.load_weights(model_loc, by_name=True)
     for layer in generator.layers:
         print(layer.name)
     return
