@@ -27,6 +27,8 @@ bool write_density(std::array<double, N_ADSORP+1> density, const std::string &pa
 // Grid Mutators
 // ============================================================================
 
+std::array<double, N_SQUARES> random_grid();
+
 /*
   Randomly toggle one square in the grid.
  */
@@ -56,7 +58,7 @@ void standardizeVec(std::vector<double> &v);
 // Cost functions
 // ============================================================================
 
-double mean_abs_error(const std::array<double, N_ADSORP+1> &y_true, const std::array<double, N_ITER+1> &y_pred);
+double mean_abs_error(const std::array<double, N_ADSORP+1> &y_true, const std::array<double, N_ADSORP+1> &y_pred);
 
 // double kullback_leibler_divergence(const std::array<double, N_ADSORP+1> y_true, const std::array<double, N_ITER+1> y_pred);
 

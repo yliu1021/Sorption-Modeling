@@ -120,6 +120,18 @@ bool write_density(array<double,N_ADSORP+1> density, const string &path) {
 // Grid Mutators
 // ============================================================================
 
+array<double, N_SQUARES> random_grid() {
+    array<double,N_SQUARES> grid;
+    for (int i = 0; i < N_SQUARES; ++i) {
+        if (((double)rand()/(RAND_MAX)) < 0.5) {
+            grid[i] = 0;
+        } else {
+            grid[i] = 1;
+        }
+    }
+    return grid;
+}
+
 void toggle_random(array<double, N_SQUARES> &grid) {
     int sq = rand() % N_SQUARES;
     grid[sq] = 1- grid[sq];
@@ -176,7 +188,7 @@ edges. For example, if an interval of [0, 1] is specified, values smaller than
 // Cost functions
 // ============================================================================
 
-double mean_abs_error(const array<double, N_ADSORP+1> &y_true, const array<double, N_ITER+1> &y_pred) {
+double mean_abs_error(const array<double, N_ADSORP+1> &y_true, const array<double, N_ADSORP+1> &y_pred) {
     double mse = 0;
     for (short i = 0; i < N_ADSORP+1; ++i) {
         mse += abs(y_true[i] - y_pred[i]);
