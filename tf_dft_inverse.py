@@ -75,7 +75,7 @@ generator_batchsize = 128
 generator_train_size //= generator_batchsize
 loss = squared_area_between
 loss = area_between
-lr = 1e-3
+lr = 1e-1
 max_var = 24
 inner_loops = 30
 
@@ -201,7 +201,7 @@ def train():
     training_model.fit(generator_train_generator,
                        steps_per_epoch=generator_train_size,
                        epochs=generator_epochs,
-                       max_queue_size=64, shuffle=False,
+                       max_queue_size=10, shuffle=False,
                        callbacks=[TensorBoard(log_dir=log_loc,
                                               write_graph=True,
                                               write_images=True),
