@@ -14,27 +14,11 @@ import data
 from constants import *
 from simul_dft import *
 
-model_name = 'vae_deconv'
+model_name = 'cvae'
 
 # # Linear curve
-target_density = np.arange(41) * STEP_SIZE
-
-# # Heaviside step function
-# target_density = np.arange(41) * STEP_SIZE # heaviside
-# target_density = target_density - 0.5 # heaviside
-# target_density = np.heaviside(target_density, 0.5)
-
-# # Multi-step function
-# target_density = np.arange(41) * STEP_SIZE
-# target_density = np.piecewise(target_density, [target_density<=0.3, np.logical_and(target_density>0.3, target_density<=0.6), target_density>0.6], [0.3, 0.6, 1])
-
-# Circle functions
-# target_density = np.genfromtxt("../../../../Desktop/circle_up.csv", delimiter=",")
-# target_density = np.genfromtxt("../../../../Desktop/circle_down.csv", delimiter=",")
-
-# target_density = np.genfromtxt("../../../../Desktop/1pore_den.csv", delimiter=",")
-# target_density = np.genfromtxt("../../../../Desktop/1solid_den.csv", delimiter=",")
-# target_density = np.genfromtxt("../../../../Desktop/bigpore.csv", delimiter=",")
+target_density = np.linspace(0, 1, 40).reshape(1, 40,)
+target_density = np.genfromtxt('../generative_model_3/step_0/results/density_0000.csv', delimiter=',')[:40].reshape(1, 40)
 
 def press(event):
     if event.key != 'q':
@@ -59,7 +43,10 @@ def plot_latent(models, test_data, batch_size=128, use_curve=True, save=False):
     filename = os.path.join(model_name, 'vae_mean.png')
 
     # display a 2D plot of the digit classes in the latent space
-    z_mean, _, _ = encoder.predict(x_test, batch_size=batch_size)
+    if use_curve:
+        z_mean, _, _ = encoder.predict([x_test, y_test], batch_size=batch_size)
+    else:
+        z_mean, _, _ = encoder.predict(x_test, batch_size=batch_size)
     plt.figure(figsize=(12, 10))
     plt.scatter(z_mean[:, 0], z_mean[:, 1])
     plt.xlabel('z[0]')
@@ -85,6 +72,8 @@ def plot_latent(models, test_data, batch_size=128, use_curve=True, save=False):
             else:
                 x_decoded = decoder.predict(z_sample)
             digit = x_decoded[0].reshape(GRID_SIZE, GRID_SIZE)
+            # digit = digit.round()
+            # import pdb; pdb.set_trace()
 
             path = os.path.join(model_name, 'grids', 'grid_{:04d}.csv'.format(i*n+j))
             np.savetxt(path, digit, fmt='%i', delimiter=',')
@@ -107,27 +96,28 @@ def plot_latent(models, test_data, batch_size=128, use_curve=True, save=False):
     plt.yticks(pixel_range, sample_range_y)
     plt.xlabel('z[0]')
     plt.ylabel('z[1]')
-    plt.imshow(figure, cmap='Greys_r')
+    plt.imshow(figure, cmap='Greys_r', vmin=0.0, vmax=1.0)
     plt.title('Grids Over Latent Distribution')
     if save:
         plt.savefig(filename)
     plt.show()
 
 
-def show_grids():
-    density_files = glob.glob(os.path.join(base_dir, 'density*.csv'))
-    grid_files = glob.glob(os.path.join(base_dir, 'grid*.csv'))
+def show_grids(base_dir):
+    density_files = glob.glob(os.path.join(base_dir, 'results', 'density*.csv'))
+    grid_files = glob.glob(os.path.join(base_dir, 'grids', 'grid*.csv'))
     density_files.sort()
     grid_files.sort()
     for density_file, grid_file in zip(density_files, grid_files):
-        df = pd.read_csv(density_file, index_col=0)
-        density = df['0'][0:N_ADSORP+1]
+        density = np.genfromtxt(density_file, delimiter=',')[:41]
+        density[40] = 1
 
         grid = np.genfromtxt(grid_file, delimiter=',')
         grid = grid[:, :20]
-        # density = run_dft_fast(np.reshape(grid, 400))
 
-        metric = (np.sum(np.absolute(density - target_density)) / 20.0)
+        td = np.reshape(target_density, (40, ))
+        td = np.append(target_density, 1)
+        metric = (np.sum(np.absolute(density - td)) / 20.0)
     
         fig = plt.figure(1, figsize=(6, 8))
         fig.canvas.mpl_connect('key_press_event', press)
@@ -138,14 +128,14 @@ def show_grids():
         ax.set_aspect('equal')
 
         ax = plt.subplot(212)
-        ax.plot(df.index[0:N_ADSORP+1], df['0'][0:N_ADSORP+1])
-        ax.plot(np.linspace(0, N_ADSORP+1, num=N_ADSORP+1), target_density)
+        ax.plot(np.linspace(0, 1, N_ADSORP+1), density)
+        ax.plot(np.linspace(0, 1, N_ADSORP+1), td)
         plt.plot([1],[1])
         ax.legend(['Metric: {:.4f}'.format(metric), 'Target'])
-        ax.set_aspect(N_ADSORP+1)
+        # ax.set_aspect(N_ADSORP+1)
         
-        plt.savefig('evol_animation/' + grid_file[-13:-4] + '.png')
-        plt.close()
+        # plt.savefig('evol_animation/' + grid_file[-13:-4] + '.png')
+        # plt.close()
 
         plt.show()
 
@@ -203,12 +193,19 @@ def show_grids_no_density():
 if __name__ == '__main__':
     encoder = load_model(model_name+'/encoder.tf')
     decoder = load_model(model_name+'/decoder.tf')
-    x_test, y_test = data.get_all_data(matching='vae_cnn_data')
+    x_test, y_test = data.get_all_data(matching='../generative_model_3')
     # x_test, y_test = data.get_all_data(matching='../generative_model_2')
+
+    # p = np.random.permutation(len(x_test))
+    # x_test  = x_test[p]
+    # y_test  = y_test[p]
+
     # x_test = x_test[:100]
     x_test = np.reshape(x_test, [-1, GRID_SIZE, GRID_SIZE, 1])
     # y_test = y_test[:100]
-    plot_latent((encoder, decoder), (x_test, y_test), use_curve=False, save=True)
+    plot_latent((encoder, decoder), (x_test, y_test), use_curve=True, save=True)
+
+    # show_grids('cvae')
 
 
 # print('creating images')

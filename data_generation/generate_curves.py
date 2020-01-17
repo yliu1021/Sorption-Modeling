@@ -44,14 +44,14 @@ def save_curves():
 
 
 if __name__ == '__main__':
-    for i in range(2, 4):
+    for i in range(2, 9):
         generate_curves(div=i)
 
     rescale_curves()
     rescaled = np.round(np.array(rescaled), decimals=10)
     rescaled = np.unique(rescaled, axis=0)
     print(rescaled.shape)
-    save_curves()
+    # save_curves()
 
     # plt.ion()
     # plt.show()

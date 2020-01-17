@@ -1,7 +1,11 @@
 from tensorflow.keras import backend as K
-from tensorflow.keras.layers import *
+from tensorflow.keras.layers import Input, Dense, Reshape, Flatten, Conv2D, Conv2DTranspose, Lambda
+from tensorflow.keras.layers import concatenate
 from tensorflow.keras.losses import binary_crossentropy
-from tensorflow.keras.models import Model, Sequential
+from tensorflow.keras.models import Model
+
+import sys
+sys.path.append('..')
 
 from constants import *
 
@@ -73,13 +77,13 @@ def make_vae_deconv(**kwargs):
 
     inputs = Input(shape=input_shape, name='encoder_input')
     x = inputs
-    for i in range(2):
+    for _ in range(2):
         filters *= 2
         x = Conv2D(filters=filters,
-                kernel_size=kernel_size,
-                activation='relu',
-                strides=2,
-                padding='same')(x)
+                   kernel_size=kernel_size,
+                   activation='relu',
+                   strides=2,
+                   padding='same')(x)
 
     # shape info needed to build decoder model
     shape = K.int_shape(x)
@@ -103,7 +107,7 @@ def make_vae_deconv(**kwargs):
     x = Dense(shape[1] * shape[2] * shape[3], activation='relu')(x)
     x = Reshape((shape[1], shape[2], shape[3]))(x)
 
-    for i in range(2):
+    for _ in range(2):
         x = Conv2DTranspose(filters=filters,
                             kernel_size=kernel_size,
                             activation='relu',
@@ -112,10 +116,10 @@ def make_vae_deconv(**kwargs):
         filters //= 2
 
     outputs = Conv2DTranspose(filters=1,
-                            kernel_size=kernel_size,
-                            activation='sigmoid',
-                            padding='same',
-                            name='decoder_output')(x)
+                              kernel_size=kernel_size,
+                              activation='sigmoid',
+                              padding='same',
+                              name='decoder_output')(x)
 
     # instantiate decoder model
     decoder = Model(latent_inputs, outputs, name='decoder')
@@ -125,6 +129,87 @@ def make_vae_deconv(**kwargs):
     vae = Model(inputs, outputs, name='vae')
 
     reconstruction_loss = binary_crossentropy(K.flatten(inputs), K.flatten(outputs))
+    reconstruction_loss *= GRID_SIZE * GRID_SIZE
+    kl_loss = 1 + z_log_var - K.square(z_mean) - K.exp(z_log_var)
+    kl_loss = K.sum(kl_loss, axis=-1)
+    kl_loss *= -0.5
+    vae_loss = K.mean(reconstruction_loss + kl_loss)
+    vae.add_loss(vae_loss)
+
+    return encoder, decoder, vae
+
+def make_cvae(**kwargs):
+    latent_dim = kwargs.get('latent_dim', 2)
+    kernel_size = kwargs.get('filters', 3)
+    filters = kwargs.get('filters', 16)
+
+    grid_inp = Input(shape=input_shape, name='grid_input')
+    x = grid_inp
+    for _ in range(2):
+        filters *= 2
+        x = Conv2D(filters=filters,
+                   kernel_size=kernel_size,
+                   activation='relu',
+                   strides=2,
+                   padding='same')(x)
+
+    # shape info needed to build decoder model
+    shape = K.int_shape(x)
+
+    # generate latent vector Q(z|X)
+    x = Flatten()(x)
+
+    curve_inp = Input(shape=(N_ADSORP,), name='curve_input')
+    curve_layer = Dense(16, activation='relu')(curve_inp)
+
+    x = concatenate([x, curve_layer], axis=1)
+    x = Dense(16, activation='relu')(x)
+
+    z_mean = Dense(latent_dim, name='z_mean')(x)
+    z_log_var = Dense(latent_dim, name='z_log_var')(x)
+
+    # use reparameterization trick to push the sampling out as input
+    # note that "output_shape" isn't necessary with the TensorFlow backend
+    z = Lambda(sampling, output_shape=(latent_dim,), name='z')([z_mean, z_log_var])
+
+    # instantiate encoder model
+    encoder = Model([grid_inp, curve_inp], [z_mean, z_log_var, z], name='encoder')
+
+    # build decoder model
+    latent_inputs = Input(shape=(latent_dim,), name='z_sampling')
+    x1 = Dense(128, activation='relu')(latent_inputs)
+
+    x2 = Dense(128, activation='relu')(curve_inp)
+
+    decoder_inputs = concatenate([x1, x2], axis=1)
+    x = Dense(shape[1] * shape[2] * shape[3], activation='relu')(decoder_inputs)
+
+    x = Reshape((shape[1], shape[2], shape[3]))(x)
+
+    for _ in range(2):
+        x = Conv2DTranspose(filters=filters,
+                            kernel_size=kernel_size,
+                            activation='relu',
+                            strides=2,
+                            padding='same')(x)
+        filters //= 2
+
+    outputs = Conv2DTranspose(filters=1,
+                              kernel_size=kernel_size,
+                              activation='sigmoid',
+                              padding='same',
+                              name='decoder_output')(x)
+
+    # instantiate decoder model
+    decoder = Model([latent_inputs, curve_inp], outputs, name='decoder')
+
+    # instantiate VAE model
+    outputs = decoder([encoder([grid_inp, curve_inp])[2], curve_inp])
+    vae = Model([grid_inp, curve_inp], outputs, name='vae')
+
+    # vae = Model([grid_inp, grid_inp], outputs, name='vae')
+
+    reconstruction_loss = binary_crossentropy(K.flatten(grid_inp), K.flatten(outputs))
     reconstruction_loss *= GRID_SIZE * GRID_SIZE
     kl_loss = 1 + z_log_var - K.square(z_mean) - K.exp(z_log_var)
     kl_loss = K.sum(kl_loss, axis=-1)

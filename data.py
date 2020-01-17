@@ -136,20 +136,21 @@ def get_all_data(matching=None, augment_factor=1):
                 densities.append(_cached_densities[density_file])
             else:
                 print('\rLoading {}/{} - caching'.format(i+1, num_files), end='')
-                density = np.genfromtxt(density_file, delimiter=',', skip_header=1, max_rows=N_ADSORP)
+                density = np.genfromtxt(density_file, delimiter=',', max_rows=N_ADSORP)
                 for _ in range(augment_factor):
                     densities.append(density)
                 _cached_densities[density_file] = density
         data.extend(zip(grids, densities))
     print()
 
-    shuffle(data)
+    # shuffle(data)
     all_grids, all_densities = zip(*data)
     all_grids = np.array(all_grids)
     all_densities = np.array(all_densities)
-    all_diffs = np.diff(all_densities, axis=1, append=1.0)
-    all_metrics = all_diffs[:, :, 1]
-    return (all_grids, all_metrics)
+    all_diffs = np.diff(all_densities, axis=1)
+    # all_metrics = all_diffs[:, :, 1]
+
+    return (all_grids, all_diffs)
 
 
 if __name__ == '__main__':
