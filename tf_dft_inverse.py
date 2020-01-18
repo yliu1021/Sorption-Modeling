@@ -220,7 +220,7 @@ def visualize(see_grids, intermediate_layers):
     vis_layers = list()
     for layer in generator.layers:
         print(layer.name)
-        if 'conv2d' in layer.name:
+        if 'conv2d' in layer.name or 'batch_normalization' == layer.name:
             vis_layers.append(Model(generator.input, layer.output))
 
     relative_humidity = np.arange(41) * STEP_SIZE
@@ -228,16 +228,34 @@ def visualize(see_grids, intermediate_layers):
     areas = list()
     errors = list()
 
-    c = make_steps()[0][::-1]
+    c = make_steps()[0][::]
     print(len(c))
     grids = generator.predict(c)
     densities = run_dft(grids, inner_loops=100)
-    for diffs, grid, diffs_dft in zip(c, grids, densities):
+    intermediate_layer_outputs = list()
+    for layer in vis_layers:
+        intermediate = layer.predict(c)
+        print(intermediate.shape)
+        intermediate_layer_outputs.append(intermediate)
+    for diffs, grid, diffs_dft, sample1, sample2, sample3 in zip(c, grids, densities, *intermediate_layer_outputs):
         curve = np.cumsum(np.insert(diffs, 0, 0))
         curve_dft = np.cumsum(np.insert(diffs_dft, 0, 0))
         if see_grids:
             show_grid(grid, curve, curve_dft)
             plt.show()
+
+            # fig, ax = plt.subplots(8, 16, figsize=(16, 8))
+            # for i in range(128):
+            #     ax[i//16, i % 16].matshow(sample1[:, :, i])
+            # plt.show()
+            # fig, ax = plt.subplots(8, 16, figsize=(16, 8))
+            # for i in range(128):
+            #     ax[i//16, i % 16].matshow(sample2[:, :, i])
+            # plt.show()
+            # fig, ax = plt.subplots(8, 16, figsize=(16, 8))
+            # for i in range(128):
+            #     ax[i//16, i % 16].matshow(sample3[:, :, i])
+            # plt.show()
 
     def vis_curves(curves):
         for c, _ in curves:
@@ -250,11 +268,9 @@ def visualize(see_grids, intermediate_layers):
                 intermediate = layer.predict(curve_batch)
                 print(intermediate.shape)
                 intermediate_layer_outputs.append(intermediate)
-                
-                # sample = intermediate[0]
             
             densities = run_dft(grids, inner_loops=100)
-            for diffs, grid, diffs_dft, sample1, sample2 in zip(c, grids, densities, *intermediate_layer_outputs):
+            for diffs, grid, diffs_dft, sample1, sample2, sample3 in zip(c, grids, densities, *intermediate_layer_outputs):
                 curve = np.cumsum(np.insert(diffs, 0, 0))
                 curve_dft = np.cumsum(np.insert(diffs_dft, 0, 0))
 
@@ -276,9 +292,13 @@ def visualize(see_grids, intermediate_layers):
                     for i in range(128):
                         ax[i//16, i % 16].matshow(sample2[:, :, i])
                     plt.show()
+                    fig, ax = plt.subplots(8, 16, figsize=(16, 8))
+                    for i in range(128):
+                        ax[i//16, i % 16].matshow(sample3[:, :, i])
+                    plt.show()
 
-    curves = [next(generator_train_generator) for _ in range(5)]
-    vis_curves(curves)
+    # curves = [next(generator_train_generator) for _ in range(5)]
+    # vis_curves(curves)
 
     base_dir = '/Users/yuhanliu/Google Drive/Research/sorption_modeling/test_grids/step4'
     density_files = glob.glob(os.path.join(base_dir, 'results', 'density_*.csv'))

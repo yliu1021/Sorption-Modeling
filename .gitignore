@@ -11,6 +11,7 @@ cpp/iterative_grids
 vae/vae_*
 data_generation/grids/
 data_generation/results/
+intermediate_layers/
 
 # Hoffman scripts
 run.sh
