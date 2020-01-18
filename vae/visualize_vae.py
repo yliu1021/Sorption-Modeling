@@ -14,11 +14,11 @@ import data
 from constants import *
 from simul_dft import *
 
-model_name = 'cvae'
+model_name = 'vae_conditional'
 
 # # Linear curve
 target_density = np.linspace(0, 1, 40).reshape(1, 40,)
-target_density = np.genfromtxt('../generative_model_3/step_0/results/density_0000.csv', delimiter=',')[:40].reshape(1, 40)
+target_density = np.genfromtxt('../generative_model_3/step_0/results/density_0002.csv', delimiter=',')[:40].reshape(1, 40)
 
 def press(event):
     if event.key != 'q':
@@ -72,8 +72,8 @@ def plot_latent(models, test_data, batch_size=128, use_curve=True, save=False):
             else:
                 x_decoded = decoder.predict(z_sample)
             digit = x_decoded[0].reshape(GRID_SIZE, GRID_SIZE)
+
             # digit = digit.round()
-            # import pdb; pdb.set_trace()
 
             path = os.path.join(model_name, 'grids', 'grid_{:04d}.csv'.format(i*n+j))
             np.savetxt(path, digit, fmt='%i', delimiter=',')
@@ -129,15 +129,15 @@ def show_grids(base_dir):
 
         ax = plt.subplot(212)
         ax.plot(np.linspace(0, 1, N_ADSORP+1), density)
-        ax.plot(np.linspace(0, 1, N_ADSORP+1), td)
-        plt.plot([1],[1])
-        ax.legend(['Metric: {:.4f}'.format(metric), 'Target'])
-        # ax.set_aspect(N_ADSORP+1)
+    ax.plot(np.linspace(0, 1, N_ADSORP+1), td)
+    plt.plot([1],[1])
+    ax.legend(['Metric: {:.4f}'.format(metric), 'Target'])
+    ax.set_aspect('equal')
         
         # plt.savefig('evol_animation/' + grid_file[-13:-4] + '.png')
         # plt.close()
 
-        plt.show()
+    plt.show()
 
 
 def show_grids_no_density():
@@ -205,7 +205,7 @@ if __name__ == '__main__':
     # y_test = y_test[:100]
     plot_latent((encoder, decoder), (x_test, y_test), use_curve=True, save=True)
 
-    # show_grids('cvae')
+    # show_grids('vae_conditional')
 
 
 # print('creating images')

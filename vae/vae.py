@@ -8,7 +8,7 @@ from constants import *
 import data
 import vae_models
 
-save_dir = 'cvae'
+save_dir = 'vae_conditional'
 
 def start_training(**kwargs):
     epochs = kwargs.get('epochs', 30)
@@ -37,4 +37,4 @@ def start_training(**kwargs):
     vae.save(os.path.join(save_dir, "vae.tf"))
 
 if __name__ == '__main__':
-    start_training(epochs=3, batch_size=2048)
+    start_training(epochs=30, batch_size=2048)
