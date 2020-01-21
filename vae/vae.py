@@ -8,6 +8,8 @@ from constants import *
 import data
 import vae_models
 
+from tensorflow.keras.optimizers import Adam
+
 save_dir = 'vae_conditional'
 
 def start_training(**kwargs):
@@ -28,7 +30,9 @@ def start_training(**kwargs):
     x_train = np.reshape(x_train, [-1, GRID_SIZE, GRID_SIZE, 1])
     x_test = np.reshape(x_test, [-1, GRID_SIZE, GRID_SIZE, 1])
 
-    vae.compile(optimizer='rmsprop')
+    opt = Adam(learning_rate=0.01, beta_1=0.9, beta_2=0.999, amsgrad=False)
+    vae.compile(optimizer=opt)
+
     vae.fit([x_train, y_train], epochs=epochs, batch_size=batch_size)
 
     os.makedirs(save_dir, exist_ok=True)
