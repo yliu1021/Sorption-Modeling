@@ -1,32 +1,20 @@
-import sys
-sys.path.append('..')
 
 import os
 import glob
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-# from itertools import cycle
-import imageio
+# import imageio
+import sys
+sys.path.append('..')
 from tensorflow.keras.models import load_model
 
 import data
 from constants import *
-from simul_dft import *
-
-model_name = 'vae_conditional'
+from vae_options import *
 
 # # Linear curve
-target_density = np.linspace(0, 1, 40).reshape(1, 40,)
-target_density = np.genfromtxt('../generative_model_3/step_0/results/density_0100.csv', delimiter=',')[:40].reshape(1, 40)
-
-
-# def make_gif():
-#     images = []
-#     for filename in sorted(os.listdir('evol_animation')):
-#         if filename[0] == 'g': # if grid
-#                 images.append(imageio.imread('evol_animation/'+filename))
-#     imageio.mimsave('evol_animation/animated_evol.gif', images, duration=0.1)
+target_density = np.genfromtxt('../generative_model_3/step_0/results/density_0000.csv', delimiter=',')[:40].reshape(1, 40)
 
 def plot_latent(models, test_data, batch_size=128, use_curve=True, save=False):
     """

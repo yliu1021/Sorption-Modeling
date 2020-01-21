@@ -6,17 +6,13 @@ import sys
 sys.path.append('..')
 
 from constants import *
-
-model_name = 'vae_conditional'
-
-# # Linear curve
-target_density = np.linspace(0, 1, 40).reshape(1, 40,)
-target_density = np.genfromtxt('../generative_model_3/step_0/results/density_0001.csv', delimiter=',')[:40].reshape(1, 40)
+from vae_options import *
 
 
 def press(event):
     if event.key != 'q':
         exit(0)
+
 
 def show_grids(base_dir, save=False):
     density_files = glob.glob(os.path.join(base_dir, 'results', 'density*.csv'))
@@ -58,6 +54,13 @@ def show_grids(base_dir, save=False):
         # plt.close()
 
         plt.show()
+
+# def make_gif():
+#     images = []
+#     for filename in sorted(os.listdir('evol_animation')):
+#         if filename[0] == 'g': # if grid
+#                 images.append(imageio.imread('evol_animation/'+filename))
+#     imageio.mimsave('evol_animation/animated_evol.gif', images, duration=0.1)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

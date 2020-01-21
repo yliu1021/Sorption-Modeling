@@ -1,12 +1,12 @@
-import sys
-sys.path.append('..')
-
 import numpy as np
 import os
+import sys
+sys.path.append('..')
 
 from constants import *
 import data
 import vae_models
+from vae_options import *
 
 from tensorflow.keras.optimizers import Adam
 
@@ -35,10 +35,10 @@ def start_training(**kwargs):
 
     vae.fit([x_train, y_train], epochs=epochs, batch_size=batch_size)
 
-    os.makedirs(save_dir, exist_ok=True)
-    encoder.save(os.path.join(save_dir, "encoder.tf"))
-    decoder.save(os.path.join(save_dir, "decoder.tf"))
-    vae.save(os.path.join(save_dir, "vae.tf"))
+    os.makedirs(model_name, exist_ok=True)
+    encoder.save(os.path.join(model_name, "encoder.tf"))
+    decoder.save(os.path.join(model_name, "decoder.tf"))
+    vae.save(os.path.join(model_name, "vae.tf"))
 
 if __name__ == '__main__':
     start_training(epochs=30, batch_size=2048)

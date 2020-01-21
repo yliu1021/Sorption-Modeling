@@ -27,7 +27,6 @@ input_shape = (GRID_SIZE, GRID_SIZE, 1)
 # latent_dim = 2
 # epochs = 15 
 
-
 def make_vae_classical(**kwargs):
     latent_dim = kwargs.get('latent_dim', 2)
     intermediate_dim = kwargs.get('intermediate_dim', 512)
