@@ -34,6 +34,8 @@ class GridDataGenerator:
         numVal = int(self.augmentedNumGrids * validation_split)
         numTest = int(self.augmentedNumGrids * test_split)
 
+        self.numTrainGrids = self.augmentedNumGrids - (numVal + numTest)
+
         testAndVal = random.sample(range(0, numGrids), numTest+numVal)
         self.validationSet = set(testAndVal[:numVal])
         self.testSet = set(testAndVal[numVal:])
