@@ -56,7 +56,7 @@ class GridDataGenerator:
                 grid, curve = self.xy_pair_for_num(grid_num)
                 grid_batch.append(grid.reshape(20, 20, 1))
                 curve_batch.append(curve.reshape(40))
-            yield np.array(grid_batch), np.array(curve_batch)
+            yield [np.array(grid_batch), np.array(curve_batch)]
 
             # self.threadLock.acquire()
             # if len(self.grid_batch) > 0 and len(self.curve_batch) > 0:

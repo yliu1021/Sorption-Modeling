@@ -26,17 +26,16 @@ def start_training(**kwargs):
     vae.compile(optimizer=opt)
 
     # vae.fit([x_train, y_train], epochs=epochs, batch_size=batch_size)
-    # vae.fit_generator(gdg.flow(batch_size=batch_size), steps_per_epoch=math.ceil(gdg.augmentedNumGrids // batch_size), epochs=epochs)
+    vae.fit_generator(gdg.flow(), steps_per_epoch=math.ceil(gdg.augmentedNumGrids // batch_size), epochs=epochs)
     
-    for e in range(epochs):
-        batches = 0
-        for x_batch, y_batch in gdg.flow():
-            vae.fit([x_batch, y_batch])
-            batches += 1
-            print('Epoch {}, batch {} of {}'.format(e, batches, (gdg.augmentedNumGrids // batch_size)))
-            if batches >= gdg.augmentedNumGrids // batch_size:
-                break
-    gdg.close()
+    # for e in range(epochs):
+    #     batches = 0
+    #     for x_batch, y_batch in gdg.flow():
+    #         vae.fit([x_batch, y_batch])
+    #         batches += 1
+    #         print('Epoch {}, batch {} of {}'.format(e, batches, (gdg.augmentedNumGrids // batch_size)))
+    #         if batches >= gdg.augmentedNumGrids // batch_size:
+    #             break
 
     os.makedirs(model_name, exist_ok=True)
     encoder.save(os.path.join(model_name, "encoder.tf"))
