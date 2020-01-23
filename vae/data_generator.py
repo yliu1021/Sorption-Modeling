@@ -4,6 +4,7 @@ import os
 import random
 import time
 import threading
+from tqdm import tqdm
 
 class GridDataGenerator:
     def __init__(self, directory='', shift_range=0, rotate=False, flip=False, validation_split=0.0, test_split=0.0, batch_size=32):
@@ -13,16 +14,16 @@ class GridDataGenerator:
         self.flip = flip
         self.batch_size = batch_size
 
-        print('Loading data...')
         self.grids = []
         self.curves = []
         grid_files = glob.glob(os.path.join(directory, 'grids', 'grid*.csv'))
         curve_files = glob.glob(os.path.join(directory, 'results', 'density*.csv'))
         assert len(grid_files) == len(curve_files)
-        for curve_file, grid_file in zip(curve_files, grid_files):
+        print('Loading {} grids...'.format(len(grid_files)))
+        for curve_file, grid_file in tqdm(zip(curve_files, grid_files), total=len(grid_files)):
             self.grids.append(np.genfromtxt(grid_file, delimiter=','))
             self.curves.append(np.genfromtxt(curve_file, delimiter=',')[:40].reshape(1, 40))
-        print('Finished loading data.')
+        print('Finished loading {} grids.'.format(len(grid_files)))
 
         self.numGrids = len(grid_files)
         numGrids = len(grid_files)
@@ -117,7 +118,7 @@ class GridDataGenerator:
 # sys.path.append('..')
 # from simul_dft import *
 
-# train_datagen = GridDataGenerator(directory='../generative_model_3/step_0', shift_range=19, rotate=True, flip=True, validation_split=0.1, test_split=0.1, batch_size=2048)
+# train_datagen = GridDataGenerator(directory='../data_generation/', shift_range=19, rotate=True, flip=True, validation_split=0.1, test_split=0.1, batch_size=32)
 # time.sleep(1)
 # i = 0
 # for x_batch, y_batch in train_datagen.flow():
