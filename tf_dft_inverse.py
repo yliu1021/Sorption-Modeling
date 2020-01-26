@@ -60,6 +60,7 @@ def squared_area_between(y_true, y_pred):
 
 
 base_dir = './generative_model_tf'
+os.makedirs(base_dir, exist_ok=True)
 model_loc = os.path.join(base_dir, 'generator_v2.hdf5')
 log_loc = os.path.join(base_dir, 'logs')
 
