@@ -1,5 +1,5 @@
 from tensorflow.keras import backend as K
-from tensorflow.keras.layers import Input, Dense, Reshape, Flatten, Conv2D, Conv2DTranspose, Lambda
+from tensorflow.keras.layers import Input, Dense, Reshape, Flatten, Conv2D, Conv2DTranspose, Lambda, Cropping2D
 from tensorflow.keras.layers import concatenate
 from tensorflow.keras.losses import binary_crossentropy
 from tensorflow.keras.models import Model
@@ -141,9 +141,15 @@ def make_cvae(**kwargs):
     latent_dim = kwargs.get('latent_dim', 2)
     kernel_size = kwargs.get('filters', 3)
     filters = kwargs.get('filters', 16)
+    boundary_expand = kwargs.get('boundary_expand', 4)
 
     grid_inp = Input(shape=input_shape, name='grid_input')
     x = grid_inp
+    x = Reshape((GRID_SIZE, GRID_SIZE))(x)
+    x = Lambda(lambda x: K.tile(x, [1, 3, 3]))(x)
+    x = Reshape((GRID_SIZE * 3, GRID_SIZE * 3, 1))(x)
+    x = Cropping2D(cropping=(GRID_SIZE-boundary_expand, GRID_SIZE-boundary_expand))(x)
+
     for _ in range(2):
         filters *= 2
         x = Conv2D(filters=filters,
@@ -193,11 +199,13 @@ def make_cvae(**kwargs):
                             padding='same')(x)
         filters //= 2
 
-    outputs = Conv2DTranspose(filters=1,
+    x = Conv2DTranspose(filters=1,
                               kernel_size=kernel_size,
                               activation='sigmoid',
                               padding='same',
                               name='decoder_output')(x)
+
+    outputs = Cropping2D(cropping=(boundary_expand, boundary_expand))(x)
 
     # instantiate decoder model
     decoder = Model([latent_inputs, curve_inp], outputs, name='decoder')
