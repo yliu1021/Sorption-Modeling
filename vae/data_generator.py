@@ -72,6 +72,24 @@ class GridDataGenerator:
             # else:
             #     self.threadLock.release()
             #     time.sleep(1)
+    
+    def flow_validation(self):
+        grid_batch = []
+        curve_batch = []
+        count = 0
+        while True:
+            for grid_num in self.validationSet:
+                if count == self.batch_size:
+                    yield [np.array(grid_batch), np.array(curve_batch)]
+                    grid_batch = []
+                    curve_batch = []
+                    count = 0
+                else:
+                    grid, curve = self.xy_pair_for_num(grid_num)
+                    grid_batch.append(grid.reshape(20, 20, 1))
+                    curve_batch.append(curve.reshape(40))
+                    count += 1
+
 
     def xy_pair_for_num(self, grid_num):
         unaugmented_num = grid_num // (self.augmentedNumGrids//self.numGrids)
