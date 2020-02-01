@@ -24,14 +24,14 @@ def start_training(**kwargs):
     vae.compile(optimizer=opt)
 
     # gdg = data_generator.GridDataGenerator(directory='../data_generation/', shift_range=19, rotate=True, flip=True, validation_split=0.1, test_split=0.1, batch_size=batch_size)
-    gdg = data_generator.GridDataGenerator(directory='../generative_model_3/step_0/', shift_range=19, rotate=True, flip=True, validation_split=0.1, test_split=0.1, batch_size=batch_size)
-    # gdg = data_generator.GridDataGenerator(directory='../generative_model_3/step_0/', validation_split=0.1, test_split=0.1, batch_size=batch_size)
+    # gdg = data_generator.GridDataGenerator(directory='../generative_model_3/step_0/', shift_range=19, rotate=True, flip=True, validation_split=0.1, test_split=0.1, batch_size=batch_size)
+    gdg = data_generator.GridDataGenerator(directory='../generative_model_3/step_0/', rotate=True, flip=True, batch_size=batch_size)
 
     # vae.fit([x_train, y_train], epochs=epochs, batch_size=batch_size)
     history = vae.fit_generator(gdg.flow(),
                                 steps_per_epoch=math.ceil(gdg.numTrainGrids/batch_size),
-                                validation_data=gdg.flow_validation(),
-                                validation_steps=math.ceil(len(gdg.validationSet)/batch_size),
+                                # validation_data=gdg.flow_validation(),
+                                # validation_steps=math.ceil(len(gdg.validationSet)/batch_size),
                                 epochs=epochs)
 
     print(history.history)
@@ -42,4 +42,4 @@ def start_training(**kwargs):
     vae.save(os.path.join(model_name, "vae.tf"))
 
 if __name__ == '__main__':
-    start_training(epochs=10, batch_size=32)
+    start_training(epochs=500, batch_size=32)
