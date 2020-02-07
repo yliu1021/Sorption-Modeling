@@ -176,22 +176,30 @@ generator_train_generator = make_generator_input(n_grids=generator_train_size,
                                                  use_generator=True,
                                                  batchsize=generator_batchsize)
 
-generator = inverse_dft_model()
-
 
 def train():
-    dft_model = make_dft_model()
+    cluster_resolver = tf.distribute.cluster_resolver.TPUClusterResolver(
+        tpu='10.45.62.58',
+        zone='us-central1-f'
+    )
+    tf.config.experimental_connect_to_cluster(cluster_resolver)
+    tf.tpu.experimental.initialize_tpu_system(cluster_resolver)
+    tpu_strategy = tf.distribute.experimental.TPUStrategy(cluster_resolver)
 
-    optimizer = SGD(lr, momentum=0.9, nesterov=True)
-    inp = Input(shape=(N_ADSORP,), name='target_metric')
-    generator_out = generator(inp)
-    dft_out = dft_model(generator_out)
+    with tpu_strategy:
+        generator = inverse_dft_model()
+        dft_model = make_dft_model()
 
-    training_model = Model(inputs=inp, outputs=dft_out)
+        optimizer = SGD(lr, momentum=0.9, nesterov=True)
+        inp = Input(shape=(N_ADSORP,), name='target_metric')
+        generator_out = generator(inp)
+        dft_out = dft_model(generator_out)
 
-    training_model.compile(optimizer,
-                           loss=loss,
-                           metrics=[area_between])
+        training_model = Model(inputs=inp, outputs=dft_out)
+
+        training_model.compile(optimizer,
+                               loss=loss,
+                               metrics=[area_between])
     training_model.summary()
 
     filepath = os.path.join(base_dir, 'generator_{epoch:03d}.hdf5')
@@ -216,6 +224,7 @@ def train():
 
 
 def visualize(see_grids, intermediate_layers):
+    generator = inverse_dft_model()
     generator.load_weights(model_loc, by_name=True)
     
     vis_layers = list()
