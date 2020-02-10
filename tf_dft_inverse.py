@@ -179,14 +179,14 @@ generator_train_generator = make_generator_input(n_grids=generator_train_size,
 
 def train():
     cluster_resolver = tf.distribute.cluster_resolver.TPUClusterResolver(
-        tpu='10.45.62.58',
+        tpu='yliu1021',
         zone='us-central1-f'
     )
     tf.config.experimental_connect_to_cluster(cluster_resolver)
     tf.tpu.experimental.initialize_tpu_system(cluster_resolver)
     tpu_strategy = tf.distribute.experimental.TPUStrategy(cluster_resolver)
 
-    with tpu_strategy:
+    with tpu_strategy.scope():
         generator = inverse_dft_model()
         dft_model = make_dft_model()
 
