@@ -8,10 +8,11 @@ __pycache__
 # Data files
 generative_model_*
 cpp/iterative_grids
-vae/vae_*
+vae/vae_*/
 data_generation/grids/
 data_generation/results/
 intermediate_layers/
+data_generation/target_curves/
 
 # Hoffman scripts
 run.sh
