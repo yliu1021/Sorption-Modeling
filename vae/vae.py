@@ -1,3 +1,6 @@
+from tensorflow.keras import backend as K
+from tensorflow.keras.losses import binary_crossentropy
+
 import math
 import numpy as np
 import os
@@ -19,7 +22,7 @@ def start_training(**kwargs):
 
     # encoder, decoder, vae = vae_models.make_vae_classical()
     # encoder, decoder, vae = vae_models.make_vae_deconv()
-    encoder, decoder, vae = vae_models.make_cvae()
+    encoder, decoder, vae, z_mean, z_log_var = vae_models.make_cvae()
     opt = Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.999, amsgrad=False)
     vae.compile(optimizer=opt)
 
@@ -36,10 +39,12 @@ def start_training(**kwargs):
 
     print(history.history)
     
+    model_name = 'vae_models'
     os.makedirs(model_name, exist_ok=True)
+    
     encoder.save(os.path.join(model_name, "encoder.tf"))
     decoder.save(os.path.join(model_name, "decoder.tf"))
     vae.save(os.path.join(model_name, "vae.tf"))
 
 if __name__ == '__main__':
-    start_training(epochs=500, batch_size=32)
+    start_training(epochs=1, batch_size=32)
