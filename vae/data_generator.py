@@ -7,7 +7,7 @@ import threading
 from tqdm import tqdm
 
 class GridDataGenerator:
-    def __init__(self, directory='', shift_range=0, rotate=False, flip=False, validation_split=0.0, test_split=0.0, batch_size=32):
+    def __init__(self, directory='', shift_range=0, rotate=False, flip=False, validation_split=0.0, batch_size=32):
         self.directory = directory
         self.shift_range = shift_range
         self.rotate = rotate
@@ -33,13 +33,11 @@ class GridDataGenerator:
         self.augmentedNumGrids = numGrids
 
         numVal = int(self.augmentedNumGrids * validation_split)
-        numTest = int(self.augmentedNumGrids * test_split)
 
-        self.numTrainGrids = self.augmentedNumGrids - (numVal + numTest)
+        self.numTrainGrids = self.augmentedNumGrids - numVal
 
-        testAndVal = random.sample(range(0, numGrids), numTest+numVal)
-        self.validationSet = set(testAndVal[:numVal])
-        self.testSet = set(testAndVal[numVal:])
+        vSet = random.sample(range(0, numGrids), numVal)
+        self.validationSet = set(vSet)
 
         # self.grid_batch = []
         # self.curve_batch = []
@@ -54,7 +52,7 @@ class GridDataGenerator:
             curve_batch = []
             for _ in range(self.batch_size):
                 grid_num = random.randrange(self.augmentedNumGrids)
-                while grid_num in self.validationSet or grid_num in self.testSet:
+                while grid_num in self.validationSet:
                     grid_num = random.randrange(self.augmentedNumGrids)
                 grid, curve = self.xy_pair_for_num(grid_num)
                 grid_batch.append(grid.reshape(20, 20, 1))

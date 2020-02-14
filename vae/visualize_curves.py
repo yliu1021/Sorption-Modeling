@@ -13,13 +13,15 @@ def press(event):
     if event.key != 'q':
         exit(0)
 
+def run_dft():
+    if os.system('../cpp/fast_dft ./{}/'.format(model_name)):
+        print('Failed to execute dft, no results found')
 
-def show_grids(base_dir, save=False):
+def show_grids(base_dir, save=False, recalculate_density=False):
     density_files = glob.glob(os.path.join(base_dir, 'results', 'density*.csv'))
     grid_files = glob.glob(os.path.join(base_dir, 'grids', 'grid*.csv'))
-    if len(density_files) != len(grid_files):
-        if os.system('../cpp/fast_dft ./{}/'.format(model_name)):
-            print('Failed to execute dft, no results found')
+    if recalculate_density or (len(density_files) != len(grid_files)):
+        run_dft()
         density_files = glob.glob(os.path.join(base_dir, 'results', 'density*.csv'))
     density_files.sort()
     grid_files.sort()
@@ -62,10 +64,11 @@ def show_grids(base_dir, save=False):
 #                 images.append(imageio.imread('evol_animation/'+filename))
 #     imageio.mimsave('evol_animation/animated_evol.gif', images, duration=0.1)
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("name", nargs="?", help="Show the grids/results of model name", default=model_name)
     args = parser.parse_args()
     name = args.name
 
-    show_grids(name)
+    show_grids(name, recalculate_density=True)
