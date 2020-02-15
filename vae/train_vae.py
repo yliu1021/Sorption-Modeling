@@ -60,4 +60,4 @@ def start_training(model_name, **kwargs):
     # vae.save_weights(os.path.join(model_name, "vae.tf"))
 
 if __name__ == '__main__':
-    start_training(model_name="vae_conditional", epochs=1, batch_size=256)
+    start_training(model_name="vae_conditional", epochs=10, batch_size=256)
