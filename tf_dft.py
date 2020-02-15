@@ -12,45 +12,6 @@ import simul_dft
 
 import matplotlib.pyplot as plt
 
-muu_lookup = list()
-for jj in range(N_ITER + 1):
-    if jj <= N_ADSORP:
-        RH = jj * STEP_SIZE
-    else:
-        RH = N_ADSORP*STEP_SIZE - (jj-N_ADSORP)*STEP_SIZE
-    if RH == 0:
-        muu = -90.0
-    else:
-        muu = MUSAT+KB*T*math.log(RH)
-    muu_lookup.append(muu)
-
-_filter_wffy = tf.constant(
-    [[[[0]], [[WFF * Y]], [[0]]],
-     [[[WFF * Y]], [[0]], [[WFF * Y]]],
-     [[[0]], [[WFF * Y]], [[0]]]],
-    dtype=tf.float32
-)
-
-_filter_wff = tf.constant(
-    [[[[0]], [[WFF * BETA]], [[0]]],
-     [[[WFF * BETA]], [[0]], [[WFF * BETA]]],
-     [[[0]], [[WFF * BETA]], [[0]]]],
-    dtype=tf.float32
-)
-
-_filter_y = tf.constant(
-    [[[[0]], [[Y]], [[0]]],
-     [[[Y]], [[0]], [[Y]]],
-     [[[0]], [[Y]], [[0]]]],
-    dtype=tf.float32
-)
-
-_filter_1 = tf.constant(
-    [[[[0]], [[1]], [[0]]],
-     [[[1]], [[0]], [[1]]],
-     [[[0]], [[1]], [[0]]]],
-    dtype=tf.float32
-)
 
 def run_dft(grids, batch_size=None, inner_loops=5):
     """Runs the DFT simulation on a batch of grids
@@ -60,6 +21,46 @@ def run_dft(grids, batch_size=None, inner_loops=5):
     grids : This must be a tensor of shape [batch_size, GRID_SIZE, GRID_SIZE]
     """
 
+    muu_lookup = list()
+    for jj in range(N_ITER + 1):
+        if jj <= N_ADSORP:
+            RH = jj * STEP_SIZE
+        else:
+            RH = N_ADSORP*STEP_SIZE - (jj-N_ADSORP)*STEP_SIZE
+        if RH == 0:
+            muu = -90.0
+        else:
+            muu = MUSAT+KB*T*math.log(RH)
+        muu_lookup.append(muu)
+
+    _filter_wffy = tf.constant(
+        [[[[0]], [[WFF * Y]], [[0]]],
+         [[[WFF * Y]], [[0]], [[WFF * Y]]],
+         [[[0]], [[WFF * Y]], [[0]]]],
+        dtype=tf.float32
+    )
+    
+    _filter_wff = tf.constant(
+        [[[[0]], [[WFF * BETA]], [[0]]],
+         [[[WFF * BETA]], [[0]], [[WFF * BETA]]],
+         [[[0]], [[WFF * BETA]], [[0]]]],
+        dtype=tf.float32
+    )
+    
+    _filter_y = tf.constant(
+        [[[[0]], [[Y]], [[0]]],
+         [[[Y]], [[0]], [[Y]]],
+         [[[0]], [[Y]], [[0]]]],
+        dtype=tf.float32
+    )
+    
+    _filter_1 = tf.constant(
+        [[[[0]], [[1]], [[0]]],
+         [[[1]], [[0]], [[1]]],
+         [[[0]], [[1]], [[0]]]],
+        dtype=tf.float32
+    )
+    
     # we tile the grid and then crop it so that the boundaries
     # from one side will also exist on the other side
     batch_size = grids.shape[0]

@@ -1,62 +1,37 @@
-import os
-import glob
-import random
-import argparse
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-from itertools import cycle, product
-import imageio
-import tqdm
-import pdb
-
-from constants import *
-
-from simul_dft import *
-
-# base_dir = 'cpp/evol_iter_grids/empty_steepest/'
-base_dir = 'swarm_grids/swarm_1pore'
-# base_dir = 'generative_model_3/sample_grids_better/'
-STOP_ITER = 12000
-
-def press(event):
-    if event.key != 'q':
-        exit(0)
-
-def show_grids():
-    PARTITIONS = 6
-    P_SIZE = 1.0/(PARTITIONS-1)
-
-    check_perms = [x for x in product(list(range(PARTITIONS)), repeat=PARTITIONS) if all(i <= j for i, j in zip(x, x[1:]))]
-
-    print("madeperms")
-
-    for curve in check_perms:
-        target_density = np.zeros((N_ADSORP+1,1))
-
-        for index, _ in enumerate(target_density):
-            partition_num = 0
-            while index > ((partition_num+1) * (N_ADSORP+1)/(PARTITIONS-1)):
-                partition_num += 1
-            target_density[index] = (curve[partition_num+1]-curve[partition_num]) * ((index*STEP_SIZE)-(partition_num)/(PARTITIONS-1)) + curve[partition_num]*P_SIZE
-
-        target_density[0] = 0
-        target_density[N_ADSORP] = 1
-
-        target_density = target_density * 100
-
-        fig = plt.figure(1, figsize=(6, 8))
-        fig.canvas.mpl_connect('key_press_event', press)
-
-        ax = plt.subplot(212)
-        plt.xlabel('Relative humidity (%)')
-        plt.ylabel('Water content (%)')
-        ax.plot(np.arange(N_ADSORP+1)*STEP_SIZE*100, target_density)
-        plt.plot([1],[1])
-        ax.set_aspect(1)
-
-    print(len(check_perms))
-    plt.show()
+import tensorflow as tf
+from tensorflow.keras.layers import *
+from tensorflow.keras.models import *
 
 
-show_grids()
+_filter_1 = tf.constant(
+    [[[[0]], [[1]], [[0]]],
+     [[[1]], [[0]], [[1]]],
+     [[[0]], [[1]], [[0]]]],
+    dtype=tf.float32
+)
+
+
+def run_dft(grids):    
+    batch_size = grids.shape[0]
+    r1 = tf.tile(grids, [1, 3, 3])
+    r1 = r1[:, 20-1:2*20+1, 20-1:2*20+1]
+    r1 = tf.reshape(r1, [batch_size, 20+2, 20+2, 1])
+    vir1 = tf.nn.conv2d(r1, strides=[1,1,1,1], filters=_filter_1, padding='VALID')
+    return vir1
+
+
+def make_dft_model():
+    inp = Input(shape=(20, 20), batch_size=64, name='dft_input')
+    x = Lambda(lambda x: run_dft(x))(inp)
+    model = Model(inputs=inp, outputs=x, name='dft_model')
+    return model
+
+
+
+cluster_resolver = tf.distribute.cluster_resolver.TPUClusterResolver(tpu='yliu1021')
+tf.config.experimental_connect_to_cluster(cluster_resolver)
+tf.tpu.experimental.initialize_tpu_system(cluster_resolver)
+tpu_strategy = tf.distribute.experimental.TPUStrategy(cluster_resolver)
+with tpu_strategy.scope():
+    dft_model = make_dft_model()
+
