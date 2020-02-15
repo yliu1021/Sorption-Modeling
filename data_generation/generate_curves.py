@@ -38,9 +38,9 @@ def rescale_curves():
 
 
 def save_curves():
-    os.makedirs('results/', exist_ok=True)
+    os.makedirs('target_curves/', exist_ok=True)
     for i, c in enumerate(rescaled):
-        np.savetxt('results/density_%04d.csv'%i, c, newline=',')
+        np.savetxt('target_curves/density_%04d.csv'%i, c, newline=',')
 
 
 if __name__ == '__main__':
