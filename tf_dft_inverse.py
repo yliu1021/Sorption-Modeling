@@ -221,7 +221,10 @@ def train(use_tpu=True):
                             mode='min',
                             save_freq='epoch')
         ])
-    training_model.fit(generator_train_generator,
+    
+    training_dataset = tf.data.Dataset.from_generator(generator_train_generator, (tf.float32, tf.float32))
+    
+    training_model.fit(training_dataset,
                        steps_per_epoch=generator_train_size,
                        epochs=generator_epochs,
                        max_queue_size=10, shuffle=False,
