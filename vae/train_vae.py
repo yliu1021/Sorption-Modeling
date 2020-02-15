@@ -21,6 +21,9 @@ def start_training(model_name, **kwargs):
 
     encoder, decoder, vae = vae_models.make_cvae()
 
+    # print(vae.summary())
+    # return
+
     checkpoint_path = os.path.join(model_name, "checkpoints/cp.ckpt")
     # checkpoint_path = os.path.join(model_name, "checkpoints/cp-{epoch:04d}.ckpt")
 
