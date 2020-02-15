@@ -41,35 +41,37 @@ class GridDataGenerator:
 
         # self.grid_batch = []
         # self.curve_batch = []
-        # self.finished = False
-        # self.threadLock = threading.Lock()
-        # self.thread = threading.Thread(target=self.setCacheThread)
-        # self.thread.start()
+        self.batch = []
+        self.finished = False
+        self.threadLock = threading.Lock()
+        self.thread = threading.Thread(target=self.setCacheThread)
+        self.thread.start()
 
     def flow(self):
         while True:
-            grid_batch = []
-            curve_batch = []
-            for _ in range(self.batch_size):
-                grid_num = random.randrange(self.augmentedNumGrids)
-                while grid_num in self.validationSet:
-                    grid_num = random.randrange(self.augmentedNumGrids)
-                grid, curve = self.xy_pair_for_num(grid_num)
-                grid_batch.append(grid.reshape(20, 20, 1))
-                curve_batch.append(curve.reshape(40))
-            yield [np.array(grid_batch), np.array(curve_batch)]
+            # grid_batch = []
+            # curve_batch = []
+            # for _ in range(self.batch_size):
+            #     grid_num = random.randrange(self.augmentedNumGrids)
+            #     while grid_num in self.validationSet:
+            #         grid_num = random.randrange(self.augmentedNumGrids)
+            #     grid, curve = self.xy_pair_for_num(grid_num)
+            #     grid_batch.append(grid.reshape(20, 20, 1))
+            #     curve_batch.append(curve.reshape(40))
+            # yield [np.array(grid_batch), np.array(curve_batch)]
 
-            # self.threadLock.acquire()
-            # if len(self.grid_batch) > 0 and len(self.curve_batch) > 0:
-            #     grid_batch, curve_batch = self.grid_batch.pop(), self.curve_batch.pop()
-            #     self.threadLock.release()
-            #     try:
-            #         yield grid_batch, curve_batch
-            #     except GeneratorExit:
-            #         self.finished = True
-            # else:
-            #     self.threadLock.release()
-            #     time.sleep(1)
+            self.threadLock.acquire()
+            if len(self.batch) > 0:
+                b = self.batch.pop()
+                self.threadLock.release()
+                try:
+                    yield b
+                except GeneratorExit:
+                    print('ignore generator exit exeption intentional: to stop threads')
+                    self.finished = True
+            else:
+                self.threadLock.release()
+                time.sleep(1)
     
     def flow_validation(self):
         grid_batch = []
@@ -111,35 +113,36 @@ class GridDataGenerator:
         if flip_num == 3: grid = np.flipud(np.fliplr(grid))
         return grid, curve
 
-    # def setCacheThread(self):
-    #     while not self.finished:
-    #         if len(self.curve_batch) > 3:
-    #             time.sleep(0.1)
-    #         else:
-    #             grid_batch = []
-    #             curve_batch = []
-    #             for _ in range(self.batch_size):
-    #                 grid_num = random.randrange(self.augmentedNumGrids)
-    #                 while grid_num in self.validationSet or grid_num in self.testSet:
-    #                     grid_num = random.randrange(self.augmentedNumGrids)
-    #                 grid, curve = self.xy_pair_for_num(grid_num)
-    #                 grid_batch.append(grid.reshape(1, 20, 20, 1))
-    #                 curve_batch.append(curve.reshape(1, 40))
-    #             self.threadLock.acquire()
-    #             self.grid_batch.append(np.array(grid_batch))
-    #             self.curve_batch.append(np.array(curve_batch))
-    #             self.threadLock.release()
+    def setCacheThread(self):
+        while not self.finished:
+            if len(self.batch) > 50:
+                time.sleep(0.1)
+            else:
+                grid_batch = []
+                curve_batch = []
+                for _ in range(self.batch_size):
+                    grid_num = random.randrange(self.augmentedNumGrids)
+                    while grid_num in self.validationSet:
+                        grid_num = random.randrange(self.augmentedNumGrids)
+                    grid, curve = self.xy_pair_for_num(grid_num)
+                    grid_batch.append(grid.reshape(20, 20, 1))
+                    curve_batch.append(curve.reshape(40))
+                b = [np.array(grid_batch), np.array(curve_batch)]
+                self.threadLock.acquire()
+                self.batch.append(b)
+                self.threadLock.release()
 
 # import sys
 # sys.path.append('..')
 # from simul_dft import *
 
-# train_datagen = GridDataGenerator(directory='../data_generation/', shift_range=19, rotate=True, flip=True, validation_split=0.1, test_split=0.1, batch_size=32)
+# train_datagen = GridDataGenerator(directory='../data_generation/', shift_range=19, rotate=True, flip=True, validation_split=0.1, batch_size=2048)
+# train_datagen = GridDataGenerator(directory='../generative_model_3/step_0', shift_range=19, rotate=True, flip=True, validation_split=0.1, batch_size=2048)
 # time.sleep(1)
 # i = 0
 # for x_batch, y_batch in train_datagen.flow():
 #     print(x_batch.shape)
 #     print(y_batch.shape)
 #     i += 1
-#     if i >= 5:
+#     if i >= 1:
 #         break

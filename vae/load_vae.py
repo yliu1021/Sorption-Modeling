@@ -13,7 +13,7 @@ def load_vae(model_name):
     opt = Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.999, amsgrad=False)
     vae.compile(optimizer=opt)
 
-    vae.load_weights(model_name+'/vae.tf')
+    vae.load_weights(model_name+'/checkpoints/ck.ckpt')
     # encoder.set_weights(vae.get_layer('encoder').get_weights())
     # decoder.set_weights(vae.get_layer('decoder').get_weights())
 
