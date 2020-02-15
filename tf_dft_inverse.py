@@ -65,7 +65,7 @@ model_loc = os.path.join(base_dir, 'generator_v2.hdf5')
 log_loc = os.path.join(base_dir, 'logs')
 
 generator_train_size = 50000
-generator_epochs = 10
+generator_epochs = 1
 try:
     generator_epochs = int(sys.argv[1])
 except:
@@ -132,7 +132,7 @@ def make_generator_input(n_grids, use_generator=False, batchsize=generator_batch
                 funcs = [gen_func() for _ in range(batchsize)]
                 artificial_curves = np.array([np.diff(f) for f in funcs])
                 yield artificial_curves, artificial_curves
-        return gen()
+        return gen
     else:
         funcs = [gen_func() for _ in range(batchsize)]
         artificial_curves = np.array([np.diff(f) for f in funcs])
@@ -178,15 +178,30 @@ generator_train_generator = make_generator_input(n_grids=generator_train_size,
 
 
 def train(use_tpu=True):
-    cluster_resolver = tf.distribute.cluster_resolver.TPUClusterResolver(
-        tpu='yliu1021',
-        zone='us-central1-f'
-    )
-    tf.config.experimental_connect_to_cluster(cluster_resolver)
-    tf.tpu.experimental.initialize_tpu_system(cluster_resolver)
-    tpu_strategy = tf.distribute.experimental.TPUStrategy(cluster_resolver)
+    if use_tpu:
+        cluster_resolver = tf.distribute.cluster_resolver.TPUClusterResolver(
+            tpu='yliu1021',
+            zone='us-central1-f'
+        )
+        tf.config.experimental_connect_to_cluster(cluster_resolver)
+        tf.tpu.experimental.initialize_tpu_system(cluster_resolver)
+        tpu_strategy = tf.distribute.experimental.TPUStrategy(cluster_resolver)
 
-    with tpu_strategy.scope():
+        with tpu_strategy.scope():
+            generator = inverse_dft_model()
+            dft_model = make_dft_model()
+
+            optimizer = SGD(lr, momentum=0.9, nesterov=True)
+            inp = Input(shape=(N_ADSORP,), name='target_metric')
+            generator_out = generator(inp)
+            dft_out = dft_model(generator_out)
+
+            training_model = Model(inputs=inp, outputs=dft_out)
+
+            training_model.compile(optimizer,
+                                   loss=loss,
+                                   metrics=[area_between])
+    else:
         generator = inverse_dft_model()
         dft_model = make_dft_model()
 
@@ -221,14 +236,10 @@ def train(use_tpu=True):
                             mode='min',
                             save_freq='epoch')
         ])
-
-    def make_generator(g):
-        def ge():
-            while True:
-                yield from g
-        return ge
         
-    training_dataset = tf.data.Dataset.from_generator(make_generator(generator_train_generator), (tf.float32, tf.float32), output_shapes=(tf.TensorShape([generator_batchsize, N_ADSORP]), tf.TensorShape([generator_batchsize, N_ADSORP])))
+    training_dataset = tf.data.Dataset.from_generator(generator_train_generator, (tf.float32, tf.float32),
+                                                      output_shapes=(tf.TensorShape([generator_batchsize, N_ADSORP]),
+                                                                     tf.TensorShape([generator_batchsize, N_ADSORP])))
     
     training_model.fit(training_dataset,
                        steps_per_epoch=generator_train_size,
@@ -358,4 +369,4 @@ if __name__ == '__main__':
         intermediate_layers = len(sys.argv) >= 4
         visualize(see_grids, intermediate_layers)
     else:
-        train()
+        train('tpu' in sys.argv)
