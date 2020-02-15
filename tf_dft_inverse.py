@@ -65,7 +65,7 @@ model_loc = os.path.join(base_dir, 'generator_v2.hdf5')
 log_loc = os.path.join(base_dir, 'logs')
 
 generator_train_size = 50000
-generator_epochs = 100
+generator_epochs = 10
 try:
     generator_epochs = int(sys.argv[1])
 except:
@@ -221,8 +221,14 @@ def train(use_tpu=True):
                             mode='min',
                             save_freq='epoch')
         ])
-    
-    training_dataset = tf.data.Dataset.from_generator(generator_train_generator, (tf.float32, tf.float32))
+
+    def make_generator(g):
+        def ge():
+            while True:
+                yield from g
+        return ge
+        
+    training_dataset = tf.data.Dataset.from_generator(make_generator(generator_train_generator), (tf.float32, tf.float32), output_shapes=(tf.TensorShape([generator_batchsize, N_ADSORP]), tf.TensorShape([generator_batchsize, N_ADSORP])))
     
     training_model.fit(training_dataset,
                        steps_per_epoch=generator_train_size,
