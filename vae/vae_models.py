@@ -192,9 +192,9 @@ def make_cvae(**kwargs):
     latent_inputs = Input(shape=(latent_dim,), name='z_sampling')
     decoder_curve_inp = Input(shape=(N_ADSORP,), name='decoder_curve_input')
     
-    x1 = Dense(128, activation='relu')(latent_inputs)
+    x1 = Dense(16, activation='relu')(latent_inputs)
 
-    x2 = Dense(128, activation='relu')(decoder_curve_inp)
+    x2 = Dense(16, activation='relu')(decoder_curve_inp)
 
     decoder_inputs = concatenate([x1, x2], axis=1)
     x = Dense(shape[1] * shape[2] * shape[3], activation='relu')(decoder_inputs)

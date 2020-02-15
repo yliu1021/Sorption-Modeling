@@ -32,8 +32,8 @@ def start_training(model_name, **kwargs):
     opt = Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.999, amsgrad=False)
     vae.compile(optimizer=opt)
 
-    # gdg = data_generator.GridDataGenerator(directory='../data_generation/', shift_range=19, rotate=True, flip=True, validation_split=0.1, batch_size=batch_size)
-    gdg = data_generator.GridDataGenerator(directory='../generative_model_3/step_0/', batch_size=batch_size, validation_split=0.1)
+    gdg = data_generator.GridDataGenerator(directory='../data_generation/', shift_range=19, rotate=True, flip=True, validation_split=0.1, batch_size=batch_size)
+    # gdg = data_generator.GridDataGenerator(directory='../generative_model_3/step_0/', batch_size=batch_size, validation_split=0.1)
 
     # vae.fit([x_train, y_train], epochs=epochs, batch_size=batch_size)
     history = vae.fit(gdg.flow(),
@@ -50,7 +50,6 @@ def start_training(model_name, **kwargs):
         pickle.dump(weight_values, f)
     
     # vae.optimizer.set_weights(weight_values)
-    import pdb; pdb.set_trace()
     
     # os.makedirs(model_name, exist_ok=True)
     # vae.save_weights(os.path.join(model_name, "vae.tf"))
