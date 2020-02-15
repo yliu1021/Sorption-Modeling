@@ -177,7 +177,7 @@ generator_train_generator = make_generator_input(n_grids=generator_train_size,
                                                  batchsize=generator_batchsize)
 
 
-def train():
+def train(use_tpu=True):
     cluster_resolver = tf.distribute.cluster_resolver.TPUClusterResolver(
         tpu='yliu1021',
         zone='us-central1-f'
@@ -204,21 +204,28 @@ def train():
 
     filepath = os.path.join(base_dir, 'generator_{epoch:03d}.hdf5')
     save_freq=generator_train_size*5*generator_batchsize
+
+    callbacks = [
+        ReduceLROnPlateau(monitor='loss',
+                          factor=0.1,
+                          patience=10),
+    ]
+    if not use_tpu:
+        callbacks.extend([
+            TensorBoard(log_dir=log_loc,
+                        write_graph=True,
+                        write_images=True),
+            ModelCheckpoint(filepath,
+                            monitor='area_between',
+                            save_best_only=True,
+                            mode='min',
+                            save_freq='epoch')
+        ])
     training_model.fit(generator_train_generator,
                        steps_per_epoch=generator_train_size,
                        epochs=generator_epochs,
                        max_queue_size=10, shuffle=False,
-                       callbacks=[TensorBoard(log_dir=log_loc,
-                                              write_graph=True,
-                                              write_images=True),
-                                  ReduceLROnPlateau(monitor='loss',
-                                                    factor=0.1,
-                                                    patience=10),
-                                  ModelCheckpoint(filepath,
-                                                  monitor='area_between',
-                                                  save_best_only=True,
-                                                  mode='min',
-                                                  save_freq='epoch')])
+                       callbacks=callbacks)
 
     generator.save(model_loc)
 
