@@ -32,8 +32,8 @@ def start_training(model_name, **kwargs):
                                   save_weights_only=True,
                                   verbose=1)
 
-    # opt = Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.999, amsgrad=False)
-    opt = SGD(0.01)
+    opt = Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.999, amsgrad=False)
+    # opt = SGD(0.1)
     vae.compile(optimizer=opt)
 
     gdg = data_generator.GridDataGenerator(directory='../data_generation/', shift_range=19, rotate=True, flip=True, validation_split=0.1, batch_size=batch_size)
