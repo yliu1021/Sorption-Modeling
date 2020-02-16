@@ -247,8 +247,7 @@ def make_cvae(**kwargs):
     vae_grid_inp = AveragePooling2D(pool_size=4, strides=3, padding='valid')(vae_grid_inp)
     outputs = AveragePooling2D(pool_size=4, strides=3, padding='valid')(outputs)
 
-    reconstruction_loss = binary_crossentropy(K.flatten(vae_grid_inp), K.flatten(outputs))
-    reconstruction_loss *= GRID_SIZE * GRID_SIZE
+    reconstruction_loss = (K.flatten(vae_grid_inp) - K.flatten(outputs)) ** 2
     vae.add_loss(reconstruction_loss)
 
     # vae = Model([grid_inp, grid_inp], outputs, name='vae')
