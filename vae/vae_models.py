@@ -155,7 +155,7 @@ def make_vae_deconv(**kwargs):
 def make_cvae(**kwargs):
     latent_dim = kwargs.get('latent_dim', 5)
     kernel_size = kwargs.get('filters', 3)
-    filters = kwargs.get('filters', 256)
+    filters = kwargs.get('filters', 512)
     boundary_expand = kwargs.get('boundary_expand', 4)
 
     encoder_grid_input = Input(shape=input_shape, name='encoder_grid_input')
@@ -165,11 +165,25 @@ def make_cvae(**kwargs):
     # x = Reshape((GRID_SIZE * 3, GRID_SIZE * 3, 1))(x)
     # x = Cropping2D(cropping=(GRID_SIZE-boundary_expand, GRID_SIZE-boundary_expand))(x)
 
-    for _ in range(4):
+    for _ in range(1):
         x = Conv2D(filters=filters,
                    kernel_size=kernel_size,
                    activation='relu',
-                   padding='valid')(x)
+                   padding='same')(x)
+        x = BatchNormalization()(x)
+    
+    x = Conv2D(filters=filters,
+               kernel_size=kernel_size,
+               activation='relu',
+               strides=2,
+               padding='same')(x)
+    x = BatchNormalization()(x)
+
+    for _ in range(1):
+        x = Conv2D(filters=filters,
+                   kernel_size=kernel_size,
+                   activation='relu',
+                   padding='same')(x)
         x = BatchNormalization()(x)
 
     # shape info needed to build decoder model
@@ -182,7 +196,7 @@ def make_cvae(**kwargs):
     curve_layer = Dense(40, activation='relu')(encoder_curve_inp)
 
     x = concatenate([x, curve_layer], axis=1)
-    x = Dense(512, activation='relu')(x)
+    x = Dense(256, activation='relu')(x)
     x = BatchNormalization()(x)
 
     z_mean = Dense(latent_dim, name='z_mean')(x)
@@ -206,35 +220,51 @@ def make_cvae(**kwargs):
     latent_inputs = Input(shape=(latent_dim,), name='z_sampling')
     decoder_curve_inp = Input(shape=(N_ADSORP,), name='decoder_curve_input')
     
-    x1 = Dense(512, activation='relu')(latent_inputs)
+    x1 = Dense(256, activation='relu')(latent_inputs)
     x1 = BatchNormalization()(x1)
         
-    x2 = Dense(512, activation='relu')(decoder_curve_inp)
+    x2 = Dense(256, activation='relu')(decoder_curve_inp)
     x2 = BatchNormalization()(x2)
     
     decoder_inputs = concatenate([x1, x2], axis=1)
-    x = Dense(256, activation='relu')(decoder_inputs)
+    x = Dense(512, activation='relu')(decoder_inputs)
     x = BatchNormalization()(x)
     
-    x = Dense(shape[1] * shape[2] * shape[3], activation='relu')(x)
+    x = Dense(5*5*512, activation='relu')(x)
     x = BatchNormalization()(x)
 
-    x = Reshape((shape[1], shape[2], shape[3]))(x)
+    x = Reshape((5, 5, 512))(x)
 
-    for _ in range(4):
-        x = Conv2DTranspose(filters=filters,
-                            kernel_size=kernel_size,
-                            activation='relu',
-                            padding='valid')(x)
-        x = BatchNormalization()(x)
-
+    x = Conv2DTranspose(filters=filters,
+                        kernel_size=kernel_size,
+                        activation='relu',
+                        strides=2,
+                        padding='same')(x)
+    x = BatchNormalization()(x)
+    x = Conv2D(filters=filters,
+               kernel_size=kernel_size,
+               activation='relu',
+               padding='same')(x)
+    x = BatchNormalization()(x)
+    x = Conv2DTranspose(filters=filters,
+                        kernel_size=kernel_size,
+                        activation='relu',
+                        strides=2,
+                        padding='same')(x)
+    x = BatchNormalization()(x)
+    x = Conv2D(filters=filters,
+               kernel_size=kernel_size,
+               activation='relu',
+               padding='same')(x)
+    x = BatchNormalization()(x)
     x = Conv2DTranspose(filters=1,
                         kernel_size=kernel_size,
                         activation='sigmoid',
-                        padding='valid',
+                        padding='same',
                         name='decoder_output')(x)
-
-    outputs = Cropping2D(cropping=(boundary_expand, boundary_expand))(x)
+    outputs = x
+    
+    # outputs = Cropping2D(cropping=(boundary_expand, boundary_expand))(x)
 
     # instantiate decoder model
     decoder = Model([latent_inputs, decoder_curve_inp], outputs, name='decoder')
