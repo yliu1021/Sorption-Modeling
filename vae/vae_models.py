@@ -227,7 +227,7 @@ def make_cvae(**kwargs):
 
     x = Conv2DTranspose(filters=1,
                               kernel_size=kernel_size,
-                              activation=binary_sigmoid,
+                              activation='sigmoid',
                               padding='same',
                               name='decoder_output')(x)
 
@@ -247,7 +247,7 @@ def make_cvae(**kwargs):
     vae_grid_inp = AveragePooling2D(pool_size=4, strides=3, padding='valid')(vae_grid_inp)
     outputs = AveragePooling2D(pool_size=4, strides=3, padding='valid')(outputs)
 
-    reconstruction_loss = (K.flatten(vae_grid_inp) - K.flatten(outputs)) ** 2
+    reconstruction_loss = binary_crossentropy(K.flatten(vae_grid_inp), K.flatten(outputs))
     vae.add_loss(reconstruction_loss)
 
     # vae = Model([grid_inp, grid_inp], outputs, name='vae')
