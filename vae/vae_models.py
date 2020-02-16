@@ -1,5 +1,5 @@
 from tensorflow.keras import backend as K
-from tensorflow.keras.layers import Input, Dense, Reshape, Flatten, Conv2D, Conv2DTranspose, Lambda, Cropping2D
+from tensorflow.keras.layers import *
 from tensorflow.keras.layers import concatenate
 from tensorflow.keras.losses import binary_crossentropy
 from tensorflow.keras.models import Model
@@ -8,6 +8,20 @@ import sys
 sys.path.append('..')
 
 from constants import *
+
+# Keras helper functions (losses/layers/activations)
+def round_through(x):
+    rounded = K.round(x)
+    return x + K.stop_gradient(rounded - x)
+
+
+def _hard_sigmoid(x):
+    x = (0.5 * x) + 0.5 # Gradient is steeper than regular sigmoid activation
+    return K.clip(x, 0, 1)
+
+
+def binary_sigmoid(x):
+    return round_through(_hard_sigmoid(x))
 
 def sampling(args):
     z_mean, z_log_var = args
@@ -213,7 +227,7 @@ def make_cvae(**kwargs):
 
     x = Conv2DTranspose(filters=1,
                               kernel_size=kernel_size,
-                              activation='sigmoid',
+                              activation=binary_sigmoid,
                               padding='same',
                               name='decoder_output')(x)
 
@@ -229,6 +243,9 @@ def make_cvae(**kwargs):
     vae_grid_inp = Input(shape=input_shape, name='vae_grid_input')
     outputs = decoder([encoder([vae_grid_inp, vae_curve_inp])[2], vae_curve_inp])
     vae = Model([vae_grid_inp, vae_curve_inp], outputs, name='vae')
+
+    vae_grid_inp = AveragePooling2D(pool_size=4, strides=3, padding='valid')(vae_grid_inp)
+    outputs = AveragePooling2D(pool_size=4, strides=3, padding='valid')(outputs)
 
     reconstruction_loss = binary_crossentropy(K.flatten(vae_grid_inp), K.flatten(outputs))
     reconstruction_loss *= GRID_SIZE * GRID_SIZE
