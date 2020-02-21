@@ -364,7 +364,7 @@ def visualize(see_grids, intermediate_layers):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) > 1:
+    if len(sys.argv) > 1 and 'tpu' not in sys.argv:
         see_grids = len(sys.argv) >= 3
         intermediate_layers = len(sys.argv) >= 4
         visualize(see_grids, intermediate_layers)
