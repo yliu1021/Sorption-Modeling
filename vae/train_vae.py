@@ -32,7 +32,7 @@ def start_training(model_name, **kwargs):
                                   save_weights_only=True,
                                   verbose=1)
 
-    opt = Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.999, amsgrad=False)
+    opt = Adam(learning_rate=0.0001, beta_1=0.9, beta_2=0.999, amsgrad=False)
     # opt = SGD(0.1)
     vae.compile(optimizer=opt)
 
