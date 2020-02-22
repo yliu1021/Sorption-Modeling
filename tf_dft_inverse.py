@@ -240,7 +240,12 @@ def train(use_tpu=True):
     training_dataset = tf.data.Dataset.from_generator(generator_train_generator, (tf.float32, tf.float32),
                                                       output_shapes=(tf.TensorShape([generator_batchsize, N_ADSORP]),
                                                                      tf.TensorShape([generator_batchsize, N_ADSORP])))
-    
+    train_set = [next(generator_train_generator())[0] for _ in range(generator_train_size)]
+    train_set = np.concatenate(train_set).astype('float32')
+    print(train_set.shape)
+    training_dataset = tf.data.Dataset.from_tensor_slices((train_set, train_set))
+    training_dataset = training_dataset.batch(generator_batchsize)
+    print(training_dataset)
     training_model.fit(training_dataset,
                        steps_per_epoch=generator_train_size,
                        epochs=generator_epochs,
