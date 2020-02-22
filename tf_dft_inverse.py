@@ -244,7 +244,7 @@ def train(use_tpu=True):
     train_set = np.concatenate(train_set).astype('float32')
     print(train_set.shape)
     training_dataset = tf.data.Dataset.from_tensor_slices((train_set, train_set))
-    training_dataset = training_dataset.batch(generator_batchsize)
+    training_dataset = training_dataset.batch(generator_batchsize).repeat()
     print(training_dataset)
     training_model.fit(training_dataset,
                        steps_per_epoch=generator_train_size,
