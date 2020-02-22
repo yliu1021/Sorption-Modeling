@@ -237,9 +237,9 @@ def train(use_tpu=True):
                             save_freq='epoch')
         ])
         
-    training_dataset = tf.data.Dataset.from_generator(generator_train_generator, (tf.float32, tf.float32),
-                                                      output_shapes=(tf.TensorShape([generator_batchsize, N_ADSORP]),
-                                                                     tf.TensorShape([generator_batchsize, N_ADSORP])))
+    # training_dataset = tf.data.Dataset.from_generator(generator_train_generator, (tf.float32, tf.float32),
+    #                                                   output_shapes=(tf.TensorShape([generator_batchsize, N_ADSORP]),
+    #                                                                  tf.TensorShape([generator_batchsize, N_ADSORP])))
     train_set = [next(generator_train_generator())[0] for _ in range(generator_train_size)]
     train_set = np.concatenate(train_set).astype('float32')
     print(train_set.shape)
