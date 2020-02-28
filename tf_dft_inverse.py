@@ -13,7 +13,7 @@ from tensorflow.keras import backend as K
 import numpy as np
 
 from constants import *
-from tf_dft import run_dft
+from tf_dft import run_dft, run_dft_pad
 
 import matplotlib.pyplot as plt
 
@@ -164,7 +164,7 @@ def inverse_dft_model():
 
 def make_dft_model():
     inp = Input(shape=(GRID_SIZE, GRID_SIZE), batch_size=generator_batchsize, name='dft_input')
-    x = Lambda(lambda x: run_dft(x,
+    x = Lambda(lambda x: run_dft_pad(x,
                                  # batch_size=generator_batchsize,
                                  inner_loops=inner_loops))(inp)
     model = Model(inputs=inp, outputs=x, name='dft_model')
