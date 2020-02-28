@@ -1,7 +1,7 @@
 import os
 
 # Geometric constants
-GRID_SIZE = 20             # size of the lattice
+GRID_SIZE = 80             # size of the lattice
 THRESHOLD = 2              # boundary of the lattice
 N_ITER = 80                # total number of DFT iterations
 N_ADSORP = 40              # total number of adsorption iterations
