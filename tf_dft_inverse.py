@@ -64,7 +64,7 @@ os.makedirs(base_dir, exist_ok=True)
 model_loc = os.path.join(base_dir, 'generator_v2.hdf5')
 log_loc = os.path.join(base_dir, 'logs')
 
-generator_train_size = 50000
+generator_train_size = 12800
 generator_epochs = 100
 try:
     generator_epochs = int(sys.argv[1])
