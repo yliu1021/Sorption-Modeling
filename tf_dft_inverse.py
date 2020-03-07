@@ -64,13 +64,13 @@ os.makedirs(base_dir, exist_ok=True)
 model_loc = os.path.join(base_dir, 'generator_v2.hdf5')
 log_loc = os.path.join(base_dir, 'logs')
 
-generator_train_size = 6400
+generator_train_size = 1600
 generator_epochs = 100
 try:
     generator_epochs = int(sys.argv[1])
 except:
     pass
-generator_batchsize = 64
+generator_batchsize = 256
 generator_train_size //= generator_batchsize
 loss = squared_area_between
 # loss = area_between
