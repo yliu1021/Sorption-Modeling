@@ -73,12 +73,17 @@ def run_dft(grids, batch_size=None, inner_loops=5):
     r1 = r1[:, GRID_SIZE-1:2*GRID_SIZE+1, GRID_SIZE-1:2*GRID_SIZE+1]
     rneg = rneg[:, GRID_SIZE-1:2*GRID_SIZE+1, GRID_SIZE-1:2*GRID_SIZE+1]
 
+    print(r0.shape)
+    print(r1.shape)
+    print(GRID_SIZE)
     r0 = tf.reshape(r0, [batch_size, GRID_SIZE, GRID_SIZE, 1])
     r1 = tf.reshape(r1, [batch_size, GRID_SIZE+2, GRID_SIZE+2, 1])
     rneg = tf.reshape(rneg, [batch_size, GRID_SIZE+2, GRID_SIZE+2, 1])
 
     total_pores = tf.maximum(tf.reduce_sum(grids, [1, 2]), 1)
 
+    rs = list()
+    
     densities = [tf.zeros(batch_size)]
     for jj in range(1, N_ADSORP):
         for i in range(inner_loops):
@@ -90,7 +95,8 @@ def run_dft(grids, batch_size=None, inner_loops=5):
 
             r1 = tf.tile(rounew, [1, 3, 3, 1])
             r1 = r1[:, GRID_SIZE-1:2*GRID_SIZE+1, GRID_SIZE-1:2*GRID_SIZE+1, :]
-
+        rs.append(r1)
+        
         density = tf.truediv(tf.reduce_sum(r1[:, 1:GRID_SIZE+1, 1:GRID_SIZE+1, :], axis=[1, 2, 3]), total_pores)
         densities.append(density)
     densities.append(tf.ones(batch_size))
@@ -100,7 +106,7 @@ def run_dft(grids, batch_size=None, inner_loops=5):
     for density in densities[1:]:
         diffs.append(density - last)
         last = density
-    return tf.stack(diffs, axis=1)
+    return tf.stack(diffs, axis=1), rs
 
 
 def run_dft_pad(grids, batch_size=None, inner_loops=5):
@@ -196,26 +202,48 @@ def run_dft_pad(grids, batch_size=None, inner_loops=5):
 if __name__ == '__main__':
     # grid_tf = tf.compat.v1.placeholder(tf.float32, shape=[462, GRID_SIZE, GRID_SIZE], name='input_grid')
     # density_tf = run_dft(grid_tf)
-    inner_loops = 30
+    inner_loops = 5
     try:
         inner_loops = int(sys.argv[1])
     except:
         pass
 
-    base_dir = '/Users/yuhanliu/Google Drive/Research/sorption_modeling/test_grids/step4'
+    # base_dir = '/Users/yuhanliu/Google Drive/Research/sorption_modeling/test_grids/step4'
+    base_dir = './data_generation/'
     grid_files = glob.glob(os.path.join(base_dir, 'grids', 'grid_*.csv'))
     grid_files.sort(reverse=False)
 
     grid_files = grid_files[:]
 
-    grids = [np.genfromtxt(grid_file, delimiter=',', dtype=np.float32) for grid_file in grid_files]
+    grids = [np.genfromtxt(grid_file, delimiter=',', dtype=np.float32) for grid_file in grid_files][:30]
     print('Num grids: ', len(grids))
     start_time = time.time()
-    densities = run_dft_pad(np.array(grids), inner_loops=inner_loops)
+    densities, rs = run_dft(np.array(grids), inner_loops=inner_loops)
     end_time = time.time()
     print('Time: ', end_time - start_time)
     print('Grids per second: ', len(grids) / (end_time - start_time))
 
+    for i in range(len(grids)):
+        for step in rs:
+            fig = plt.figure(figsize=(10, 4))
+            fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+            
+            ax = plt.subplot(1, 2, 1)
+            ax.clear()
+            ax.set_title('Grid (Black = Solid, White = Pore)')
+            ax.set_yticks(np.linspace(0, 20, 5))
+            ax.set_xticks(np.linspace(0, 20, 5))
+            ax.pcolor(1 - grids[i], cmap='Greys', vmin=0.0, vmax=1.0)
+            ax.set_aspect('equal')
+            
+            ax = plt.subplot(1, 2, 2)
+            ax.clear()
+            ax.set_title('Water Content')
+            ax.set_yticks(np.linspace(0, 22, 5))
+            ax.set_xticks(np.linspace(0, 22, 5))
+            ax.pcolor(1 - step[i, :, :, 0])
+            plt.show()
+    
     density_files = glob.glob(os.path.join(base_dir, 'results', 'density_*.csv'))
     density_files.sort(reverse=False)
     density_files = density_files[:]
