@@ -44,6 +44,9 @@ def show_grid(grid, target_curve, dft_curve):
     ax.set_aspect('equal')
     ax.legend()
 
+    error = np.sum(np.abs(target_curve - dft_curve)) / len(target_curve)
+    plt.title(f'Error: {error:.3f}')
+
 
 def batch(iterable, n=1):
     l = len(iterable)
@@ -59,24 +62,25 @@ def squared_area_between(y_true, y_pred):
     return K.mean(K.square(K.cumsum(y_true, axis=-1) - K.cumsum(y_pred, axis=-1)))
 
 
-base_dir = './generative_model_tf'
+base_dir = './generative_model_benchmark'
 os.makedirs(base_dir, exist_ok=True)
-model_loc = os.path.join(base_dir, 'generator_v2.hdf5')
+model_loc = os.path.join(base_dir, 'generator.hdf5')
 log_loc = os.path.join(base_dir, 'logs')
 
-generator_train_size = 160
-generator_epochs = 100
+generator_train_size = 64000
+generator_epochs = 50
 try:
     generator_epochs = int(sys.argv[1])
 except:
     pass
-generator_batchsize = 16
+generator_batchsize = 64
 generator_train_size //= generator_batchsize
 loss = squared_area_between
 # loss = area_between
 lr = 1e-3
 max_var = 24
-inner_loops = 30
+stepwise_prop = 0.8
+inner_loops = 100
 
 
 def round_through(x):
@@ -111,7 +115,7 @@ def make_generator_input(n_grids, use_generator=False, batchsize=generator_batch
         return diffs / np.sum(diffs) * up_to
 
     def gen_func():
-        if random() < 0.2:
+        if random() < stepwise_prop:
             f = np.zeros(N_ADSORP + 1)
             i = randint(1, N_ADSORP)
             f[-i:] = 1.0
@@ -164,9 +168,9 @@ def inverse_dft_model():
 
 def make_dft_model():
     inp = Input(shape=(GRID_SIZE, GRID_SIZE), batch_size=generator_batchsize, name='dft_input')
-    x = Lambda(lambda x: run_dft_pad(x,
-                                 # batch_size=generator_batchsize,
-                                 inner_loops=inner_loops))(inp)
+    x = Lambda(lambda x: run_dft(x,
+                                 batch_size=generator_batchsize,
+                                 inner_loops=inner_loops)[0])(inp)
     model = Model(inputs=inp, outputs=x, name='dft_model')
 
     return model
@@ -236,19 +240,33 @@ def train(use_tpu=True):
                             mode='min',
                             save_freq='epoch')
         ])
-        
-    # training_dataset = tf.data.Dataset.from_generator(generator_train_generator, (tf.float32, tf.float32),
-    #                                                   output_shapes=(tf.TensorShape([generator_batchsize, N_ADSORP]),
-    #                                                                  tf.TensorShape([generator_batchsize, N_ADSORP])))
+
+    training_dataset = tf.data.Dataset.from_generator(generator_train_generator, (tf.float32, tf.float32),
+                                                      output_shapes=(tf.TensorShape([generator_batchsize, N_ADSORP]),
+                                                                     tf.TensorShape([generator_batchsize, N_ADSORP])))
+    '''
     train_set = [next(generator_train_generator())[0] for _ in range(generator_train_size)]
     train_set = np.concatenate(train_set).astype('float32')
-    print(train_set.shape)
     training_dataset = tf.data.Dataset.from_tensor_slices((train_set, train_set))
     training_dataset = training_dataset.batch(generator_batchsize).repeat()
-    print(training_dataset)
+    '''
+
+    density_files = glob.glob(os.path.join('./data_generation', 'results', 'density_*.csv'))
+    density_files.sort(reverse=False)
+    density_files = density_files[:]
+    true_densities = np.array([np.diff(np.genfromtxt(density_file, delimiter=',')) for density_file in density_files])
+    trimmed_down = (len(true_densities) // generator_batchsize)*generator_batchsize
+    true_densities = true_densities[:trimmed_down]
+    
+    print(f'{generator_train_size} curves per epoch')
+    print(f'{generator_epochs} epochs')
+    print(f'{generator_batchsize} batch size')
+    print(f'{inner_loops} loop dft')
     training_model.fit(training_dataset,
                        steps_per_epoch=generator_train_size,
                        epochs=generator_epochs,
+                       validation_data=(true_densities, true_densities),
+                       validation_batch_size=generator_batchsize,
                        max_queue_size=10, shuffle=False,
                        callbacks=callbacks)
 
@@ -258,48 +276,68 @@ def train(use_tpu=True):
 def visualize(see_grids, intermediate_layers):
     generator = inverse_dft_model()
     generator.load_weights(model_loc, by_name=True)
-    
+
     vis_layers = list()
     for layer in generator.layers:
-        print(layer.name)
         if 'conv2d' in layer.name or 'batch_normalization' == layer.name:
             vis_layers.append(Model(generator.input, layer.output))
-
+    
     relative_humidity = np.arange(41) * STEP_SIZE
 
     areas = list()
     errors = list()
 
     c = make_steps()[0][::]
-    print(len(c))
+    
+    square_grids = np.zeros((20, 20, 20), dtype=np.float32)
+    for i in range(1, 21):
+        square_grids[i-1, :i, :i] = 1
+    square_curves, _ = run_dft(square_grids, inner_loops=300)
+    c = np.concatenate((square_curves, c))
+
+    straight_line = np.zeros((1, 40), dtype=np.float32)
+    straight_line[0, 0:40] = 1/40
+
+    c = np.concatenate((straight_line, c))
+    
     grids = generator.predict(c)
-    densities = run_dft(grids, inner_loops=100)
+    densities, _ = run_dft(grids, inner_loops=300)
+
     intermediate_layer_outputs = list()
     for layer in vis_layers:
         intermediate = layer.predict(c)
-        print(intermediate.shape)
         intermediate_layer_outputs.append(intermediate)
-    for diffs, grid, diffs_dft, sample1, sample2, sample3 in zip(c, grids, densities, *intermediate_layer_outputs):
+    
+    for i, (diffs, grid, diffs_dft, sample1, sample2, sample3) in enumerate(zip(c, grids, densities, *intermediate_layer_outputs)):
         curve = np.cumsum(np.insert(diffs, 0, 0))
         curve_dft = np.cumsum(np.insert(diffs_dft, 0, 0))
         if see_grids:
-            show_grid(grid, curve, curve_dft)
-            plt.show()
+            '''
+            os.makedirs(f'figures/artificial/{i}', exist_ok=True)
+            np.savetxt(f'figures/artificial/{i}/grid.csv', grid, delimiter=',')
+            np.savetxt(f'figures/artificial/{i}/curve.csv', curve, delimiter=',')
+            np.savetxt(f'figures/artificial/{i}/curve_dft.csv', curve_dft, delimiter=',')
+            '''
+            # show_grid(grid, curve, curve_dft)
+            # plt.show()
 
-            # fig, ax = plt.subplots(8, 16, figsize=(16, 8))
-            # for i in range(128):
-            #     ax[i//16, i % 16].matshow(sample1[:, :, i])
-            # plt.show()
-            # fig, ax = plt.subplots(8, 16, figsize=(16, 8))
-            # for i in range(128):
-            #     ax[i//16, i % 16].matshow(sample2[:, :, i])
-            # plt.show()
-            # fig, ax = plt.subplots(8, 16, figsize=(16, 8))
-            # for i in range(128):
-            #     ax[i//16, i % 16].matshow(sample3[:, :, i])
-            # plt.show()
+            '''
+            fig, ax = plt.subplots(8, 16, figsize=(16, 8))
+            for i in range(128):
+                ax[i//16, i % 16].matshow(sample1[:, :, i])
+            plt.show()
+            fig, ax = plt.subplots(8, 16, figsize=(16, 8))
+            for i in range(128):
+                ax[i//16, i % 16].matshow(sample2[:, :, i])
+            plt.show()
+            fig, ax = plt.subplots(8, 16, figsize=(16, 8))
+            for i in range(128):
+                ax[i//16, i % 16].matshow(sample3[:, :, i])
+            plt.show()
+            '''
 
     def vis_curves(curves):
+        i = 0
         for c, _ in curves:
             print('computing...')
             curve_batch = np.array(c)
@@ -311,7 +349,7 @@ def visualize(see_grids, intermediate_layers):
                 print(intermediate.shape)
                 intermediate_layer_outputs.append(intermediate)
             
-            densities = run_dft(grids, inner_loops=100)
+            densities, _ = run_dft(grids, inner_loops=100)
             for diffs, grid, diffs_dft, sample1, sample2, sample3 in zip(c, grids, densities, *intermediate_layer_outputs):
                 curve = np.cumsum(np.insert(diffs, 0, 0))
                 curve_dft = np.cumsum(np.insert(diffs_dft, 0, 0))
@@ -323,48 +361,63 @@ def visualize(see_grids, intermediate_layers):
                 areas.append(area)
                 
                 if see_grids:
+                    '''
+                    os.makedirs(f'figures/random_curves/{i}', exist_ok=True)
+                    np.savetxt(f'figures/random_curves/{i}/grid.csv', grid, delimiter=',')
+                    np.savetxt(f'figures/random_curves/{i}/curve.csv', curve, delimiter=',')
+                    np.savetxt(f'figures/random_curves/{i}/curve_dft.csv', curve_dft, delimiter=',')
+                    '''
+                    i += 1
                     show_grid(grid, curve, curve_dft)
                     plt.show()
 
-                    fig, ax = plt.subplots(8, 16, figsize=(16, 8))
-                    for i in range(128):
-                        ax[i//16, i % 16].matshow(sample1[:, :, i])
-                    plt.show()
-                    fig, ax = plt.subplots(8, 16, figsize=(16, 8))
-                    for i in range(128):
-                        ax[i//16, i % 16].matshow(sample2[:, :, i])
-                    plt.show()
-                    fig, ax = plt.subplots(8, 16, figsize=(16, 8))
-                    for i in range(128):
-                        ax[i//16, i % 16].matshow(sample3[:, :, i])
-                    plt.show()
+                    # fig, ax = plt.subplots(8, 16, figsize=(16, 8))
+                    # for i in range(128):
+                    #     ax[i//16, i % 16].matshow(sample1[:, :, i])
+                    # plt.show()
+                    # fig, ax = plt.subplots(8, 16, figsize=(16, 8))
+                    # for i in range(128):
+                    #     ax[i//16, i % 16].matshow(sample2[:, :, i])
+                    # plt.show()
+                    # fig, ax = plt.subplots(8, 16, figsize=(16, 8))
+                    # for i in range(128):
+                    #     ax[i//16, i % 16].matshow(sample3[:, :, i])
+                    # plt.show()
 
-    # curves = [next(generator_train_generator) for _ in range(5)]
+    # curves = [next(generator_train_generator()) for _ in range(5)]
     # vis_curves(curves)
 
-    base_dir = '/Users/yuhanliu/Google Drive/Research/sorption_modeling/test_grids/step4'
+    # base_dir = './test_grids/step4'
+    base_dir = './data_generation'
     density_files = glob.glob(os.path.join(base_dir, 'results', 'density_*.csv'))
     density_files.sort(reverse=False)
     density_files = density_files[:]
     true_densities = [np.diff(np.genfromtxt(density_file, delimiter=',')) for density_file in density_files]
     shuffle(true_densities)
-    true_densities = batch(true_densities, generator_batchsize)
+    # true_densities = batch(true_densities, generator_batchsize)
+    true_densities = batch(true_densities, 256)
     vis_curves(zip(true_densities, true_densities))
 
     print('Mean: ', np.array(errors).mean())
     print('Std: ', np.array(errors).std())
-    plt.hist(errors, bins=10)
+    plt.hist(errors, bins=15)
     plt.title('Error Distribution')
     plt.xlabel('Abs error')
-    plt.xlim(0, 1)
+    # plt.xlim(0, 1)
     plt.show()
     
     plt.scatter(areas, errors)
+    print(np.array(areas).shape)
+    print(np.array(areas).dtype)
+    print(np.array(errors).shape)
+    print(np.array(errors).dtype)
+    os.makedirs(f'figures/generator_error/', exist_ok=True)
+    np.savetxt('figures/generator_error/errors.csv', np.concatenate((np.array(areas)[:, None], np.array(errors)[:, None]), axis=1), delimiter=',')
     plt.title('Error w.r.t. area under curve')
     plt.xlabel('Area under DFT curve')
     plt.ylabel('Abs error')
     # plt.xlim(0, 1)
-    plt.ylim(0, 1)
+    # plt.ylim(0, 1)
     plt.show()
 
 

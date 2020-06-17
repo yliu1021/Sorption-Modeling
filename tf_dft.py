@@ -20,7 +20,7 @@ def run_dft(grids, batch_size=None, inner_loops=5):
     ----------
     grids : This must be a tensor of shape [batch_size, GRID_SIZE, GRID_SIZE]
     """
-
+    
     muu_lookup = list()
     for jj in range(N_ITER + 1):
         if jj <= N_ADSORP:
@@ -73,15 +73,12 @@ def run_dft(grids, batch_size=None, inner_loops=5):
     r1 = r1[:, GRID_SIZE-1:2*GRID_SIZE+1, GRID_SIZE-1:2*GRID_SIZE+1]
     rneg = rneg[:, GRID_SIZE-1:2*GRID_SIZE+1, GRID_SIZE-1:2*GRID_SIZE+1]
 
-    print(r0.shape)
-    print(r1.shape)
-    print(GRID_SIZE)
-    r0 = tf.reshape(r0, [batch_size, GRID_SIZE, GRID_SIZE, 1])
-    r1 = tf.reshape(r1, [batch_size, GRID_SIZE+2, GRID_SIZE+2, 1])
-    rneg = tf.reshape(rneg, [batch_size, GRID_SIZE+2, GRID_SIZE+2, 1])
+    r0 = tf.expand_dims(r0, -1)
+    r1 = tf.expand_dims(r1, -1)
+    rneg = tf.expand_dims(rneg, -1)
 
     total_pores = tf.maximum(tf.reduce_sum(grids, [1, 2]), 1)
-
+    
     rs = list()
     
     densities = [tf.zeros(batch_size)]
@@ -96,17 +93,13 @@ def run_dft(grids, batch_size=None, inner_loops=5):
             r1 = tf.tile(rounew, [1, 3, 3, 1])
             r1 = r1[:, GRID_SIZE-1:2*GRID_SIZE+1, GRID_SIZE-1:2*GRID_SIZE+1, :]
         rs.append(r1)
-        
+
         density = tf.truediv(tf.reduce_sum(r1[:, 1:GRID_SIZE+1, 1:GRID_SIZE+1, :], axis=[1, 2, 3]), total_pores)
         densities.append(density)
     densities.append(tf.ones(batch_size))
 
-    diffs = list()
-    last = densities[0]
-    for density in densities[1:]:
-        diffs.append(density - last)
-        last = density
-    return tf.stack(diffs, axis=1), rs
+    densities = tf.stack(densities, axis=1)
+    return densities[:, 1:] - densities[:, :-1], rs
 
 
 def run_dft_pad(grids, batch_size=None, inner_loops=5):
@@ -199,14 +192,58 @@ def run_dft_pad(grids, batch_size=None, inner_loops=5):
     return tf.stack(diffs, axis=1)
 
 
+def tile(grid, size):
+    """
+    Tile grid with size x size pores
+    """
+    height, width = grid.shape
+    for i in range(0, height, 2*size):
+        for j in range(0, width, 2*size):
+            grid[i:i+size, j:j+size] = 1
+            grid[i+size:i+2*size, j+size:j+2*size] = 1
+    return int(np.sum(grid))
+
+
 if __name__ == '__main__':
-    # grid_tf = tf.compat.v1.placeholder(tf.float32, shape=[462, GRID_SIZE, GRID_SIZE], name='input_grid')
-    # density_tf = run_dft(grid_tf)
     inner_loops = 5
     try:
         inner_loops = int(sys.argv[1])
     except:
         pass
+
+    while True:
+        grids = np.zeros((GRID_SIZE - 1, GRID_SIZE, GRID_SIZE), dtype=np.float32)
+        for i in range(GRID_SIZE - 1):
+            count = tile(grids[i, -(i+1):, -(i+1):], 5)
+            grids[i, :(count+1)//5, :5] = 1
+        print(grids.shape)
+        
+        dft_curves, _ = run_dft(grids, inner_loops=inner_loops)
+        for grid, curve in zip(grids, dft_curves):
+            print(curve.numpy())
+            
+            fig = plt.figure(figsize=(10,4))
+            fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+            ax = plt.subplot(1, 2, 1)
+            ax.clear()
+            ax.set_title('Grid (Black = Solid, Whited = Pore)')
+            ax.set_yticks(np.linspace(0, GRID_SIZE, 5))
+            ax.set_xticks(np.linspace(0, GRID_SIZE, 5))
+            ax.pcolor(1 - grid, cmap='Greys', vmin=0.0, vmax=1.0)
+            ax.set_aspect('equal')
+
+            actual_curve = np.insert(np.cumsum(curve), 0, 0)
+            ax = plt.subplot(1, 2, 2)
+            ax.clear()
+            ax.set_title('Adsorption Curve')
+            ax.set_xticks(np.linspace(0, 1, 10))
+            ax.set_yticks(np.linspace(0, 1, 5))
+            ax.set_ylim(0, 1)
+            ax.plot(np.linspace(0, 1, N_ADSORP+1), actual_curve)
+            ax.scatter(np.linspace(0, 1, N_ADSORP), curve)
+            
+            plt.show()
 
     # base_dir = '/Users/yuhanliu/Google Drive/Research/sorption_modeling/test_grids/step4'
     base_dir = './data_generation/'
@@ -215,7 +252,7 @@ if __name__ == '__main__':
 
     grid_files = grid_files[:]
 
-    grids = [np.genfromtxt(grid_file, delimiter=',', dtype=np.float32) for grid_file in grid_files][:30]
+    grids = [np.genfromtxt(grid_file, delimiter=',', dtype=np.float32) for grid_file in grid_files]
     print('Num grids: ', len(grids))
     start_time = time.time()
     densities, rs = run_dft(np.array(grids), inner_loops=inner_loops)
@@ -223,8 +260,9 @@ if __name__ == '__main__':
     print('Time: ', end_time - start_time)
     print('Grids per second: ', len(grids) / (end_time - start_time))
 
+    '''
     for i in range(len(grids)):
-        for step in rs:
+        for j, step in enumerate(rs):
             fig = plt.figure(figsize=(10, 4))
             fig.tight_layout(rect=[0, 0.03, 1, 0.95])
             
@@ -235,14 +273,15 @@ if __name__ == '__main__':
             ax.set_xticks(np.linspace(0, 20, 5))
             ax.pcolor(1 - grids[i], cmap='Greys', vmin=0.0, vmax=1.0)
             ax.set_aspect('equal')
-            
+
             ax = plt.subplot(1, 2, 2)
             ax.clear()
-            ax.set_title('Water Content')
-            ax.set_yticks(np.linspace(0, 22, 5))
+            ax.set_title(f'Water Content (RH: {(j+1)/40:0.2})')
+            ax.set_yticks(np.linspace(0, 22, 5)) 
             ax.set_xticks(np.linspace(0, 22, 5))
             ax.pcolor(1 - step[i, :, :, 0])
             plt.show()
+    '''
     
     density_files = glob.glob(os.path.join(base_dir, 'results', 'density_*.csv'))
     density_files.sort(reverse=False)
@@ -258,15 +297,16 @@ if __name__ == '__main__':
         areas.append(area)
         errors.append(error)
 
-        plt.title('{}'.format(i+1))
-        plt.plot(x, np.cumsum(np.insert(d, 0, 0)), label='tf')
-        plt.plot(x, t, label='dft')
+        plt.title('Cont. vs Discrete'.format(i+1))
+        plt.plot(x, np.cumsum(np.insert(d, 0, 0)), label='Continuous')
+        plt.plot(x, t, label='Discrete')
         plt.legend()
         plt.show()
 
     # plt.scatter(*zip(*points))
     print('Error: ', np.array(errors).mean())
     print('Error std dev: ', np.array(errors).std())
+
     plt.scatter(areas, errors)
     plt.title('Inner loops: {}'.format(inner_loops))
     plt.ylim(0, 1)
