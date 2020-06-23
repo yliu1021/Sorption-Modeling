@@ -62,13 +62,13 @@ def squared_area_between(y_true, y_pred):
     return K.mean(K.square(K.cumsum(y_true, axis=-1) - K.cumsum(y_pred, axis=-1)))
 
 
-base_dir = './generative_model_benchmark_old'
+base_dir = './generative_model_benchmark_lin'
 os.makedirs(base_dir, exist_ok=True)
 model_loc = os.path.join(base_dir, 'generator.hdf5')
 log_loc = os.path.join(base_dir, 'logs')
 
 generator_train_size = 64000
-generator_epochs = 50
+generator_epochs = 100
 try:
     generator_epochs = int(sys.argv[1])
 except:
@@ -77,7 +77,7 @@ generator_batchsize = 64
 generator_train_size //= generator_batchsize
 loss = squared_area_between
 loss = area_between
-lr = 1e-2
+lr = 1e-1
 max_var = 24
 stepwise_prop = 0.2
 inner_loops = 100
@@ -144,24 +144,20 @@ def make_generator_input(n_grids, use_generator=False, batchsize=generator_batch
 
 
 def inverse_dft_model():
-    # inp = Input(shape=(N_ADSORP,), name='generator_input', batch_size=generator_batchsize)
     inp = Input(shape=(N_ADSORP,), name='generator_input')
+    
+    num_samples = 3
+    
+    dense = Dense(GRID_SIZE*GRID_SIZE*num_samples, activation='relu')(inp)
+    dense = BatchNormalization()(dense)
 
-    Q_GRID_SIZE = GRID_SIZE // 4
+    for _ in range(5):
+        dense = Dense(GRID_SIZE*GRID_SIZE*num_samples, activation='relu')(dense)
+        dense = BatchNormalization()(dense)
 
-    x = Dense(GRID_SIZE * GRID_SIZE * 128, name='fc1', activation='relu')(inp)
-    x = Reshape((GRID_SIZE, GRID_SIZE, 128))(x)
-    x = BatchNormalization()(x)
-
-    x = Conv2DTranspose(128, 20, strides=1, padding='same', activation='relu')(x)
-    x = BatchNormalization()(x)
-    x = Conv2DTranspose(128, 20, strides=1, padding='same', activation='relu')(x)
-    x = BatchNormalization()(x)
-
-    out = Conv2D(1, 1, strides=1, padding='same', activation=binary_sigmoid, name='generator_conv')(x)
-    out = Reshape((GRID_SIZE, GRID_SIZE))(out)
-
-    model = Model(inputs=inp, outputs=out, name='generator_model')
+    dense = Dense(GRID_SIZE*GRID_SIZE, activation=binary_sigmoid)(dense)
+    dense = Reshape((GRID_SIZE, GRID_SIZE))(dense)
+    model = Model(inputs=inp, outputs=dense, name='generator_model')
 
     return model
 

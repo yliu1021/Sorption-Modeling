@@ -13,6 +13,8 @@ data_generation/grids/
 data_generation/results/
 intermediate_layers/
 data_generation/target_curves/
+*.zip
+benchmarks/
 
 # Hoffman scripts
 run.sh

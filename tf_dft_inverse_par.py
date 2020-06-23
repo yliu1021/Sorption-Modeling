@@ -62,13 +62,13 @@ def squared_area_between(y_true, y_pred):
     return K.mean(K.square(K.cumsum(y_true, axis=-1) - K.cumsum(y_pred, axis=-1)))
 
 
-base_dir = './generative_model_benchmark_old'
+base_dir = './generative_model_benchmark_par'
 os.makedirs(base_dir, exist_ok=True)
 model_loc = os.path.join(base_dir, 'generator.hdf5')
 log_loc = os.path.join(base_dir, 'logs')
 
 generator_train_size = 64000
-generator_epochs = 50
+generator_epochs = 100
 try:
     generator_epochs = int(sys.argv[1])
 except:
@@ -77,7 +77,7 @@ generator_batchsize = 64
 generator_train_size //= generator_batchsize
 loss = squared_area_between
 loss = area_between
-lr = 1e-2
+lr = 1e-1
 max_var = 24
 stepwise_prop = 0.2
 inner_loops = 100
@@ -145,20 +145,31 @@ def make_generator_input(n_grids, use_generator=False, batchsize=generator_batch
 
 def inverse_dft_model():
     # inp = Input(shape=(N_ADSORP,), name='generator_input', batch_size=generator_batchsize)
-    inp = Input(shape=(N_ADSORP,), name='generator_input')
+    inp = Input(shape=(N_ADSORP,), batch_size=generator_batchsize, name='generator_input')
 
-    Q_GRID_SIZE = GRID_SIZE // 4
+    x1 = Dense(GRID_SIZE * GRID_SIZE * 64, name='fc1', activation='relu')(inp[:,:20])
+    x2 = Dense(GRID_SIZE * GRID_SIZE * 64, name='fc2', activation='relu')(inp[:,20:])
+    x1 = Reshape((GRID_SIZE, GRID_SIZE, 64))(x1)
+    x2 = Reshape((GRID_SIZE, GRID_SIZE, 64))(x2)
+    x1 = BatchNormalization()(x1)
+    x2 = BatchNormalization()(x2)
 
-    x = Dense(GRID_SIZE * GRID_SIZE * 128, name='fc1', activation='relu')(inp)
-    x = Reshape((GRID_SIZE, GRID_SIZE, 128))(x)
-    x = BatchNormalization()(x)
+    x1 = Conv2DTranspose(64, 20, strides=1, padding='same', activation='relu')(x1)
+    x1 = BatchNormalization()(x1)
+    x2 = Conv2DTranspose(64, 20, strides=1, padding='same', activation='relu')(x2)
+    x2 = BatchNormalization()(x2)
+    x1 = Conv2DTranspose(64, 20, strides=1, padding='same', activation='relu')(x1)
+    x1 = BatchNormalization()(x1)
+    x2 = Conv2DTranspose(64, 20, strides=1, padding='same', activation='relu')(x2)
+    x2 = BatchNormalization()(x2)
 
-    x = Conv2DTranspose(128, 20, strides=1, padding='same', activation='relu')(x)
-    x = BatchNormalization()(x)
-    x = Conv2DTranspose(128, 20, strides=1, padding='same', activation='relu')(x)
-    x = BatchNormalization()(x)
+    x1 = Conv2D(1, 3, strides=1, padding='same', activation='relu')(x1)
+    x1 = BatchNormalization()(x1)
+    x2 = Conv2D(1, 3, strides=1, padding='same', activation='relu')(x2)
+    x2 = BatchNormalization()(x2)
 
-    out = Conv2D(1, 1, strides=1, padding='same', activation=binary_sigmoid, name='generator_conv')(x)
+    x = K.concatenate((x1, x2), axis=-1)
+    out = Conv2D(1, 3, strides=1, padding='same', activation=binary_sigmoid, name='generator_conv')(x)
     out = Reshape((GRID_SIZE, GRID_SIZE))(out)
 
     model = Model(inputs=inp, outputs=out, name='generator_model')

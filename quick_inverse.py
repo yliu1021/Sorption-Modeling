@@ -117,13 +117,13 @@ def fill(grid, counts, sample_grids, lat_size=25):
     grid[:, :] = 0 # set everything as a solid first
 
     count_ind = 0
-    for i in range(1, width, tile_size):
-        for j in range(1, height, tile_size):
+    for i in range(0, width, tile_size):
+        for j in range(0, height, tile_size):
             while count_ind < len(counts) and counts[count_ind] == 0:
                 count_ind += 1
             if count_ind == len(counts):
                 break
-            grid[i:i+tile_size-1, j:j+tile_size-1] = sample_grids[count_ind][:tile_size-1, :tile_size-1]
+            grid[i:i+tile_size, j:j+tile_size] = sample_grids[count_ind][:tile_size, :tile_size]
             counts[count_ind] -= 1
 
 
@@ -134,94 +134,112 @@ def main(inner_loops):
     density_files = density_files[:]
     real_densities_diffs = [np.diff(np.genfromtxt(density_file, delimiter=',')) for density_file in density_files]
     shuffle(real_densities_diffs)
-
+    
     tile_size = GRID_SIZE // 20
     lat_size = tile_size * tile_size
     
     sample_grids = list()
-    for i in range(18):
+    effective_weights = list()
+    
+    # 19 * 19 = 361 which is approximately 360
+    # aim for half cells are pores ~180 pores
+    # half 
+    for pore_size in range(1, 19//2):
         grid = np.zeros((GRID_SIZE, GRID_SIZE), dtype=np.float32)
-        grid[:i+1, :i+1] = 1
+        for i in range(0, 19, 2*pore_size):
+            for j in range(0, 19, 2*pore_size):
+                grid[i:i+pore_size, j:j+pore_size] = 1
+                grid[i+pore_size:i+2*pore_size, j+pore_size:j+2*pore_size] = 1
         sample_grids.append(grid)
-    for i in range(1, 18):
+    for width in range(1, 19//2):
         grid = np.zeros((GRID_SIZE, GRID_SIZE), dtype=np.float32)
-        grid[:18, :18] = 1
-        grid[1:i+1, 1:i+1] = 0
+        for i in range(0, 19, 2*width):
+            grid[i:i+width] = 1
         sample_grids.append(grid)
-    for i in range(1, 18):
-        grid = np.zeros((GRID_SIZE, GRID_SIZE), dtype=np.float32)
-        grid[:i, :18] = 1
-        grid[:18, :i] = 1
-        sample_grids.append(grid)
-    sample_grids = np.array(sample_grids)
 
-    sample_grids = np.roll(sample_grids, 2, axis=1)
-    sample_grids = np.roll(sample_grids, 2, axis=2)
+    # 19 * 19 = 361 now we go for the full size pores
+    for i in range(15, 20):
+        grid = np.ones((GRID_SIZE, GRID_SIZE), dtype=np.float32)
+        sample_grids.append(grid)
+    
+    mask = np.zeros((GRID_SIZE, GRID_SIZE), dtype=np.float32)
+    mask[:19, :19] = 1
+    sample_grids = np.array([g*mask for g in sample_grids])
+    effective_weights = np.array([np.sum(g) for g in sample_grids])
+    
     sample_curves_diffs, _ = run_dft(sample_grids, inner_loops=inner_loops)
     sample_curves_diffs = sample_curves_diffs.numpy()
     sample_curves = np.cumsum(sample_curves_diffs, axis=1)
 
-    for grid, curve_diffs in zip(sample_grids, sample_curves_diffs):
-        fig = plt.figure(figsize=(10,4))
-        fig.tight_layout(rect=[0, 0.03, 1, 0.95])
-        
-        ax = plt.subplot(1, 2, 1)
-        ax.clear()
-        ax.set_title('Grid (Black = Solid, Whited = Pore)')
-        ax.set_yticks(np.linspace(0, grid.shape[0], 5))
-        ax.set_xticks(np.linspace(0, grid.shape[1], 5))
-        ax.pcolor(1 - grid, cmap='Greys', vmin=0.0, vmax=1.0)
-        ax.set_aspect('equal')
-        
-        actual_curve = np.insert(np.cumsum(curve_diffs), 0, 0)
-        ax = plt.subplot(1, 2, 2)
-        ax.clear()
-        ax.set_title('Adsorption Curve')
-        ax.set_xticks(np.linspace(0, 1, 10))
-        ax.set_yticks(np.linspace(0, 1, 5))
-        ax.set_ylim(0, 1)
-        ax.plot(np.linspace(0, 1, N_ADSORP+1), actual_curve, color='red')
-        ax.scatter(np.linspace(0, 1, N_ADSORP), curve_diffs)
-        
-        plt.show()
+    if 's' in sys.argv[1:]:
+        for grid, curve_diffs in zip(sample_grids, sample_curves_diffs):
+            fig = plt.figure(figsize=(10,4))
+            fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+            
+            ax = plt.subplot(1, 2, 1)
+            ax.clear()
+            ax.set_title('Grid (Black = Solid, Whited = Pore)')
+            ax.set_yticks(np.linspace(0, grid.shape[0], 5))
+            ax.set_xticks(np.linspace(0, grid.shape[1], 5))
+            ax.pcolor(1 - grid, cmap='Greys', vmin=0.0, vmax=1.0)
+            ax.set_aspect('equal')
+            
+            actual_curve = np.insert(np.cumsum(curve_diffs), 0, 0)
+            ax = plt.subplot(1, 2, 2)
+            ax.clear()
+            ax.set_title('Adsorption Curve')
+            ax.set_xticks(np.linspace(0, 1, 10))
+            ax.set_yticks(np.linspace(0, 1, 5))
+            ax.set_ylim(0, 1)
+            ax.plot(np.linspace(0, 1, N_ADSORP+1), actual_curve, color='red')
+            ax.scatter(np.linspace(0, 1, N_ADSORP), curve_diffs)
+            
+            plt.show()
+
+    generated_grids = list()
     
     weighting_errs = list()
     norm_weighting_errs = list()
     generator_errs = list()
+    target_curve_areas = list()
     for i, target_curve_diffs in enumerate(real_densities_diffs):
         target_curve = np.insert(np.cumsum(target_curve_diffs), 0, 0)
+        target_curve_area = np.sum(target_curve) / len(target_curve)
+        target_curve_areas.append(target_curve_area)
         
         weights = gen_curve_weights(target_curve[1:], sample_curves, 80)
-
+        weights /= effective_weights
+        weights /= np.sum(weights)
         weighted_target_curve = weights.T @ sample_curves
         weighted_target_curve = np.insert(weighted_target_curve, 0, 0)
-
-        err = np.abs(np.sum(target_curve - weighted_target_curve)) / len(target_curve)
+        err = np.sum(np.abs(target_curve - weighted_target_curve)) / len(target_curve)
         weighting_errs.append(err)
 
         count_weights, norm_weights = round(weights, lat_size=lat_size)
         count_weights = count_weights.astype(np.int32)
-
         norm_weighted_target_curve = norm_weights.T @ sample_curves
         norm_weighted_target_curve = np.insert(norm_weighted_target_curve, 0, 0)
-
-        err = np.abs(np.sum(target_curve - norm_weighted_target_curve)) / len(target_curve)
+        err = np.sum(np.abs(target_curve - norm_weighted_target_curve)) / len(target_curve)
         norm_weighting_errs.append(err)
         
         generated_grid = np.zeros((GRID_SIZE, GRID_SIZE), dtype=np.float32)
         fill(generated_grid, count_weights, sample_grids, lat_size=lat_size)
+        generated_grids.append(generated_grid)
 
+        print(f'\r {i}/{len(real_densities_diffs)}', end='')
+        '''
         generated_curve_diffs, _ = run_dft(np.array([generated_grid]), inner_loops=inner_loops)
         generated_curve = np.insert(np.cumsum(generated_curve_diffs), 0, 0)
-
-        err = np.abs(np.sum(target_curve - generated_curve)) / len(target_curve)
+        err = np.sum(np.abs(target_curve - generated_curve)) / len(target_curve)
         generator_errs.append(err)
-        
+
         e = np.array(generator_errs)
         print(f'\r {i}/{len(real_densities_diffs)} | Error: {e.mean():.5f} | Max: {e.max():.5f} | Min: {e.min():.5f} | Std: {e.std():.5f}', end='')
+        '''
 
-        continue
-    
+        if 'g' not in sys.argv[1:]:
+            continue
+
         fig = plt.figure(figsize=(10,4))
         fig.tight_layout(rect=[0, 0.03, 1, 0.95])
 
@@ -240,18 +258,52 @@ def main(inner_loops):
         ax.set_yticks(np.linspace(0, 1, 5))
         ax.set_ylim(0, 1)
         ax.plot(np.linspace(0, 1, N_ADSORP+1), target_curve, label='target curve')
-        ax.plot(np.linspace(0, 1, N_ADSORP+1), weighted_target_curve, label='weighted curve')
-        ax.plot(np.linspace(0, 1, N_ADSORP+1), norm_weighted_target_curve, label='norm weighted curve')
+        # ax.plot(np.linspace(0, 1, N_ADSORP+1), weighted_target_curve, label='weighted curve')
+        # ax.plot(np.linspace(0, 1, N_ADSORP+1), norm_weighted_target_curve, label='norm weighted curve')
         ax.plot(np.linspace(0, 1, N_ADSORP+1), generated_curve, label='generated curve')
         plt.legend()
         plt.show()
-        
     print()
-    errs = np.array(errs)
-    print(errs.mean())
-    print(errs.std())
-    plt.hist(errs, bins=20)
-    plt.show()
+
+    ##############################################
+    dft_batch_size = 128
+    generated_grids = np.array(generated_grids)
+    generated_curve_diffs = list()
+    for i in range(0, len(generated_grids), dft_batch_size):
+        print(f'\r {i}/{len(generated_grids)}', end='')
+        gen_diffs, _ = run_dft(generated_grids[i:i+dft_batch_size], inner_loops=100)
+        generated_curve_diffs.extend(gen_diffs)
+    print()
+    generated_curve_diffs = np.array(generated_curve_diffs)
+    generated_curves = np.cumsum(generated_curve_diffs, axis=1)
+    for i, (target_curve_diffs, generated_curve) in enumerate(zip(real_densities_diffs, generated_curves)):
+        target_curve = np.insert(np.cumsum(target_curve_diffs), 0, 0)
+        generated_curve = np.insert(generated_curve, 0, 0)
+
+        err = np.sum(np.abs(target_curve - generated_curve)) / len(target_curve)
+        generator_errs.append(err)
+
+        e = np.array(generator_errs)
+        print(f'\r {i}/{len(real_densities_diffs)} | Error: {e.mean():.5f} | Max: {e.max():.5f} | Min: {e.min():.5f} | Std: {e.std():.5f}', end='')
+    print()
+    ##############################################
+    
+    target_curve_areas = np.array(target_curve_areas)
+    for errs, name in zip([weighting_errs, norm_weighting_errs, generator_errs], ['weighting', 'normed', 'gen']):
+        errs = np.array(errs)
+        print(f'{name}: {errs.mean():.5f} | {errs.std():.5f}')
+
+        os.makedirs(f'figures/quick_inverse_error/', exist_ok=True)
+        area_err = np.concatenate((np.array(target_curve_areas)[:, None], np.array(errs)[:, None]), axis=1)
+        np.savetxt(f'figures/quick_inverse_error/errors_{name}.csv', area_err, delimiter=',')
+        
+        plt.hist(errs, bins=20)
+        plt.title(name)
+        plt.show()
+
+        plt.scatter(target_curve_areas, errs)
+        plt.title(f'{name} w.r.t area')
+        plt.show()
         
     exit(0)
     
