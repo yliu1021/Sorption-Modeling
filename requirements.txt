@@ -34,7 +34,7 @@ Pillow==6.2.0
 protobuf==3.11.1
 termcolor==1.1.0
 tqdm==4.41.0
-urllib3==1.24.2
+urllib3==1.26.5
 virtualenv==16.7.9
 Werkzeug==0.16.0
 
